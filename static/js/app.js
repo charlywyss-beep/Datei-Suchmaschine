@@ -1136,6 +1136,12 @@ async function previewFile(path, name, ext, sizeFormatted) {
   }
 }
 
+function openInBrowserViewer() {
+  if (currentPreviewPath) {
+    window.open('/api/preview?path=' + encodeURIComponent(currentPreviewPath), '_blank');
+  }
+}
+
 function openFileFromPreview() {
   if (currentPreviewPath) {
     openFile(currentPreviewPath);

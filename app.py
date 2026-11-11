@@ -295,6 +295,11 @@ def save_file_route():
     res = file_service.save_text_file(path, content)
     return jsonify(res)
 
+@app.route("/api/open-windows-settings", methods=["POST"])
+def open_windows_settings_route():
+    res = file_service.open_default_apps_settings()
+    return jsonify(res)
+
 @app.route("/api/print-file", methods=["POST"])
 def print_file_route():
     data = request.get_json() or {}

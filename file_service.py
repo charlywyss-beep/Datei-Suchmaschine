@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.4.3"
+APP_VERSION = "v1.4.4"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -742,6 +742,14 @@ def open_folder_and_select(filepath):
     try:
         subprocess.run(["explorer", f"/select,{os.path.abspath(filepath)}"], check=False)
         return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def open_default_apps_settings():
+    """Öffnet die Windows-Einstellungen für Standard-Apps (ms-settings:defaultapps)"""
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-Command", "Start-Process 'ms-settings:defaultapps'"], check=False)
+        return {"success": True, "message": "Windows Standard-Apps Einstellungen geöffnet."}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
