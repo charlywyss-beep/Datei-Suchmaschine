@@ -1015,13 +1015,17 @@ function actionEditFromModal() {
 
 function openWithFromPreview() {
   if (currentPreviewPath) {
-    openWith(currentPreviewPath);
+    const target = currentPreviewPath;
+    closePreviewModal();
+    openWith(target);
   }
 }
 
 function editFileFromPreview() {
   if (currentPreviewPath) {
-    editFile(currentPreviewPath);
+    const target = currentPreviewPath;
+    closePreviewModal();
+    editFile(target);
   }
 }
 
@@ -1107,7 +1111,9 @@ async function previewFile(path, name, ext, sizeFormatted) {
 
 function openFileFromPreview() {
   if (currentPreviewPath) {
-    openFile(currentPreviewPath);
+    const target = currentPreviewPath;
+    closePreviewModal();
+    openFile(target);
   }
 }
 

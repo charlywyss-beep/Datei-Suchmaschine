@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.4.0"
+APP_VERSION = "v1.4.1"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -702,24 +702,24 @@ def execute_batch_rename(preview_items):
     return results
 
 def open_file_in_system(filepath):
-    """Öffnet Datei in der Windows-Standardanwendung (z.B. PDF X für PDFs, Word für docx, etc.)"""
+    """Öffnet Datei in der Windows-Standardanwendung (z.B. PDF X für PDFs, Word für docx, etc.) und bringt das Fenster in den Vordergrund"""
     if not os.path.exists(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
     
     abs_p = os.path.abspath(filepath)
     ext = os.path.splitext(filepath)[1].lower().strip()
-    
-    # Für PDFs: Versuche zuerst direkt die Standard-App des Systems (PDF X) zu starten
+    app_name = "PDF X" if ext == ".pdf" else "Standard-App"
+
+    # explorer.exe übergibt den Startauftrag an die interaktive Windows-Desktop-Shell.
+    # Dadurch wird die App (PDF X) direkt im Vordergrund auf dem Bildschirm geöffnet.
     try:
-        os.startfile(abs_p)
-        app_name = "PDF X" if ext == ".pdf" else "Standard-App"
+        subprocess.Popen(["explorer.exe", abs_p])
         return {"success": True, "message": f"In {app_name} geöffnet."}
-    except Exception as e:
-        # Fallback über Explorer
+    except Exception:
         try:
-            subprocess.Popen(["explorer", abs_p])
-            return {"success": True, "message": "Über Windows geöffnet."}
-        except Exception:
+            os.startfile(abs_p)
+            return {"success": True, "message": f"In {app_name} geöffnet."}
+        except Exception as e:
             return {"success": False, "error": str(e)}
 
 def open_folder_and_select(filepath):
