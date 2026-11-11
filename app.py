@@ -19,6 +19,7 @@ def system_info():
     od_info = file_service.detect_onedrive_paths()
     local_ip = file_service.get_local_ip()
     git_info = file_service.get_git_info()
+    saved_paths = file_service.get_saved_paths()
     
     return jsonify({
         "app_version": file_service.APP_VERSION,
@@ -26,8 +27,32 @@ def system_info():
         "network_url": f"http://{local_ip}:5005",
         "onedrive_info": od_info,
         "git_info": git_info,
+        "saved_paths": saved_paths,
         "locations": locations
     })
+
+@app.route("/api/saved-paths", methods=["GET"])
+def get_saved_paths_route():
+    return jsonify({"saved_paths": file_service.get_saved_paths()})
+
+@app.route("/api/save-path", methods=["POST"])
+def save_path_route():
+    data = request.get_json() or {}
+    name = data.get("name", "")
+    path = data.get("path", "")
+    if not path:
+        return jsonify({"error": "Pfad fehlt"}), 400
+    res = file_service.add_saved_path(name, path)
+    return jsonify(res)
+
+@app.route("/api/delete-saved-path", methods=["POST"])
+def delete_saved_path_route():
+    data = request.get_json() or {}
+    path_id = data.get("id") or data.get("path")
+    if not path_id:
+        return jsonify({"error": "ID fehlt"}), 400
+    res = file_service.remove_saved_path(path_id)
+    return jsonify(res)
 
 @app.route("/api/save-onedrive-paths", methods=["POST"])
 def save_onedrive_paths():

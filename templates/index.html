@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">v1.2.1</span>
+        <span id="header-version-tag">v1.2.2</span>
       </button>
 
       <!-- Print Search Results Button -->
@@ -219,51 +219,27 @@
                   type="text" 
                   id="target-directory" 
                   value="C:\Users\01\OneDrive" 
-                  placeholder="Pfad eingeben (z.B. C:\Users\01\OneDrive oder C:\)..."
-                  class="w-full px-3.5 py-2 bg-slate-950/80 border border-slate-700/80 rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Pfad eingeben (z.B. D:\01\Documents oder C:\Users\01\Documents)..."
+                  class="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-slate-100 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                 >
               </div>
+              <!-- Button: Pfad als Favorit speichern -->
+              <button 
+                type="button" 
+                onclick="openSavePathModal()" 
+                class="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition shrink-0 shadow-sm"
+                title="Diesen Pfad als eigenen Schnell-Button dauerhaft speichern"
+              >
+                <i class="fa-solid fa-star text-amber-400"></i>
+                <span>Pfad speichern</span>
+              </button>
             </div>
 
-            <!-- Schnell-Speicherort Buttons -->
-            <div class="flex flex-wrap gap-1.5 pt-1" id="location-shortcuts">
-              <!-- OneDrive Privat -->
-              <button type="button" onclick="setLocation(state.onedriveInfo?.personal?.path || 'C:\\Users\\01\\OneDrive', 'personal')" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800/80 transition" title="Privates OneDrive durchsuchen">
-                <i class="fa-solid fa-cloud text-sky-400"></i>
-                <span>OneDrive Privat</span>
-              </button>
-              <!-- OneDrive Geschäftlich -->
-              <div class="inline-flex rounded-lg border border-purple-800/80 bg-purple-950/60 p-0.5">
-                <button type="button" onclick="setLocation(state.onedriveInfo?.business?.path || 'C:\\Users\\01\\OneDrive - Geschaeft', 'business')" class="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium text-purple-300 hover:text-white transition" title="Geschäftliches OneDrive durchsuchen">
-                  <i class="fa-solid fa-building text-purple-400"></i>
-                  <span>OneDrive Geschäft</span>
-                </button>
-                <button type="button" onclick="openOneDriveSettingsModal()" class="px-1.5 py-0.5 text-[10px] text-purple-400 hover:text-white hover:bg-purple-900/50 rounded transition" title="Geschäftlichen OneDrive-Pfad anpassen">
-                  <i class="fa-solid fa-gear"></i>
-                </button>
+            <!-- Schnell-Speicherort Buttons & Gespeicherte Pfade -->
+            <div class="space-y-1.5 pt-1">
+              <div class="flex flex-wrap items-center gap-1.5" id="location-shortcuts">
+                <!-- Dynamisch via renderLocationShortcuts() -->
               </div>
-              <!-- Transfer-Hub Ordner -->
-              <button type="button" onclick="setLocation(state.onedriveInfo?.transfer?.path, false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/80 transition" title="Gemeinsamer Austausch-Ordner für PC Geschäft, PC Zuhause, iPad & iPhone">
-                <i class="fa-solid fa-arrows-rotate text-emerald-400"></i>
-                <span>Transfer-Hub (Sync)</span>
-              </button>
-              <!-- Standard-Ordner -->
-              <button type="button" onclick="setLocation('C:\\Users\\01\\Documents', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
-                <i class="fa-solid fa-folder text-amber-400"></i>
-                <span>Dokumente</span>
-              </button>
-              <button type="button" onclick="setLocation('C:\\Users\\01\\Downloads', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
-                <i class="fa-solid fa-download text-emerald-400"></i>
-                <span>Downloads</span>
-              </button>
-              <button type="button" onclick="setLocation('C:\\Users\\01\\Desktop', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
-                <i class="fa-solid fa-desktop text-blue-400"></i>
-                <span>Desktop</span>
-              </button>
-              <button type="button" onclick="setLocation('C:\\', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
-                <i class="fa-solid fa-hard-drive text-slate-400"></i>
-                <span>Laufwerk C:\</span>
-              </button>
             </div>
           </div>
 
@@ -821,6 +797,44 @@
           </div>
           <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: EIGENEN SUCHPFAD SPEICHERN          -->
+  <!-- ========================================== -->
+  <div id="modal-save-custom-path" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-star text-amber-400"></i>
+          <span>Suchpfad als Schnell-Button speichern</span>
+        </h3>
+        <button onclick="closeSavePathModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Bezeichnung für den Button:</label>
+          <input type="text" id="save-path-name" placeholder="z.B. Documents (D:), Projekte, Rechnungen..." class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 text-xs font-semibold">
+        </div>
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Vollständiger Ordnerpfad:</label>
+          <input type="text" id="save-path-dir" placeholder="z.B. D:\01\Documents" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-mono text-xs font-semibold">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeSavePathModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Abbrechen
+        </button>
+        <button onclick="submitSaveCustomPath()" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-amber-600/30">
+          <i class="fa-solid fa-check"></i>
+          <span>Als Favorit speichern</span>
+        </button>
       </div>
     </div>
   </div>

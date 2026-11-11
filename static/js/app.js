@@ -11,6 +11,7 @@ let state = {
   sortCol: 'name',
   sortAsc: true,
   systemLocations: [],
+  savedPaths: [],
   onedrivePath: '',
   onedriveInfo: null,
   gitInfo: null,
@@ -38,6 +39,7 @@ async function initSystemInfo() {
     const res = await fetch('/api/system-info');
     const data = await res.json();
     state.systemLocations = data.locations || [];
+    state.savedPaths = data.saved_paths || [];
     state.onedriveInfo = data.onedrive_info || {};
     state.gitInfo = data.git_info || {};
     state.networkUrl = data.network_url || '';
@@ -53,6 +55,8 @@ async function initSystemInfo() {
       gitV.textContent = data.app_version;
     }
 
+    renderLocationShortcuts();
+
     // Default Suchpfad auf OneDrive oder Documents setzen
     const dirInput = document.getElementById('target-directory');
     if (dirInput && !dirInput.value) {
@@ -64,6 +68,162 @@ async function initSystemInfo() {
     }
   } catch (err) {
     console.error('System-Info Fehler:', err);
+  }
+}
+
+// Rendert alle Schnellzugriff-Buttons (System + Gespeicherte eigene Favoriten)
+function renderLocationShortcuts() {
+  const container = document.getElementById('location-shortcuts');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  // 1. OneDrive Privat
+  const odPers = state.onedriveInfo?.personal;
+  if (odPers && odPers.exists) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800/80 transition';
+    btn.title = 'Privates OneDrive';
+    btn.innerHTML = `<i class="fa-solid fa-cloud text-sky-400"></i><span>OneDrive Privat</span>`;
+    btn.onclick = () => setLocation(odPers.path, 'personal');
+    container.appendChild(btn);
+  }
+
+  // 2. OneDrive Geschäftlich
+  const odBiz = state.onedriveInfo?.business;
+  const bizWrapper = document.createElement('div');
+  bizWrapper.className = 'inline-flex rounded-lg border border-purple-800/80 bg-purple-950/60 p-0.5';
+  bizWrapper.innerHTML = `
+    <button type="button" class="flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-purple-300 hover:text-white transition" title="Geschäftliches OneDrive">
+      <i class="fa-solid fa-building text-purple-400"></i>
+      <span>OneDrive Geschäft</span>
+    </button>
+    <button type="button" onclick="openOneDriveSettingsModal()" class="px-1.5 py-0.5 text-[11px] text-purple-400 hover:text-white hover:bg-purple-900/50 rounded transition" title="Geschäftlichen Pfad anpassen">
+      <i class="fa-solid fa-gear"></i>
+    </button>
+  `;
+  bizWrapper.querySelector('button').onclick = () => setLocation(odBiz?.path || 'C:\\Users\\01\\OneDrive - Geschaeft', 'business');
+  container.appendChild(bizWrapper);
+
+  // 3. Transfer-Hub (Sync)
+  const transfer = state.onedriveInfo?.transfer;
+  if (transfer) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/80 transition';
+    btn.title = 'Gemeinsamer Transfer-Hub für PC Zuhause, PC Geschäft, iPad & iPhone';
+    btn.innerHTML = `<i class="fa-solid fa-arrows-rotate text-emerald-400"></i><span>Transfer-Hub (Sync)</span>`;
+    btn.onclick = () => setLocation(transfer.path, false);
+    container.appendChild(btn);
+  }
+
+  // 4. Standard Systemordner
+  state.systemLocations.forEach(loc => {
+    if (loc.id.startsWith('onedrive') || loc.id === 'transfer_hub') return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
+    let iconHtml = '<i class="fa-solid fa-folder text-amber-400"></i>';
+    if (loc.icon === 'download') iconHtml = '<i class="fa-solid fa-download text-emerald-400"></i>';
+    if (loc.icon === 'monitor') iconHtml = '<i class="fa-solid fa-desktop text-blue-400"></i>';
+    if (loc.icon === 'image') iconHtml = '<i class="fa-solid fa-image text-purple-400"></i>';
+    if (loc.icon === 'hard-drive') iconHtml = '<i class="fa-solid fa-hard-drive text-slate-400"></i>';
+
+    btn.innerHTML = `${iconHtml}<span>${loc.name}</span>`;
+    btn.onclick = () => setLocation(loc.path, false);
+    container.appendChild(btn);
+  });
+
+  // 5. Benutzerdefinierte gespeicherte Pfade (Favoriten)
+  state.savedPaths.forEach(fav => {
+    const wrap = document.createElement('div');
+    wrap.className = 'inline-flex items-center rounded-lg border border-amber-500/40 bg-amber-950/40 p-0.5 shadow-sm group';
+    wrap.innerHTML = `
+      <button type="button" class="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-amber-200 hover:text-white transition" title="${fav.path}">
+        <i class="fa-solid fa-star text-amber-400 text-[11px]"></i>
+        <span>${fav.name}</span>
+      </button>
+      <button type="button" class="px-1.5 py-0.5 text-[11px] text-amber-400 hover:text-red-400 hover:bg-red-500/20 rounded transition" title="Diesen gespeicherten Pfad löschen">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    `;
+    wrap.querySelector('button:first-child').onclick = () => setLocation(fav.path, false);
+    wrap.querySelector('button:last-child').onclick = (e) => deleteCustomPath(fav.id, fav.name, e);
+    container.appendChild(wrap);
+  });
+}
+
+function openSavePathModal() {
+  const cur = document.getElementById('target-directory').value.trim();
+  document.getElementById('save-path-dir').value = cur;
+  // Default Name Vorschlag aus letztem Ordnernamen
+  let nameSuggest = '';
+  if (cur) {
+    const parts = cur.replace(/\\+$/, '').split('\\');
+    nameSuggest = parts[parts.length - 1] || cur;
+    if (cur.toLowerCase().includes('d:\\')) {
+      nameSuggest += ' (D:)';
+    }
+  }
+  document.getElementById('save-path-name').value = nameSuggest;
+  document.getElementById('modal-save-custom-path').classList.remove('hidden');
+  setTimeout(() => document.getElementById('save-path-name').focus(), 100);
+}
+
+function closeSavePathModal() {
+  document.getElementById('modal-save-custom-path').classList.add('hidden');
+}
+
+async function submitSaveCustomPath() {
+  const name = document.getElementById('save-path-name').value.trim();
+  const dirPath = document.getElementById('save-path-dir').value.trim();
+
+  if (!dirPath) {
+    showToast('Bitte einen Pfad eingeben', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/save-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || dirPath, path: dirPath })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.savedPaths = d.saved_paths || [];
+      renderLocationShortcuts();
+      showToast(`⭐ Suchpfad "${name || dirPath}" als Favorit gespeichert!`, 'success');
+      closeSavePathModal();
+    } else {
+      showToast(d.error || 'Fehler beim Speichern', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+async function deleteCustomPath(pathId, name, event) {
+  if (event) event.stopPropagation();
+  if (!confirm(`Soll der gespeicherte Suchpfad "${name}" entfernt werden?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/delete-saved-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pathId })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.savedPaths = d.saved_paths || [];
+      renderLocationShortcuts();
+      showToast('Pfad-Favorit entfernt.', 'info');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
   }
 }
 

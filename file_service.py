@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.2.1"
+APP_VERSION = "v1.2.2"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -122,6 +122,54 @@ def format_size(size_bytes):
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} PB"
 
+def get_saved_paths():
+    """Liest benutzerdefinierte gespeicherte Suchpfade"""
+    cfg = load_config()
+    paths = cfg.get("saved_paths", [])
+    # Falls noch leer, Standard-Vorschläge wie D:\01\Documents prüfen
+    if not paths and os.path.exists("D:\\01\\Documents"):
+        paths = [
+            {"id": "fav_d_doc", "name": "Documents (D:)", "path": "D:\\01\\Documents", "icon": "folder"}
+        ]
+        cfg["saved_paths"] = paths
+        save_config(cfg)
+    return paths
+
+def add_saved_path(name, path_str):
+    """Speichert einen neuen Suchpfad dauerhaft"""
+    cfg = load_config()
+    paths = cfg.get("saved_paths", [])
+    clean_path = os.path.abspath(path_str.strip())
+    
+    # Prüfe ob bereits existiert
+    for p in paths:
+        if os.path.normcase(p["path"]) == os.path.normcase(clean_path):
+            p["name"] = name.strip()
+            save_config(cfg)
+            return {"success": True, "saved_paths": paths, "updated": True}
+
+    import uuid
+    new_item = {
+        "id": f"fav_{uuid.uuid4().hex[:8]}",
+        "name": name.strip() or os.path.basename(clean_path) or clean_path,
+        "path": clean_path,
+        "icon": "star",
+        "exists": os.path.exists(clean_path)
+    }
+    paths.append(new_item)
+    cfg["saved_paths"] = paths
+    save_config(cfg)
+    return {"success": True, "saved_paths": paths, "item": new_item}
+
+def remove_saved_path(path_id):
+    """Entfernt einen gespeicherten Suchpfad"""
+    cfg = load_config()
+    paths = cfg.get("saved_paths", [])
+    new_paths = [p for p in paths if p.get("id") != path_id and p.get("path") != path_id]
+    cfg["saved_paths"] = new_paths
+    save_config(cfg)
+    return {"success": True, "saved_paths": new_paths}
+
 def get_system_locations():
     user_home = os.path.expanduser("~")
     od_info = detect_onedrive_paths()
@@ -130,12 +178,21 @@ def get_system_locations():
         {"id": "onedrive_personal", "name": "OneDrive Privat", "path": od_info["personal"]["path"], "icon": "cloud", "badge": "Privat", "exists": od_info["personal"]["exists"]},
         {"id": "onedrive_business", "name": "OneDrive Geschäftlich", "path": od_info["business"]["path"], "icon": "building", "badge": "Business", "exists": od_info["business"]["exists"]},
         {"id": "transfer_hub", "name": "Transfer-Hub (Sync)", "path": od_info["transfer"]["path"], "icon": "arrows-rotate", "badge": "iPad/iPhone", "exists": od_info["transfer"]["exists"]},
-        {"id": "documents", "name": "Dokumente", "path": os.path.join(user_home, "Documents"), "icon": "folder", "exists": os.path.exists(os.path.join(user_home, "Documents"))},
+        {"id": "documents", "name": "Dokumente (C:)", "path": os.path.join(user_home, "Documents"), "icon": "folder", "exists": os.path.exists(os.path.join(user_home, "Documents"))},
+    ]
+
+    # Spezielle Erkennung für D:\01\Documents
+    d_doc = "D:\\01\\Documents"
+    if os.path.exists(d_doc):
+        locations.append({"id": "d_documents", "name": "Documents (D:)", "path": d_doc, "icon": "folder", "badge": "D:", "exists": True})
+
+    locations.extend([
         {"id": "downloads", "name": "Downloads", "path": os.path.join(user_home, "Downloads"), "icon": "download", "exists": os.path.exists(os.path.join(user_home, "Downloads"))},
         {"id": "desktop", "name": "Desktop", "path": os.path.join(user_home, "Desktop"), "icon": "monitor", "exists": os.path.exists(os.path.join(user_home, "Desktop"))},
         {"id": "pictures", "name": "Bilder", "path": os.path.join(user_home, "Pictures"), "icon": "image", "exists": os.path.exists(os.path.join(user_home, "Pictures"))},
         {"id": "c_drive", "name": "Festplatte (C:)", "path": "C:\\", "icon": "hard-drive", "exists": os.path.exists("C:\\")},
-    ]
+    ])
+
     # Check other drives
     import string
     for letter in string.ascii_uppercase:
