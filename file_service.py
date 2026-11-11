@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.4.1"
+APP_VERSION = "v1.4.2"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -702,7 +702,7 @@ def execute_batch_rename(preview_items):
     return results
 
 def open_file_in_system(filepath):
-    """Öffnet Datei in der Windows-Standardanwendung (z.B. PDF X für PDFs, Word für docx, etc.) und bringt das Fenster in den Vordergrund"""
+    """Öffnet Datei in der Windows-Standardanwendung (z.B. PDF X für PDFs, Word für docx, etc.)"""
     if not os.path.exists(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
     
@@ -710,17 +710,21 @@ def open_file_in_system(filepath):
     ext = os.path.splitext(filepath)[1].lower().strip()
     app_name = "PDF X" if ext == ".pdf" else "Standard-App"
 
-    # explorer.exe übergibt den Startauftrag an die interaktive Windows-Desktop-Shell.
-    # Dadurch wird die App (PDF X) direkt im Vordergrund auf dem Bildschirm geöffnet.
+    # 1. Start-Process über PowerShell (nutzt saubere Windows-Zuordnung)
     try:
-        subprocess.Popen(["explorer.exe", abs_p])
-        return {"success": True, "message": f"In {app_name} geöffnet."}
-    except Exception:
-        try:
-            os.startfile(abs_p)
+        ps_cmd = f"Start-Process -FilePath '{abs_p}'"
+        res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], check=False, timeout=5)
+        if res.returncode == 0:
             return {"success": True, "message": f"In {app_name} geöffnet."}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+    except Exception:
+        pass
+
+    # 2. Direkter Aufruf über os.startfile
+    try:
+        os.startfile(abs_p)
+        return {"success": True, "message": f"In {app_name} geöffnet."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 def open_folder_and_select(filepath):
     """Öffnet Explorer und wählt die Datei aus"""

@@ -628,6 +628,7 @@ function renderResults() {
       const isSelected = state.selectedFilePaths.has(file.path);
       const row = document.createElement('tr');
       row.className = `result-row transition cursor-pointer select-none ${isSelected ? 'selected' : ''}`;
+      row.ondblclick = () => openFile(file.path);
       
       const fileIcon = getCategoryIconHtml(file.category, file.ext);
       let onedriveBadge = '';
@@ -663,6 +664,10 @@ function renderResults() {
         </td>
         <td class="py-2.5 px-4 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
           <div class="flex items-center justify-end gap-1">
+            <!-- Direktes Öffnen (Blau / Play) -->
+            <button onclick="openFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="Direkt öffnen in ${file.ext.toLowerCase() === '.pdf' ? 'PDF X' : 'Standard-App'}">
+              <i class="fa-solid fa-play text-xs"></i>
+            </button>
             <!-- Vorschau (Blau / Sky) -->
             <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="p-1.5 rounded-lg text-sky-400 hover:text-sky-300 hover:bg-sky-500/20 transition" title="Schnellvorschau">
               <i class="fa-solid fa-eye text-xs"></i>
@@ -710,6 +715,7 @@ function renderResults() {
       const isSelected = state.selectedFilePaths.has(file.path);
       const card = document.createElement('div');
       card.className = `glass-card p-4 rounded-xl border border-slate-800/80 bg-slate-900/40 hover:border-indigo-500/50 transition flex flex-col justify-between space-y-3 cursor-pointer ${isSelected ? 'ring-2 ring-indigo-500 bg-indigo-950/20' : ''}`;
+      card.ondblclick = () => openFile(file.path);
       
       const fileIcon = getCategoryIconHtml(file.category, file.ext, true);
 
@@ -724,6 +730,7 @@ function renderResults() {
           <span class="text-[11px] text-slate-300 font-mono font-medium">${file.size_formatted} &bull; ${file.modified_formatted}</span>
         </div>
         <div class="pt-2 border-t border-slate-800/80 flex items-center justify-around text-xs" onclick="event.stopPropagation()">
+          <button onclick="openFile('${escapeJs(file.path)}')" class="text-blue-400 hover:text-blue-300 p-1.5" title="In Standard-App (${file.ext.toLowerCase() === '.pdf' ? 'PDF X' : 'Standard-App'}) öffnen"><i class="fa-solid fa-play"></i></button>
           <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="text-sky-400 hover:text-sky-300 p-1.5" title="Vorschau"><i class="fa-solid fa-eye"></i></button>
           <button onclick="openFolder('${escapeJs(file.path)}')" class="text-yellow-400 hover:text-yellow-300 p-1.5" title="Im Explorer anzeigen"><i class="fa-solid fa-folder-open"></i></button>
           <button onclick="printSingleFile('${escapeJs(file.path)}')" class="text-emerald-400 hover:text-emerald-300 p-1.5" title="Drucken"><i class="fa-solid fa-print"></i></button>
@@ -1015,17 +1022,13 @@ function actionEditFromModal() {
 
 function openWithFromPreview() {
   if (currentPreviewPath) {
-    const target = currentPreviewPath;
-    closePreviewModal();
-    openWith(target);
+    openWith(currentPreviewPath);
   }
 }
 
 function editFileFromPreview() {
   if (currentPreviewPath) {
-    const target = currentPreviewPath;
-    closePreviewModal();
-    editFile(target);
+    editFile(currentPreviewPath);
   }
 }
 
@@ -1111,9 +1114,7 @@ async function previewFile(path, name, ext, sizeFormatted) {
 
 function openFileFromPreview() {
   if (currentPreviewPath) {
-    const target = currentPreviewPath;
-    closePreviewModal();
-    openFile(target);
+    openFile(currentPreviewPath);
   }
 }
 
