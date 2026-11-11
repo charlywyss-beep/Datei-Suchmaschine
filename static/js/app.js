@@ -424,7 +424,7 @@ function setLocation(path, isOneDrive) {
 
 function onOneDriveToggleChange() {
   const toggle = document.getElementById('toggle-only-onedrive');
-  if (toggle.checked && state.onedrivePath) {
+  if (toggle && toggle.checked && state.onedrivePath) {
     document.getElementById('target-directory').value = state.onedrivePath;
   }
   executeSearch();
@@ -444,9 +444,9 @@ function toggleAdvancedFilters() {
 // DATEISUCHE AUSFÜHREN
 // ==========================================
 async function executeSearch() {
-  const query = document.getElementById('search-query').value.trim();
-  const directory = document.getElementById('target-directory').value.trim();
-  const onlyOneDrive = document.getElementById('toggle-only-onedrive').checked;
+  const query = document.getElementById('search-query')?.value.trim() || '';
+  const directory = document.getElementById('target-directory')?.value.trim() || '';
+  const onlyOneDrive = (state.searchScope === 'onedrive') || (document.getElementById('toggle-only-onedrive')?.checked ?? false);
   const customExts = document.getElementById('custom-extensions')?.value.trim() || '';
   const minSizeMb = document.getElementById('min-size-mb')?.value || null;
   const maxSizeMb = document.getElementById('max-size-mb')?.value || null;
@@ -1354,7 +1354,7 @@ async function updateRenamePreview() {
   if (rule === 'replace') {
     params.search = document.getElementById('rename-search').value;
     params.replace = document.getElementById('rename-replace').value;
-    params.case_sensitive = document.getElementById('rename-case-sensitive').checked;
+    params.case_sensitive = document.getElementById('rename-case-sensitive')?.checked ?? false;
   } else if (rule === 'prefix_suffix') {
     params.prefix = document.getElementById('rename-prefix').value;
     params.suffix = document.getElementById('rename-suffix').value;
