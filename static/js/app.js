@@ -69,6 +69,11 @@ async function initSystemInfo() {
   }
 }
 
+function toGermanDisplayPath(path) {
+  if (!path || typeof path !== 'string') return path || '';
+  return path.replace(/\\Documents\b/gi, '\\Dokumente').replace(/\/Documents\b/gi, '/Dokumente');
+}
+
 // Suchbereich (Scope) umschalten: pc, onedrive, network, folder
 function setSearchScope(scope) {
   state.searchScope = scope;
@@ -167,6 +172,26 @@ function renderLocationShortcuts() {
     btn.innerHTML = `${iconHtml}<span>${loc.name}</span>`;
     btn.onclick = () => setLocation(loc.path, false);
     container.appendChild(btn);
+  });
+
+  // 5. Gespeicherte Pfade (Favoriten)
+  (state.savedPaths || []).forEach(fav => {
+    // Falls Dokumente (D:) schon in den System-Buttons vorhanden ist, kein Duplikat anzeigen
+    if (fav.id === 'fav_d_doc' && state.systemLocations.some(l => l.id === 'd_documents')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'inline-flex items-center rounded-lg border border-amber-500/50 bg-amber-950/40 p-0.5 shadow-sm group';
+    wrap.innerHTML = `
+      <button type="button" class="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-amber-300 hover:text-white transition" title="${toGermanDisplayPath(fav.path)}">
+        <i class="fa-solid fa-star text-amber-400 text-[11px]"></i>
+        <span>${fav.name}</span>
+      </button>
+      <button type="button" class="px-1.5 py-0.5 text-[11px] text-amber-400 hover:text-red-400 hover:bg-red-500/20 rounded transition" title="Diesen Favorit löschen">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    `;
+    wrap.querySelector('button:first-child').onclick = () => setLocation(fav.path, false);
+    wrap.querySelector('button:last-child').onclick = (e) => deleteSavedPath(fav.id, fav.name, e);
+    container.appendChild(wrap);
   });
 
   // 6. Gespeicherte Netzwerk-Pfade
@@ -368,10 +393,7 @@ function setCategoryFilter(category, btnElement) {
 
 function setLocation(path, isOneDrive) {
   const dirInput = document.getElementById('target-directory');
-  let displayPath = path;
-  if (path && typeof path === 'string') {
-    displayPath = path.replace(/\\Documents\b/gi, '\\Dokumente').replace(/\/Documents\b/gi, '/Dokumente');
-  }
+  const displayPath = toGermanDisplayPath(path);
   if (dirInput) {
     dirInput.value = displayPath;
   }
@@ -537,8 +559,8 @@ function renderResults() {
         <td class="py-2.5 px-4 text-slate-400 whitespace-nowrap text-[11px]">
           ${file.modified_formatted}
         </td>
-        <td class="py-2.5 px-4 text-slate-400 font-mono text-[11px] truncate max-w-xs" title="${file.folder}">
-          ${file.folder}
+        <td class="py-2.5 px-4 text-slate-400 font-mono text-[11px] truncate max-w-xs" title="${toGermanDisplayPath(file.folder)}">
+          ${toGermanDisplayPath(file.folder)}
         </td>
         <td class="py-2.5 px-4 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
           <div class="flex items-center justify-end gap-1">
@@ -1199,7 +1221,7 @@ function renderDuplicateGroups() {
                 ${isMarked ? '<span class="text-[10px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 font-bold">Löschen</span>' : '<span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold">Behalten</span>'}
                 ${file.is_onedrive ? '<span class="text-[10px] text-sky-400 bg-sky-500/10 px-1 py-0.2 rounded"><i class="fa-solid fa-cloud"></i> OneDrive</span>' : ''}
               </div>
-              <p class="text-[11px] text-slate-400 font-mono truncate" title="${file.path}">${file.folder}</p>
+              <p class="text-[11px] text-slate-400 font-mono truncate" title="${file.path}">${toGermanDisplayPath(file.folder)}</p>
             </div>
           </div>
           <div class="flex items-center gap-4 text-xs">
