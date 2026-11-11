@@ -9,9 +9,16 @@ app = Flask(__name__)
 # Max upload/request size
 app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
 
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=file_service.APP_VERSION)
 
 @app.route("/api/system-info", methods=["GET"])
 def system_info():
