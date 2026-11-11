@@ -3,15 +3,8 @@
     {
       "id": "fav_d_doc",
       "name": "Dokumente (D:)",
-      "path": "D:\\01\\Dokumente",
+      "path": "D:\\01\\Documents\\",
       "icon": "folder"
-    },
-    {
-      "id": "fav_8c2264bf",
-      "name": "Dokumente (C:)",
-      "path": "C:\\Users\\01\\Documents",
-      "icon": "star",
-      "exists": true
     }
   ],
   "network_paths": []

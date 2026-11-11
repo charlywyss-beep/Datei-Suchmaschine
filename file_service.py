@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.3.4"
+APP_VERSION = "v1.3.5"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -165,7 +165,7 @@ def get_saved_paths():
     paths = cfg.get("saved_paths", [])
     if not paths and os.path.exists("D:\\01\\Documents"):
         paths = [
-            {"id": "fav_d_doc", "name": "Dokumente (D:)", "path": "D:\\01\\Dokumente", "icon": "folder"}
+            {"id": "fav_d_doc", "name": "Dokumente (D:)", "path": "D:\\01\\Documents\\", "icon": "folder"}
         ]
         cfg["saved_paths"] = paths
         save_config(cfg)
@@ -273,13 +273,13 @@ def get_system_locations():
         {"id": "onedrive_personal", "name": "OneDrive Privat", "path": od_info["personal"]["path"], "icon": "cloud", "badge": "Privat", "exists": od_info["personal"]["exists"]},
         {"id": "onedrive_business", "name": "OneDrive Geschäftlich", "path": od_info["business"]["path"], "icon": "building", "badge": "Business", "exists": od_info["business"]["exists"]},
         {"id": "transfer_hub", "name": "Transfer-Hub (Sync)", "path": od_info["transfer"]["path"], "icon": "arrows-rotate", "badge": "iPad/iPhone", "exists": od_info["transfer"]["exists"]},
-        {"id": "documents", "name": "Dokumente (C:)", "path": os.path.join(user_home, "Dokumente"), "icon": "folder", "exists": (os.path.exists(os.path.join(user_home, "Documents")) or os.path.exists(os.path.join(user_home, "Dokumente")))},
+        {"id": "documents", "name": "Dokumente (C:)", "path": os.path.join(user_home, "Documents") + "\\", "icon": "folder", "exists": (os.path.exists(os.path.join(user_home, "Documents")) or os.path.exists(os.path.join(user_home, "Dokumente")))},
     ]
 
     # Spezielle Erkennung für D:\01\Documents
     d_doc = "D:\\01\\Documents"
     if os.path.exists(d_doc) or os.path.exists("D:\\01\\Dokumente"):
-        locations.append({"id": "d_documents", "name": "Dokumente (D:)", "path": "D:\\01\\Dokumente", "icon": "folder", "badge": "D:", "exists": True})
+        locations.append({"id": "d_documents", "name": "Dokumente (D:)", "path": "D:\\01\\Documents\\", "icon": "folder", "badge": "D:", "exists": True})
 
     locations.extend([
         {"id": "downloads", "name": "Downloads", "path": os.path.join(user_home, "Downloads"), "icon": "download", "exists": os.path.exists(os.path.join(user_home, "Downloads"))},

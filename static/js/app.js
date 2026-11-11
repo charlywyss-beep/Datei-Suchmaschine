@@ -34,6 +34,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) {
     lucide.createIcons();
   }
+  
+  // Enter-Taste im Pfad-Eingabefeld löst ebenfalls sofortige Suche aus
+  const dirInput = document.getElementById('target-directory');
+  if (dirInput) {
+    dirInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        executeSearch();
+      }
+    });
+  }
 });
 
 // Systeminformationen (OneDrive etc.) laden
@@ -105,7 +116,7 @@ function setSearchScope(scope) {
   } else if (scope === 'folder') {
     if (btnFold) btnFold.className = 'scope-btn active p-3 rounded-xl border border-amber-500/50 bg-amber-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-amber-500/20';
     if (dirInput && (dirInput.value.includes('Dieser PC') || dirInput.value.includes('OneDrive') || dirInput.value.includes('Netzwerk') || ['THIS_PC', 'ONEDRIVE_ALL', 'NETWORK'].includes(dirInput.value))) {
-      dirInput.value = 'C:\\Users\\01\\Dokumente';
+      dirInput.value = 'C:\\Users\\01\\Documents\\';
     }
   }
 }
@@ -393,9 +404,8 @@ function setCategoryFilter(category, btnElement) {
 
 function setLocation(path, isOneDrive) {
   const dirInput = document.getElementById('target-directory');
-  const displayPath = toGermanDisplayPath(path);
   if (dirInput) {
-    dirInput.value = displayPath;
+    dirInput.value = path;
   }
   
   if (isOneDrive === 'personal' || isOneDrive === 'business') {
@@ -408,7 +418,7 @@ function setLocation(path, isOneDrive) {
     setSearchScope('folder');
   }
 
-  showToast(`Verzeichnis gewählt: ${displayPath}`, 'info');
+  showToast(`Verzeichnis gewählt: ${path}`, 'info');
   executeSearch();
 }
 
