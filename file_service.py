@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.2.3"
+APP_VERSION = "v1.2.4"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -705,23 +705,27 @@ def git_pull_update():
         if not check_rem.stdout.strip():
             return {
                 "success": False, 
-                "error": "Kein GitHub-Remote konfiguriert. Bitte erst die GitHub Repository URL eintragen!"
+                "error": "Kein GitHub-Remote konfiguriert."
             }
 
         res = subprocess.run(["git", "pull", "origin", "main"], cwd=repo_dir, capture_output=True, text=True, timeout=25)
         output = (res.stdout + "\n" + res.stderr).strip()
         success = res.returncode == 0
 
-        # Wenn main fehlschlägt, versuche aktuellen branch
+        # Wenn main fehlschlägt, versuche git pull direkt
         if not success:
             res2 = subprocess.run(["git", "pull"], cwd=repo_dir, capture_output=True, text=True, timeout=25)
             output = (res2.stdout + "\n" + res2.stderr).strip()
             success = res2.returncode == 0
 
+        msg = "Update erfolgreich eingespielt!"
+        if "Already up to date" in output:
+            msg = "Bereits auf dem neuesten Stand! Keine neuen Änderungen auf GitHub vorhanden."
+
         return {
             "success": success,
             "output": output,
-            "message": "Update erfolgreich eingespielt!" if success else output
+            "message": msg
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
