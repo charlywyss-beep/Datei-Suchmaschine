@@ -74,6 +74,11 @@ def git_update_route():
     res = file_service.git_pull_update()
     return jsonify(res)
 
+@app.route("/api/git-push", methods=["POST"])
+def git_push_route():
+    res = file_service.git_push_upload()
+    return jsonify(res)
+
 @app.route("/api/git-set-remote", methods=["POST"])
 def git_set_remote_route():
     data = request.get_json() or {}

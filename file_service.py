@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.2.2"
+APP_VERSION = "v1.2.3"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -708,14 +708,34 @@ def git_pull_update():
                 "error": "Kein GitHub-Remote konfiguriert. Bitte erst die GitHub Repository URL eintragen!"
             }
 
-        res = subprocess.run(["git", "pull"], cwd=repo_dir, capture_output=True, text=True, timeout=25)
+        res = subprocess.run(["git", "pull", "origin", "main"], cwd=repo_dir, capture_output=True, text=True, timeout=25)
         output = (res.stdout + "\n" + res.stderr).strip()
         success = res.returncode == 0
+
+        # Wenn main fehlschlägt, versuche aktuellen branch
+        if not success:
+            res2 = subprocess.run(["git", "pull"], cwd=repo_dir, capture_output=True, text=True, timeout=25)
+            output = (res2.stdout + "\n" + res2.stderr).strip()
+            success = res2.returncode == 0
 
         return {
             "success": success,
             "output": output,
-            "message": "Update erfolgreich eingespielt!" if success else "Update fehlgeschlagen (siehe Details)."
+            "message": "Update erfolgreich eingespielt!" if success else output
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def git_push_upload():
+    """Führt git push aus, um den aktuellen Stand nach GitHub zu übertragen"""
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        res = subprocess.run(["git", "push", "-u", "origin", "main"], cwd=repo_dir, capture_output=True, text=True, timeout=30)
+        output = (res.stdout + "\n" + res.stderr).strip()
+        return {
+            "success": res.returncode == 0,
+            "output": output,
+            "message": "Stand erfolgreich nach GitHub hochgeladen!" if res.returncode == 0 else output
         }
     except Exception as e:
         return {"success": False, "error": str(e)}

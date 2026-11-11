@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">v1.2.2</span>
+        <span id="header-version-tag">v1.2.3</span>
       </button>
 
       <!-- Print Search Results Button -->
@@ -852,7 +852,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">v1.2.1</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">v1.2.3</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -866,34 +866,57 @@
       <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
         <div class="flex justify-between">
           <span class="text-slate-400">Branch:</span>
-          <span id="git-branch" class="font-mono text-slate-200 font-semibold">master</span>
+          <span id="git-branch" class="font-mono text-slate-100 font-bold">main</span>
         </div>
-        <div class="flex justify-between">
+        <div class="flex justify-between items-center">
           <span class="text-slate-400">Aktueller Commit:</span>
-          <span id="git-last-commit" class="font-mono text-indigo-300 text-[11px] truncate max-w-xs">-</span>
+          <span id="git-last-commit" class="font-mono text-indigo-300 text-[11px] truncate max-w-xs font-semibold">-</span>
         </div>
-        <div class="flex flex-col space-y-1 pt-1 border-t border-slate-800/80">
-          <span class="text-slate-400">GitHub Remote-Repository:</span>
+        <div class="flex flex-col space-y-1.5 pt-2 border-t border-slate-800/80">
+          <span class="text-slate-400 font-medium">GitHub Repository URL:</span>
           <div class="flex gap-2">
-            <input type="text" id="git-remote-input" placeholder="https://github.com/nutzer/repo.git" class="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 text-xs font-mono">
-            <button onclick="saveGitRemote()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700">
+            <input type="text" id="git-remote-input" value="https://github.com/charlywyss-beep/Datei-Suchmaschine.git" placeholder="https://github.com/charlywyss-beep/Datei-Suchmaschine.git" class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <button onclick="saveGitRemote()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 shrink-0">
               Speichern
             </button>
           </div>
         </div>
       </div>
 
+      <!-- Info Box: Falls noch nicht auf GitHub angelegt -->
+      <div class="p-3 bg-indigo-950/30 border border-indigo-500/30 rounded-xl text-xs space-y-2 text-slate-300">
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-indigo-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span>GitHub Sync &amp; Erst-Einrichtung</span>
+          </span>
+          <a href="https://github.com/new?name=Datei-Suchmaschine" target="_blank" class="text-[11px] text-sky-400 hover:underline flex items-center gap-1">
+            <span>Auf GitHub anlegen</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+          </a>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          Falls das Repository auf Ihrem GitHub-Account (<code class="text-indigo-300 font-mono">charlywyss-beep</code>) noch nicht angelegt ist, einmal auf GitHub erstellen und danach auf <strong>„Stand nach GitHub hochladen“</strong> klicken.
+        </p>
+      </div>
+
       <!-- Update Output Console -->
       <div id="git-log-container" class="hidden">
-        <label class="block text-[11px] font-medium text-slate-400 mb-1">Update-Protokoll:</label>
-        <pre id="git-log-output" class="w-full max-h-36 overflow-auto p-3 bg-slate-950 font-mono text-[11px] text-emerald-400 rounded-xl border border-slate-800 whitespace-pre-wrap leading-tight"></pre>
+        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Update-Protokoll:</label>
+        <pre id="git-log-output" class="w-full max-h-36 overflow-auto p-3 bg-slate-950 font-mono text-[11px] text-emerald-400 rounded-xl border border-slate-800 whitespace-pre-wrap leading-tight select-text"></pre>
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex justify-end gap-2 pt-2">
+      <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
         <button onclick="closeGitUpdateModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
           Schließen
         </button>
+        <!-- Stand nach GitHub hochladen -->
+        <button onclick="runGitPush()" id="btn-run-git-push" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Aktuellen Stand nach GitHub hochladen">
+          <i class="fa-solid fa-arrow-up-from-bracket"></i>
+          <span>Stand nach GitHub hochladen</span>
+        </button>
+        <!-- Jetzt von GitHub aktualisieren (git pull) -->
         <button id="btn-run-git-update" onclick="runGitUpdate()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-2 shadow-lg shadow-indigo-600/30">
           <i class="fa-solid fa-cloud-arrow-down"></i>
           <span>Jetzt von GitHub aktualisieren</span>

@@ -1352,11 +1352,45 @@ async function openGitUpdateModal() {
     const res = await fetch('/api/git-info');
     const data = await res.json();
     state.gitInfo = data;
-    document.getElementById('git-branch').textContent = data.branch || 'master';
+    document.getElementById('git-branch').textContent = data.branch || 'main';
     document.getElementById('git-last-commit').textContent = data.last_commit || 'Keine Commit-Information';
-    document.getElementById('git-remote-input').value = data.remote_url || '';
+    const remoteInput = document.getElementById('git-remote-input');
+    if (remoteInput) {
+      remoteInput.value = data.remote_url || 'https://github.com/charlywyss-beep/Datei-Suchmaschine.git';
+    }
   } catch (err) {
     console.error('Git-Info Fehler:', err);
+  }
+}
+
+async function runGitPush() {
+  const btn = document.getElementById('btn-run-git-push');
+  const logContainer = document.getElementById('git-log-container');
+  const logOutput = document.getElementById('git-log-output');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Übertrage nach GitHub...</span>';
+  logContainer.classList.remove('hidden');
+  logOutput.textContent = 'Führe "git push -u origin main" aus...\n';
+
+  try {
+    const res = await fetch('/api/git-push', { method: 'POST' });
+    const d = await res.json();
+    logOutput.textContent = d.output || d.message || d.error || 'Fertig';
+
+    if (d.success) {
+      showToast('🎉 Stand erfolgreich nach GitHub übertragen!', 'success');
+      btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Übertragen!</span>';
+    } else {
+      showToast(d.message || d.error || 'Upload fehlgeschlagen', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i><span>Erneut versuchen</span>';
+    }
+  } catch (err) {
+    logOutput.textContent = `Fehler: ${err.message}`;
+    showToast(`Fehler: ${err.message}`, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i><span>Stand hochladen</span>';
   }
 }
 
