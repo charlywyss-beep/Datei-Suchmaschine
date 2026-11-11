@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.4.6' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.4.7' }}</span>
       </button>
 
       <!-- Print Search Results Button -->
@@ -700,10 +700,10 @@
           </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <!-- In neuem Tab / Browser-Viewer öffnen (Wie in Portfolio-App) -->
-          <button onclick="openInBrowserViewer()" class="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5" title="In neuem Browser-Tab öffnen (wie in Portfolio-App)">
+          <!-- In neuem Browser-Tab öffnen -->
+          <button onclick="openInBrowserViewer()" class="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5" title="In neuem Browser-Tab öffnen">
             <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
-            <span>Im Browser-Viewer öffnen</span>
+            <span>In Browser-Tab öffnen</span>
           </button>
           <!-- Direkt Datei Öffnen (Großer blauer Button) -->
           <button onclick="openFileFromPreview()" class="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-blue-600/30 active:scale-95 cursor-pointer" title="Datei direkt in der zugehörigen Anwendung öffnen">
@@ -949,7 +949,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.4.6' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.4.7' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1129,6 +1129,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.4.6' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.4.7' }}"></script>
 </body>
 </html>
