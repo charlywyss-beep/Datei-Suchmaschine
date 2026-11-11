@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.3.9"
+APP_VERSION = "v1.4.0"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -702,45 +702,23 @@ def execute_batch_rename(preview_items):
     return results
 
 def open_file_in_system(filepath):
-    """Öffnet Datei in der Windows-Standardanwendung (mit intelligentem PDF-Fallback auf Edge/Chrome)"""
+    """Öffnet Datei in der Windows-Standardanwendung (z.B. PDF X für PDFs, Word für docx, etc.)"""
     if not os.path.exists(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
     
-    ext = os.path.splitext(filepath)[1].lower().strip()
     abs_p = os.path.abspath(filepath)
+    ext = os.path.splitext(filepath)[1].lower().strip()
     
-    # Intelligente Behandlung für PDFs:
-    # Falls in Windows kein dedizierter PDF-Reader verknüpft ist, öffnet os.startfile den Dialog "App auswählen".
-    # Microsoft Edge ist der offizielle Windows-Standard-PDF-Viewer und öffnet das PDF sofort im Vollbild.
-    if ext == ".pdf":
-        edge_path = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-        chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-        has_pdf_assoc = False
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, ".pdf") as k:
-                prog_id = winreg.QueryValue(k, "")
-                if prog_id and any(app in prog_id.lower() for app in ["acrobat", "foxit", "pdf"]):
-                    has_pdf_assoc = True
-        except Exception:
-            pass
-
-        if not has_pdf_assoc:
-            if os.path.exists(edge_path):
-                subprocess.Popen([edge_path, abs_p])
-                return {"success": True, "message": "In Microsoft Edge geöffnet."}
-            elif os.path.exists(chrome_path):
-                subprocess.Popen([chrome_path, abs_p])
-                return {"success": True, "message": "In Google Chrome geöffnet."}
-
+    # Für PDFs: Versuche zuerst direkt die Standard-App des Systems (PDF X) zu starten
     try:
         os.startfile(abs_p)
-        return {"success": True, "message": "Datei geöffnet."}
+        app_name = "PDF X" if ext == ".pdf" else "Standard-App"
+        return {"success": True, "message": f"In {app_name} geöffnet."}
     except Exception as e:
         # Fallback über Explorer
         try:
             subprocess.Popen(["explorer", abs_p])
-            return {"success": True, "message": "Über Explorer geöffnet."}
+            return {"success": True, "message": "Über Windows geöffnet."}
         except Exception:
             return {"success": False, "error": str(e)}
 
