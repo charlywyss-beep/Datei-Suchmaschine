@@ -46,6 +46,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Escape-Taste schließt geöffnete Vorschau und alle Modals sofort
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closePreviewModal();
+      if (typeof closeSingleRenameModal === 'function') closeSingleRenameModal();
+      if (typeof closeSavePathModal === 'function') closeSavePathModal();
+      if (typeof closeAddNetworkModal === 'function') closeAddNetworkModal();
+      if (typeof closeOneDriveSettingsModal === 'function') closeOneDriveSettingsModal();
+      if (typeof closeShareModal === 'function') closeShareModal();
+      if (typeof closeGitModal === 'function') closeGitModal();
+      if (typeof closeMobileModal === 'function') closeMobileModal();
+    }
+  });
 });
 
 // Systeminformationen (OneDrive etc.) laden
@@ -1030,7 +1044,7 @@ async function previewFile(path, name, ext, sizeFormatted) {
   // Bildvorschau
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(extLower)) {
     body.innerHTML = `
-      <img src="/api/file-preview?path=${encodeURIComponent(path)}" class="max-h-[70vh] max-w-full object-contain rounded-lg shadow-lg" alt="${name}">
+      <img src="/api/file-preview?path=${encodeURIComponent(path)}" class="max-h-[82vh] max-w-full object-contain rounded-xl shadow-2xl border border-slate-800" alt="${name}">
     `;
     return;
   }
@@ -1038,7 +1052,7 @@ async function previewFile(path, name, ext, sizeFormatted) {
   // PDF Vorschau
   if (extLower === 'pdf') {
     body.innerHTML = `
-      <iframe src="/api/file-preview?path=${encodeURIComponent(path)}" class="w-full h-[70vh] rounded-lg border border-slate-700" frameborder="0"></iframe>
+      <iframe src="/api/file-preview?path=${encodeURIComponent(path)}" class="w-full h-[82vh] min-h-[75vh] rounded-xl border border-slate-700 shadow-xl" frameborder="0"></iframe>
     `;
     return;
   }
@@ -1062,7 +1076,7 @@ async function previewFile(path, name, ext, sizeFormatted) {
               </button>
             </div>
           </div>
-          <textarea id="in-app-editor-textarea" class="w-full h-[58vh] p-4 bg-slate-950 font-mono text-xs text-slate-200 overflow-auto rounded-xl border border-slate-800 leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium">${escapeHtml(data.content)}</textarea>
+          <textarea id="in-app-editor-textarea" class="w-full h-[74vh] p-4 bg-slate-950 font-mono text-xs text-slate-200 overflow-auto rounded-xl border border-slate-800 leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium">${escapeHtml(data.content)}</textarea>
         </div>
       `;
     } else {
@@ -1098,7 +1112,11 @@ function openFileFromPreview() {
 }
 
 function closePreviewModal() {
-  document.getElementById('modal-preview').classList.add('hidden');
+  const modal = document.getElementById('modal-preview');
+  if (modal) modal.classList.add('hidden');
+  const body = document.getElementById('preview-modal-body');
+  if (body) body.innerHTML = '';
+  currentPreviewPath = '';
 }
 
 // ==========================================
