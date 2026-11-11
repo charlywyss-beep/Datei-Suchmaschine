@@ -329,6 +329,7 @@ def send_email_route():
     return jsonify(res)
 
 @app.route("/api/file-preview", methods=["GET"])
+@app.route("/api/preview", methods=["GET"])
 def file_preview():
     path = request.args.get("path")
     if not path or not os.path.exists(path):

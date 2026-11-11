@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.4.4"
+APP_VERSION = "v1.4.5"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -719,16 +719,23 @@ def open_file_in_system(filepath):
     else:
         app_name = "Standard-App"
 
-    # 1. Start-Process über PowerShell (nutzt saubere Windows-Zuordnung)
+    # 1. Native Windows ShellExecuteW (direkt über Shell-Subsystem)
     try:
-        ps_cmd = f"Start-Process -FilePath '{abs_p}'"
-        res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], check=False, timeout=5)
-        if res.returncode == 0:
+        import ctypes
+        res = ctypes.windll.shell32.ShellExecuteW(None, "open", abs_p, None, None, 1)
+        if res > 32:
             return {"success": True, "message": f"In {app_name} geöffnet."}
     except Exception:
         pass
 
-    # 2. Direkter Aufruf über os.startfile
+    # 2. Explorer Desktop-Shell Aufruf
+    try:
+        subprocess.Popen(["explorer.exe", abs_p])
+        return {"success": True, "message": f"In {app_name} geöffnet."}
+    except Exception:
+        pass
+
+    # 3. Direkter Aufruf über os.startfile
     try:
         os.startfile(abs_p)
         return {"success": True, "message": f"In {app_name} geöffnet."}
