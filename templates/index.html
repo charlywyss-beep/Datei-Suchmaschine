@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.3.1' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.3.2' }}</span>
       </button>
 
       <!-- Print Search Results Button -->
@@ -260,7 +260,7 @@
                 type="text" 
                 id="target-directory" 
                 value="Dieser PC (Alle lokalen Laufwerke: C:\, D:\)" 
-                placeholder="Suchverzeichnis (z.B. Dieser PC, D:\01\Documents, C:\Users\01...)"
+                placeholder="Suchverzeichnis (z.B. Dieser PC, D:\01\Dokumente, C:\Users\01...)"
                 class="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-slate-100 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
               >
             </div>
@@ -911,7 +911,7 @@
       <div class="space-y-3 text-xs">
         <div>
           <label class="block text-slate-300 font-medium mb-1">Bezeichnung für den Button:</label>
-          <input type="text" id="save-path-name" placeholder="z.B. Documents (D:), Projekte, Rechnungen..." class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 text-xs font-semibold">
+          <input type="text" id="save-path-name" placeholder="z.B. Dokumente (D:), Projekte, Rechnungen..." class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 text-xs font-semibold">
         </div>
         <div>
           <label class="block text-slate-300 font-medium mb-1">Vollständiger Ordnerpfad:</label>
@@ -944,7 +944,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.3.1' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.3.2' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1124,6 +1124,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or '1.3.1' }}"></script>
+  <script src="/static/js/app.js?v={{ version or '1.3.2' }}"></script>
 </body>
 </html>

@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.3.1"
+APP_VERSION = "v1.3.2"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -128,7 +128,7 @@ def get_saved_paths():
     paths = cfg.get("saved_paths", [])
     if not paths and os.path.exists("D:\\01\\Documents"):
         paths = [
-            {"id": "fav_d_doc", "name": "Documents (D:)", "path": "D:\\01\\Documents", "icon": "folder"}
+            {"id": "fav_d_doc", "name": "Dokumente (D:)", "path": "D:\\01\\Documents", "icon": "folder"}
         ]
         cfg["saved_paths"] = paths
         save_config(cfg)
@@ -251,7 +251,7 @@ def get_system_locations():
     # Spezielle Erkennung für D:\01\Documents
     d_doc = "D:\\01\\Documents"
     if os.path.exists(d_doc):
-        locations.append({"id": "d_documents", "name": "Documents (D:)", "path": d_doc, "icon": "folder", "badge": "D:", "exists": True})
+        locations.append({"id": "d_documents", "name": "Dokumente (D:)", "path": d_doc, "icon": "folder", "badge": "D:", "exists": True})
 
     locations.extend([
         {"id": "downloads", "name": "Downloads", "path": os.path.join(user_home, "Downloads"), "icon": "download", "exists": os.path.exists(os.path.join(user_home, "Downloads"))},

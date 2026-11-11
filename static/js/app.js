@@ -258,8 +258,13 @@ function openSavePathModal() {
   if (cur) {
     const parts = cur.replace(/\\+$/, '').split('\\');
     nameSuggest = parts[parts.length - 1] || cur;
+    if (nameSuggest.toLowerCase() === 'documents') {
+      nameSuggest = 'Dokumente';
+    }
     if (cur.toLowerCase().includes('d:\\')) {
       nameSuggest += ' (D:)';
+    } else if (cur.toLowerCase().includes('c:\\')) {
+      nameSuggest += ' (C:)';
     }
   }
   document.getElementById('save-path-name').value = nameSuggest;
