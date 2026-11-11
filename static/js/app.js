@@ -672,10 +672,6 @@ function renderResults() {
             <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="p-1.5 rounded-lg text-sky-400 hover:text-sky-300 hover:bg-sky-500/20 transition" title="Schnellvorschau">
               <i class="fa-solid fa-eye text-xs"></i>
             </button>
-            <!-- Bearbeiten (Amber / Orange) -->
-            <button onclick="editFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 transition" title="Datei bearbeiten">
-              <i class="fa-solid fa-file-pen text-xs"></i>
-            </button>
             <!-- In Explorer zeigen (Gelb / Ordner) -->
             <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 transition" title="Im Windows Explorer anzeigen">
               <i class="fa-solid fa-folder-open text-xs"></i>
