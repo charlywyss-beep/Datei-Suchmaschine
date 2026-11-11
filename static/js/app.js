@@ -380,6 +380,11 @@ function renderResults() {
   const tableWrapper = document.getElementById('view-table-wrapper');
   const gridWrapper = document.getElementById('view-grid-wrapper');
   const tbody = document.getElementById('results-tbody');
+  const emptyState = document.getElementById('empty-state');
+
+  if (emptyState) {
+    emptyState.classList.add('hidden');
+  }
 
   if (state.viewMode === 'table') {
     tableWrapper.classList.remove('hidden');
@@ -1341,6 +1346,11 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function escapeJs(str) {
+  if (!str) return '';
+  return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 // ==========================================
