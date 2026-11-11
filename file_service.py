@@ -122,6 +122,18 @@ def format_size(size_bytes):
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} PB"
 
+def get_saved_paths():
+    """Liest benutzerdefinierte gespeicherte Suchpfade"""
+    cfg = load_config()
+    paths = cfg.get("saved_paths", [])
+    if not paths and os.path.exists("D:\\01\\Documents"):
+        paths = [
+            {"id": "fav_d_doc", "name": "Documents (D:)", "path": "D:\\01\\Documents", "icon": "folder"}
+        ]
+        cfg["saved_paths"] = paths
+        save_config(cfg)
+    return paths
+
 def get_all_local_drives():
     """Findet alle verfügbaren lokalen Windows-Laufwerke (C:, D:, etc.)"""
     import string
