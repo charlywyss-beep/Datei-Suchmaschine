@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.5.2"
+APP_VERSION = "v1.5.3"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -418,8 +418,10 @@ def fast_search(
                             if not all(qp in filename_lower for qp in query_parts):
                                 continue
 
-                        # Extension match
+                        # Extension match (interne .lnk Verknüpfungen ignorieren)
                         _, ext = os.path.splitext(filename_lower)
+                        if ext == ".lnk":
+                            continue
                         if allowed_exts is not None and ext not in allowed_exts:
                             continue
 
@@ -804,11 +806,13 @@ def open_file_in_system(filepath):
 
 def open_folder_and_select(filepath):
     """Öffnet Explorer und wählt die Datei aus"""
-    if not os.path.exists(filepath):
+    filepath = resolve_german_alias_path(filepath)
+    if not filepath or not os.path.exists(filepath):
         return {"success": False, "error": "Pfad nicht gefunden"}
+    abs_p = os.path.abspath(filepath)
     try:
-        subprocess.run(["explorer", f"/select,{os.path.abspath(filepath)}"], check=False)
-        return {"success": True}
+        subprocess.Popen(["explorer.exe", f"/select,{abs_p}"])
+        return {"success": True, "message": "Im Windows Explorer geöffnet."}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

@@ -88,13 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.5.2' }}</span>
-      </button>
-
-      <!-- Print Search Results Button -->
-      <button onclick="printSearchResults()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-medium transition flex items-center gap-1.5 shadow-sm" title="Aktuelle Liste ausdrucken">
-        <i class="fa-solid fa-print"></i>
-        <span>Drucken</span>
+        <span id="header-version-tag">{{ version or 'v1.5.3' }}</span>
       </button>
 
       <!-- Theme Switcher -->
@@ -781,34 +775,6 @@
 
       <!-- Optionen -->
       <div class="space-y-3">
-        <!-- Öffnen mit... Option -->
-        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-indigo-500/50 transition cursor-pointer flex items-center justify-between group" onclick="actionOpenWithFromModal()">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            </div>
-            <div>
-              <h4 class="text-sm font-semibold text-white group-hover:text-indigo-400 transition">Öffnen mit... (App auswählen)</h4>
-              <p class="text-xs text-slate-400">Windows-Auswahldialog starten (z.B. Word, Excel, Editor, Photoshop...)</p>
-            </div>
-          </div>
-          <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
-        </div>
-
-        <!-- Bearbeiten Option -->
-        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-amber-500/50 transition cursor-pointer flex items-center justify-between group" onclick="actionEditFromModal()">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
-              <i class="fa-solid fa-file-pen"></i>
-            </div>
-            <div>
-              <h4 class="text-sm font-semibold text-white group-hover:text-amber-400 transition">Datei bearbeiten</h4>
-              <p class="text-xs text-slate-400">Öffnet die Datei im zugewiesenen Editor / Office-Programm</p>
-            </div>
-          </div>
-          <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
-        </div>
-
         <!-- Teams Option -->
         <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-teams/50 transition cursor-pointer flex items-center justify-between group" onclick="actionCopyTeamsFromModal()">
           <div class="flex items-center gap-3">
@@ -832,20 +798,6 @@
             <div>
               <h4 class="text-sm font-semibold text-white group-hover:text-sky-400 transition">Per E-Mail versenden</h4>
               <p class="text-xs text-slate-400">Öffnet Outlook / Mail-App mit angehängter Datei</p>
-            </div>
-          </div>
-          <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
-        </div>
-
-        <!-- Direkt Drucken Option -->
-        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-emerald-500/50 transition cursor-pointer flex items-center justify-between group" onclick="actionPrintFromModal()">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
-              <i class="fa-solid fa-print"></i>
-            </div>
-            <div>
-              <h4 class="text-sm font-semibold text-white group-hover:text-emerald-400 transition">Auf Windows-Standarddrucker drucken</h4>
-              <p class="text-xs text-slate-400">Sendet die Datei direkt an Ihren installierten Drucker</p>
             </div>
           </div>
           <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
@@ -944,7 +896,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.5.2' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.5.3' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1124,6 +1076,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.5.2' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.5.3' }}"></script>
 </body>
 </html>

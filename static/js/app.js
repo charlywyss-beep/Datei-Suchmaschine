@@ -647,13 +647,13 @@ function renderResults() {
         <td class="py-2.5 px-4 text-center">
           ${fileIcon}
         </td>
-        <td class="py-2.5 px-4 font-medium text-slate-100 max-w-xs md:max-w-md truncate" onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')">
-          <span class="hover:text-indigo-400 transition underline-offset-2 hover:underline cursor-pointer" title="${file.name}">
+        <td class="py-2.5 px-4 font-medium text-slate-100 max-w-xs md:max-w-md truncate" onclick="openFile('${escapeJs(file.path)}')">
+          <span class="hover:text-indigo-400 transition underline-offset-2 hover:underline cursor-pointer" title="In ${getAppLabelForExt(file.ext)} öffnen: ${file.name}">
             ${file.name}
           </span>
           ${onedriveBadge}
         </td>
-        <td class="py-2.5 px-4 text-slate-300 font-mono text-[11px] truncate max-w-xs" title="${toGermanDisplayPath(file.folder)}">
+        <td class="py-2.5 px-4 text-slate-300 font-mono text-[11px] truncate max-w-xs cursor-pointer hover:text-yellow-400 transition" onclick="event.stopPropagation(); openFolder('${escapeJs(file.path)}')" title="Im Windows Explorer öffnen: ${toGermanDisplayPath(file.folder)}">
           ${toGermanDisplayPath(file.folder)}
         </td>
         <td class="py-2.5 px-4 text-right text-slate-400 font-mono text-[11px] whitespace-nowrap">
@@ -664,21 +664,13 @@ function renderResults() {
         </td>
         <td class="py-2.5 px-4 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
           <div class="flex items-center justify-end gap-1">
-            <!-- Direktes Öffnen (Blau / Play) -->
-            <button onclick="openInPdfXAutomated('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="In ${getAppLabelForExt(file.ext)} öffnen">
+            <!-- Direktes Öffnen in Standard-App (Blau / Play) -->
+            <button onclick="openFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="In ${getAppLabelForExt(file.ext)} öffnen">
               <i class="fa-solid fa-play text-xs"></i>
-            </button>
-            <!-- Vorschau (Blau / Sky) -->
-            <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="p-1.5 rounded-lg text-sky-400 hover:text-sky-300 hover:bg-sky-500/20 transition" title="Schnellvorschau">
-              <i class="fa-solid fa-eye text-xs"></i>
             </button>
             <!-- In Explorer zeigen (Gelb / Ordner) -->
             <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 transition" title="Im Windows Explorer anzeigen">
               <i class="fa-solid fa-folder-open text-xs"></i>
-            </button>
-            <!-- Drucken (Grün / Emerald) -->
-            <button onclick="printSingleFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 transition" title="Drucken">
-              <i class="fa-solid fa-print text-xs"></i>
             </button>
             <!-- Teams / Mail Teilen (Violett / Teams) -->
             <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-violet-400 hover:text-violet-300 hover:bg-violet-500/20 transition" title="Per Teams oder E-Mail senden">
@@ -716,18 +708,17 @@ function renderResults() {
           <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" onclick="event.stopPropagation()">
           ${file.is_onedrive ? '<span class="text-[11px] text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 font-medium"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>' : ''}
         </div>
-        <div class="flex flex-col items-center text-center py-2 space-y-2" onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')">
+        <div class="flex flex-col items-center text-center py-2 space-y-2" onclick="openFile('${escapeJs(file.path)}')">
           ${fileIcon}
-          <h4 class="text-xs font-bold text-white truncate w-full" title="${file.name}">${file.name}</h4>
+          <h4 class="text-xs font-bold text-white truncate w-full" title="In ${getAppLabelForExt(file.ext)} öffnen: ${file.name}">${file.name}</h4>
           <span class="text-[11px] text-slate-300 font-mono font-medium">${file.size_formatted} &bull; ${file.modified_formatted}</span>
         </div>
         <div class="pt-2 border-t border-slate-800/80 flex items-center justify-around text-xs" onclick="event.stopPropagation()">
-          <button onclick="openFile('${escapeJs(file.path)}')" class="text-blue-400 hover:text-blue-300 p-1.5" title="In Standard-App (${file.ext.toLowerCase() === '.pdf' ? 'PDF X' : 'Standard-App'}) öffnen"><i class="fa-solid fa-play"></i></button>
-          <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="text-sky-400 hover:text-sky-300 p-1.5" title="Vorschau"><i class="fa-solid fa-eye"></i></button>
-          <button onclick="openFolder('${escapeJs(file.path)}')" class="text-yellow-400 hover:text-yellow-300 p-1.5" title="Im Explorer anzeigen"><i class="fa-solid fa-folder-open"></i></button>
-          <button onclick="printSingleFile('${escapeJs(file.path)}')" class="text-emerald-400 hover:text-emerald-300 p-1.5" title="Drucken"><i class="fa-solid fa-print"></i></button>
-          <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="text-violet-400 hover:text-violet-300 p-1.5" title="Teilen"><i class="fa-solid fa-paper-plane"></i></button>
-          <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="text-rose-400 hover:text-rose-300 p-1.5" title="Löschen"><i class="fa-solid fa-trash-can"></i></button>
+          <button onclick="openFile('${escapeJs(file.path)}')" class="text-blue-400 hover:text-blue-300 p-1.5" title="In ${getAppLabelForExt(file.ext)} öffnen"><i class="fa-solid fa-play"></i></button>
+          <button onclick="openFolder('${escapeJs(file.path)}')" class="text-yellow-400 hover:text-yellow-300 p-1.5" title="Im Windows Explorer anzeigen"><i class="fa-solid fa-folder-open"></i></button>
+          <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="text-violet-400 hover:text-violet-300 p-1.5" title="Per Teams oder E-Mail senden"><i class="fa-solid fa-paper-plane"></i></button>
+          <button onclick="openSingleRename('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="text-cyan-400 hover:text-cyan-300 p-1.5" title="Umbenennen"><i class="fa-solid fa-pen"></i></button>
+          <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="text-rose-400 hover:text-rose-300 p-1.5" title="In Windows-Papierkorb löschen"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `;
       gridWrapper.appendChild(card);
@@ -1065,82 +1056,9 @@ function editFileFromPreview() {
 // ==========================================
 let currentPreviewPath = '';
 
-async function previewFile(path, name, ext, sizeFormatted) {
-  currentPreviewPath = path;
-  document.getElementById('preview-modal-title').textContent = name;
-  document.getElementById('preview-modal-meta').textContent = `${sizeFormatted} • ${path}`;
-  
-  const body = document.getElementById('preview-modal-body');
-  body.innerHTML = '<div class="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>';
-  document.getElementById('modal-preview').classList.remove('hidden');
-
-  const extLower = ext.toLowerCase();
-
-  // Bildvorschau
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(extLower)) {
-    body.innerHTML = `
-      <img src="/api/file-preview?path=${encodeURIComponent(path)}" class="max-h-[82vh] max-w-full object-contain rounded-xl shadow-2xl border border-slate-800" alt="${name}">
-    `;
-    return;
-  }
-
-  // PDF Vorschau
-  if (extLower === 'pdf') {
-    body.innerHTML = `
-      <iframe src="/api/file-preview?path=${encodeURIComponent(path)}" class="w-full h-[82vh] min-h-[75vh] rounded-xl border border-slate-700 shadow-xl" frameborder="0"></iframe>
-    `;
-    return;
-  }
-
-  // Text / Code Vorschau & In-App Editor
-  try {
-    const res = await fetch(`/api/file-preview?path=${encodeURIComponent(path)}`);
-    const data = await res.json();
-    if (data.type === 'text') {
-      body.innerHTML = `
-        <div class="w-full h-full flex flex-col space-y-2">
-          <div class="flex items-center justify-between bg-slate-900/90 px-4 py-2 rounded-xl border border-slate-800 text-xs">
-            <span class="text-slate-400 font-medium flex items-center gap-2">
-              <i class="fa-solid fa-code text-indigo-400"></i>
-              <span>Direkter In-App Editor</span>
-            </span>
-            <div class="flex items-center gap-2">
-              <button onclick="saveFileContent('${escapeJs(path)}', document.getElementById('in-app-editor-textarea').value)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30">
-                <i class="fa-solid fa-floppy-disk"></i>
-                <span>Änderungen speichern</span>
-              </button>
-            </div>
-          </div>
-          <textarea id="in-app-editor-textarea" class="w-full h-[74vh] p-4 bg-slate-950 font-mono text-xs text-slate-200 overflow-auto rounded-xl border border-slate-800 leading-relaxed focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium">${escapeHtml(data.content)}</textarea>
-        </div>
-      `;
-    } else {
-      const appName = getAppLabelForExt(ext);
-      const cat = getCategoryForExt(ext);
-      body.innerHTML = `
-        <div class="text-center space-y-5 p-10 flex flex-col items-center justify-center h-full min-h-[50vh]">
-          <div class="w-20 h-20 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-4xl shadow-xl">
-            ${getCategoryIconHtml(cat, ext, true)}
-          </div>
-          <div class="space-y-1 max-w-md">
-            <h4 class="text-lg font-bold text-white">${escapeHtml(name)}</h4>
-            <p class="text-xs text-slate-400">Direkt mit 1 Klick im zugehörigen Programm (<strong>${appName}</strong>) öffnen:</p>
-          </div>
-          <div class="flex items-center justify-center gap-3 pt-2">
-            <button onclick="openFileFromPreview()" class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold flex items-center gap-2.5 shadow-xl shadow-blue-600/30 hover:scale-105 active:scale-95 transition cursor-pointer">
-              <i class="fa-solid fa-play text-sm"></i>
-              <span>▶ In ${appName} öffnen</span>
-            </button>
-            <button onclick="openFolder(currentPreviewPath)" class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-700 transition cursor-pointer">
-              <i class="fa-solid fa-folder-open text-yellow-400"></i>
-              <span>Im Ordner anzeigen</span>
-            </button>
-          </div>
-        </div>
-      `;
-    }
-  } catch (err) {
-    body.innerHTML = `<p class="text-xs text-red-400">Vorschau nicht verfügbar: ${err.message}</p>`;
+async function previewFile(path) {
+  if (path) {
+    openFile(path);
   }
 }
 
@@ -1382,8 +1300,8 @@ function renderDuplicateGroups() {
           <div class="flex items-center gap-4 text-xs">
             <span class="text-slate-400 font-mono text-[11px]">${file.modified_formatted}</span>
             <div class="flex items-center gap-1">
-              <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="p-1 rounded text-slate-400 hover:text-white" title="Vorschau"><i class="fa-solid fa-eye"></i></button>
-              <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1 rounded text-slate-400 hover:text-amber-400" title="Explorer"><i class="fa-solid fa-folder-open"></i></button>
+              <button onclick="openFile('${escapeJs(file.path)}')" class="p-1 rounded text-blue-400 hover:text-blue-300" title="In ${getAppLabelForExt(file.ext)} öffnen"><i class="fa-solid fa-play"></i></button>
+              <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1 rounded text-yellow-400 hover:text-yellow-300" title="Im Windows Explorer anzeigen"><i class="fa-solid fa-folder-open"></i></button>
             </div>
           </div>
         </div>
