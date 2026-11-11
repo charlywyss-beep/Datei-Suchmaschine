@@ -21,11 +21,26 @@ Eine moderne, blitzschnelle lokale Datei-Suchmaschine mit genialer Benutzeroberf
   - Änderungsdatum (Geändert nach Datum)
   - Eigene benutzerdefinierte Dateiendungen
 
-### 2. ☁️ Vollständige OneDrive-Einbindung
-- Erkennt automatisch Ihren lokalen OneDrive-Ordner (`C:\Users\01\OneDrive`).
-- **1-Klick-Schalter**: "Nur OneDrive durchsuchen".
-- Visuelle OneDrive-Badges bei allen in OneDrive gesicherten Dateien.
-- Schnellauswahl für Standardordner: OneDrive, Dokumente, Downloads, Bilder, Desktop, gesamtes Laufwerk C:\.
+### 2. ☁️ Vollständige OneDrive-Einbindung (Privat & Geschäftlich)
+- **OneDrive Privat**: Erkennt automatisch Ihren privaten Speicherort (`C:\Users\01\OneDrive`).
+- **OneDrive Geschäftlich (Business / SharePoint)**: Eigener Schnellzugriff auf geschäftliche Microsoft 365 Konten (z.B. `OneDrive - Firma`), konfigurierbar mit 1 Klick.
+- **Transfer-Hub (Sync)**: Automatischer Synchronisations-Ordner `Transfer_Zuhause_Geschaeft_iPad` für den nahtlosen Datenaustausch.
+- **1-Klick-Filter**: Getrennt nach *Nur Privat* oder *Nur Geschäftlich* filtern.
+- Farblich unterscheidbare Badges für private (blau) und geschäftliche (violett) Dateien.
+
+### 2b. 🐙 GitHub Versions-Aktualisierung (wie im Portfolio-Manager)
+- Integriertes GitHub-Update Studio direkt in der Maske (Button oben rechts).
+- Zeigt aktuellen Branch, Git-Commit und Remote-Repository.
+- **1-Klick-Update**: Führt im Hintergrund `git pull` aus, zeigt das Live-Update-Protokoll und lädt die Anwendung neu.
+- Zusätzlich vorhanden: `Update_From_Github.bat` für den schnellen Windows-Doppelklick.
+
+### 2c. 📱 Datenaustausch: PC Geschäft ⇄ PC Zuhause ⇄ iPad ⇄ iPhone
+- **Drahtloser Live-Zugriff**: Server lauscht auf `0.0.0.0:5005` und ist im lokalen WLAN erreichbar.
+- **Live QR-Code**: Im Header auf **[iPad & iPhone]** klicken – QR-Code mit der iPhone- oder iPad-Kamera scannen und die Suchmaschine öffnet sich sofort mobil.
+- **Direkt-Dateitransfer (Mobile Upload & Download)**:
+  - Fotos, Scans und Dateien vom iPhone / iPad direkt auf den PC hochladen.
+  - Dokumente vom PC direkt auf das iPad / iPhone herunterladen.
+- **Automatischer Cloud-Sync**: Über Microsoft OneDrive (Apps für iOS & Windows) sind alle Daten im Transfer-Hub ohne manuelles Zutun zwischen Heim-PC, Geschäfts-PC, iPad und iPhone synchron!
 
 ### 3. 👥 Doppel-Eliminierung (Intelligenter Duplikate-Finder)
 - Findet exakte Kopien und Dubletten anhand des echten Dateiinhalts (**SHA-256 kryptografischer Hash**).
