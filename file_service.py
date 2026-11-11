@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.2.6"
+APP_VERSION = "v1.3.0"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -122,9 +122,64 @@ def format_size(size_bytes):
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} PB"
 
-def get_saved_paths():
-    """Liest benutzerdefinierte gespeicherte Suchpfade"""
+def get_all_local_drives():
+    """Findet alle verfügbaren lokalen Windows-Laufwerke (C:, D:, etc.)"""
+    import string
+    drives = []
+    for letter in string.ascii_uppercase:
+        d_path = f"{letter}:\\"
+        if os.path.exists(d_path):
+            drives.append(d_path)
+    return drives
+
+def get_network_paths():
+    """Liest gemappte Netzlaufwerke sowie in config.json hinterlegte Netzwerk-Freigaben"""
     cfg = load_config()
+    saved_net = cfg.get("network_paths", [])
+    
+    # Automatisch gemappte Netzlaufwerke über net use / PowerShell prüfen
+    auto_net = []
+    try:
+        import string
+        for letter in string.ascii_uppercase:
+            # Übliche Netzlaufwerk-Buchstaben Z bis S
+            if letter in {'Z', 'Y', 'X', 'W', 'V', 'U', 'T', 'S'}:
+                p = f"{letter}:\\"
+                if os.path.exists(p):
+                    auto_net.append({"id": f"net_{letter}", "name": f"Netzlaufwerk ({letter}:)", "path": p, "auto": True})
+    except Exception:
+        pass
+
+    # Kombiniere beide
+    combined = auto_net + [p for p in saved_net if not any(a["path"].lower() == p["path"].lower() for a in auto_net)]
+    return combined
+
+def add_network_path(path_str, name=""):
+    """Fügt einen neuen Netzwerk-Suchpfad hinzu (z.B. \\\\NAS\\Freigabe oder Z:\\)"""
+    cfg = load_config()
+    net_paths = cfg.get("network_paths", [])
+    clean_p = path_str.strip()
+    
+    import uuid
+    new_item = {
+        "id": f"net_{uuid.uuid4().hex[:8]}",
+        "name": name.strip() or os.path.basename(clean_p) or clean_p,
+        "path": clean_p,
+        "exists": os.path.exists(clean_p)
+    }
+    net_paths.append(new_item)
+    cfg["network_paths"] = net_paths
+    save_config(cfg)
+    return {"success": True, "network_paths": get_network_paths(), "item": new_item}
+
+def remove_network_path(path_id):
+    """Löscht einen hinterlegten Netzwerk-Pfad"""
+    cfg = load_config()
+    net_paths = cfg.get("network_paths", [])
+    new_list = [p for p in net_paths if p.get("id") != path_id and p.get("path") != path_id]
+    cfg["network_paths"] = new_list
+    save_config(cfg)
+    return {"success": True, "network_paths": get_network_paths()}
     paths = cfg.get("saved_paths", [])
     # Falls noch leer, Standard-Vorschläge wie D:\01\Documents prüfen
     if not paths and os.path.exists("D:\\01\\Documents"):
@@ -242,8 +297,28 @@ def fast_search(
     stop_event=None
 ):
     results = []
-    root_dir = os.path.abspath(root_dir)
-    if not os.path.exists(root_dir):
+
+    # Mehrere Start-Ordner unterstützen (z.B. Ganzer PC: C:\ und D:\ gleichzeitig)
+    start_dirs = []
+    if isinstance(root_dir, list):
+        start_dirs = [os.path.abspath(d) for d in root_dir if os.path.exists(d)]
+    elif root_dir in ("THIS_PC", "pc", "all_drives"):
+        start_dirs = [d for d in get_all_local_drives() if os.path.exists(d)]
+    elif root_dir in ("ONEDRIVE_ALL", "onedrive"):
+        od_info = detect_onedrive_paths()
+        if od_info["personal"]["exists"]:
+            start_dirs.append(od_info["personal"]["path"])
+        if od_info["business"]["exists"]:
+            start_dirs.append(od_info["business"]["path"])
+    elif root_dir in ("NETWORK", "network"):
+        net_list = get_network_paths()
+        start_dirs = [n["path"] for n in net_list if os.path.exists(n["path"])]
+    else:
+        abs_p = os.path.abspath(root_dir)
+        if os.path.exists(abs_p):
+            start_dirs = [abs_p]
+
+    if not start_dirs:
         return results
 
     query_parts = [q.strip().lower() for q in query.split() if q.strip()]
@@ -262,7 +337,7 @@ def fast_search(
     skip_dirs = {"$recycle.bin", "system volume information", "windows", "appdata\\local\\temp", "node_modules", ".git"}
 
     count = 0
-    stack = [root_dir]
+    stack = list(start_dirs)
 
     while stack and count < max_results:
         if stop_event and stop_event.is_set():

@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.2.6' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.3.0' }}</span>
       </button>
 
       <!-- Print Search Results Button -->
@@ -196,60 +196,113 @@
           </div>
         </div>
 
-        <!-- Speicherort-Auswahl (OneDrive & Standardordner) -->
-        <div class="pt-3 border-t border-slate-800 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div class="flex-1 w-full space-y-2">
-            <div class="flex items-center justify-between">
-              <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
-                <i class="fa-solid fa-folder-tree mr-1 text-indigo-400"></i> Suchverzeichnis:
-              </label>
-              <!-- OneDrive Toggle Switch -->
-              <label class="inline-flex items-center cursor-pointer select-none">
-                <input type="checkbox" id="toggle-only-onedrive" class="sr-only peer" onchange="onOneDriveToggleChange()">
-                <div class="relative w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-600"></div>
-                <span class="ms-2 text-xs font-medium text-slate-300 flex items-center gap-1">
-                  <i class="fa-solid fa-cloud text-sky-400"></i> Nur OneDrive durchsuchen
-                </span>
-              </label>
-            </div>
+        <!-- Haupt-Suchbereich (Scope): Dieser PC, Nur OneDrive, Nur Netzwerk, Ordner -->
+        <div class="pt-3 border-t border-slate-800 space-y-3">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-compass text-indigo-400"></i>
+              <span>Suchbereich (Scope):</span>
+            </label>
+            <span class="text-[11px] text-slate-400 font-medium">Standardmäßig wird der gesamte PC mit allen Laufwerken durchsucht</span>
+          </div>
 
-            <div class="flex gap-2">
-              <div class="relative flex-1">
-                <input 
-                  type="text" 
-                  id="target-directory" 
-                  value="C:\Users\01\OneDrive" 
-                  placeholder="Pfad eingeben (z.B. D:\01\Documents oder C:\Users\01\Documents)..."
-                  class="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-slate-100 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                >
+          <!-- Scope Buttons -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2" id="scope-selector-group">
+            <!-- 1. Ganzer PC (Default) -->
+            <button type="button" id="scope-btn-pc" onclick="setSearchScope('pc')" class="scope-btn active p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-indigo-500/20">
+              <div class="w-7 h-7 rounded-lg bg-indigo-500/30 text-indigo-300 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-laptop text-sm"></i>
               </div>
+              <div class="text-left">
+                <div class="font-bold">Ganzer PC</div>
+                <div class="text-[11px] text-indigo-200 font-normal">Alle Laufwerke (C:, D: ...)</div>
+              </div>
+            </button>
+
+            <!-- 2. Nur OneDrive -->
+            <button type="button" id="scope-btn-onedrive" onclick="setSearchScope('onedrive')" class="scope-btn p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2.5 transition">
+              <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-cloud text-sm"></i>
+              </div>
+              <div class="text-left">
+                <div class="font-bold text-white">Nur OneDrive</div>
+                <div class="text-[11px] text-slate-400">Privat &amp; Geschäft</div>
+              </div>
+            </button>
+
+            <!-- 3. Nur Netzwerk -->
+            <button type="button" id="scope-btn-network" onclick="setSearchScope('network')" class="scope-btn p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2.5 transition">
+              <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-network-wired text-sm"></i>
+              </div>
+              <div class="text-left">
+                <div class="font-bold text-white">Nur Netzwerk</div>
+                <div class="text-[11px] text-slate-400">Netzlaufwerke &amp; Freigaben</div>
+              </div>
+            </button>
+
+            <!-- 4. Spezifischer Ordner -->
+            <button type="button" id="scope-btn-folder" onclick="setSearchScope('folder')" class="scope-btn p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2.5 transition">
+              <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-folder-open text-sm"></i>
+              </div>
+              <div class="text-left">
+                <div class="font-bold text-white">Spezifischer Ordner</div>
+                <div class="text-[11px] text-slate-400">Eigener Pfad / Favorit</div>
+              </div>
+            </button>
+          </div>
+
+          <!-- Pfad-Eingabe & Favorit-Button -->
+          <div class="flex flex-col md:flex-row gap-2 pt-1 items-center">
+            <div class="relative flex-1 w-full">
+              <input 
+                type="text" 
+                id="target-directory" 
+                value="THIS_PC" 
+                placeholder="Pfad eingeben oder Bereich wählen..."
+                class="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-slate-100 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+              >
+            </div>
+            
+            <div class="flex items-center gap-2 shrink-0">
               <!-- Button: Pfad als Favorit speichern -->
               <button 
                 type="button" 
                 onclick="openSavePathModal()" 
-                class="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition shrink-0 shadow-sm"
+                class="px-3.5 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
                 title="Diesen Pfad als eigenen Schnell-Button dauerhaft speichern"
               >
                 <i class="fa-solid fa-star text-amber-400"></i>
                 <span>Pfad speichern</span>
               </button>
-            </div>
 
-            <!-- Schnell-Speicherort Buttons & Gespeicherte Pfade -->
-            <div class="space-y-1.5 pt-1">
-              <div class="flex flex-wrap items-center gap-1.5" id="location-shortcuts">
-                <!-- Dynamisch via renderLocationShortcuts() -->
-              </div>
+              <!-- Button: Netzwerk-Freigabe hinzufügen -->
+              <button 
+                type="button" 
+                id="btn-add-network"
+                onclick="openAddNetworkModal()" 
+                class="px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                title="Netzwerkpfad hinzufügen (z.B. \\NAS\Freigabe oder Z:\)"
+              >
+                <i class="fa-solid fa-network-wired text-emerald-400"></i>
+                <span>Netzwerk-Pfad +</span>
+              </button>
+
+              <!-- Toggle Erweiterte Filter -->
+              <button type="button" onclick="toggleAdvancedFilters()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 transition">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Filter</span>
+                <i id="adv-chevron" class="fa-solid fa-chevron-down text-[10px] transition-transform"></i>
+              </button>
             </div>
           </div>
 
-          <!-- Toggle Erweiterte Filter -->
-          <div class="self-end">
-            <button type="button" onclick="toggleAdvancedFilters()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 transition">
-              <i class="fa-solid fa-sliders"></i>
-              <span>Erweiterte Filter</span>
-              <i id="adv-chevron" class="fa-solid fa-chevron-down text-[10px] transition-transform"></i>
-            </button>
+          <!-- Schnell-Speicherort Buttons & Gespeicherte Pfade -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex flex-wrap items-center gap-1.5" id="location-shortcuts">
+              <!-- Dynamisch via renderLocationShortcuts() -->
+            </div>
           </div>
         </div>
 
@@ -802,6 +855,45 @@
   </div>
 
   <!-- ========================================== -->
+  <!-- MODAL: NETZWERK-PFAD HINZUFÜGEN           -->
+  <!-- ========================================== -->
+  <div id="modal-add-network-path" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-network-wired text-emerald-400"></i>
+          <span>Netzwerk-Pfad / Freigabe hinzufügen</span>
+        </h3>
+        <button onclick="closeAddNetworkModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Bezeichnung:</label>
+          <input type="text" id="net-path-name" placeholder="z.B. NAS-Server, Firmen-Netzlaufwerk (Z:)..." class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 text-xs font-semibold">
+        </div>
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Netzwerk-Pfad (UNC oder Netzlaufwerk):</label>
+          <input type="text" id="net-path-dir" placeholder="z.B. \\192.168.0.10\Freigabe oder Z:\" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-mono text-xs font-semibold">
+          <span class="text-[11px] text-slate-400 block mt-1">Geben Sie eine Windows-Netzwerkfreigabe (`\\Server\Ordner`) oder ein gemapptes Netzlaufwerk ein.</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeAddNetworkModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Abbrechen
+        </button>
+        <button onclick="submitAddNetworkPath()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30">
+          <i class="fa-solid fa-check"></i>
+          <span>Netzwerk-Pfad speichern</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
   <!-- MODAL: EIGENEN SUCHPFAD SPEICHERN          -->
   <!-- ========================================== -->
   <div id="modal-save-custom-path" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -852,7 +944,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.2.6' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.3.0' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1032,6 +1124,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or '1.2.6' }}"></script>
+  <script src="/static/js/app.js?v={{ version or '1.3.0' }}"></script>
 </body>
 </html>

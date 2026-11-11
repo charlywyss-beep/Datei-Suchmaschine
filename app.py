@@ -27,6 +27,8 @@ def system_info():
     local_ip = file_service.get_local_ip()
     git_info = file_service.get_git_info()
     saved_paths = file_service.get_saved_paths()
+    all_drives = file_service.get_all_local_drives()
+    network_paths = file_service.get_network_paths()
     
     return jsonify({
         "app_version": file_service.APP_VERSION,
@@ -35,8 +37,33 @@ def system_info():
         "onedrive_info": od_info,
         "git_info": git_info,
         "saved_paths": saved_paths,
+        "all_drives": all_drives,
+        "network_paths": network_paths,
         "locations": locations
     })
+
+@app.route("/api/network-paths", methods=["GET"])
+def get_network_paths_route():
+    return jsonify({"network_paths": file_service.get_network_paths()})
+
+@app.route("/api/add-network-path", methods=["POST"])
+def add_network_path_route():
+    data = request.get_json() or {}
+    path = data.get("path", "")
+    name = data.get("name", "")
+    if not path:
+        return jsonify({"error": "Pfad fehlt"}), 400
+    res = file_service.add_network_path(path, name)
+    return jsonify(res)
+
+@app.route("/api/delete-network-path", methods=["POST"])
+def delete_network_path_route():
+    data = request.get_json() or {}
+    path_id = data.get("id") or data.get("path")
+    if not path_id:
+        return jsonify({"error": "ID fehlt"}), 400
+    res = file_service.remove_network_path(path_id)
+    return jsonify(res)
 
 @app.route("/api/saved-paths", methods=["GET"])
 def get_saved_paths_route():
@@ -109,7 +136,7 @@ def upload_file_route():
 @app.route("/api/search", methods=["POST"])
 def search():
     data = request.get_json() or {}
-    directory = data.get("directory", file_service.ONEDRIVE_PATH or "C:\\")
+    directory = data.get("directory", "THIS_PC")
     query = data.get("query", "")
     category = data.get("category", "all")
     custom_exts = data.get("extensions", "")

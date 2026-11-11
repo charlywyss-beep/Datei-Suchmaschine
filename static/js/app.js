@@ -10,8 +10,11 @@ let state = {
   viewMode: 'table',
   sortCol: 'name',
   sortAsc: true,
+  searchScope: 'pc',
   systemLocations: [],
   savedPaths: [],
+  networkPaths: [],
+  allDrives: ['C:\\', 'D:\\'],
   onedrivePath: '',
   onedriveInfo: null,
   gitInfo: null,
@@ -40,6 +43,8 @@ async function initSystemInfo() {
     const data = await res.json();
     state.systemLocations = data.locations || [];
     state.savedPaths = data.saved_paths || [];
+    state.networkPaths = data.network_paths || [];
+    state.allDrives = data.all_drives || ['C:\\', 'D:\\'];
     state.onedriveInfo = data.onedrive_info || {};
     state.gitInfo = data.git_info || {};
     state.networkUrl = data.network_url || '';
@@ -57,17 +62,46 @@ async function initSystemInfo() {
 
     renderLocationShortcuts();
 
-    // Default Suchpfad auf OneDrive oder Documents setzen
-    const dirInput = document.getElementById('target-directory');
-    if (dirInput && !dirInput.value) {
-      if (state.onedriveInfo?.personal?.exists) {
-        dirInput.value = state.onedriveInfo.personal.path;
-      } else {
-        dirInput.value = 'C:\\';
-      }
-    }
+    // Standard-Suchverzeichnis: DIESER PC (Alle Laufwerke C:, D: etc.)
+    setSearchScope('pc');
   } catch (err) {
     console.error('System-Info Fehler:', err);
+  }
+}
+
+// Suchbereich (Scope) umschalten: pc, onedrive, network, folder
+function setSearchScope(scope) {
+  state.searchScope = scope;
+  const dirInput = document.getElementById('target-directory');
+  const btnPc = document.getElementById('scope-btn-pc');
+  const btnOd = document.getElementById('scope-btn-onedrive');
+  const btnNet = document.getElementById('scope-btn-network');
+  const btnFold = document.getElementById('scope-btn-folder');
+
+  // Alle zurücksetzen
+  [btnPc, btnOd, btnNet, btnFold].forEach(b => {
+    if (b) {
+      b.className = 'scope-btn p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2.5 transition';
+    }
+  });
+
+  if (scope === 'pc') {
+    if (btnPc) btnPc.className = 'scope-btn active p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-indigo-500/20';
+    if (dirInput) dirInput.value = 'THIS_PC';
+    showToast('💻 Suchbereich: Ganzer PC (Alle Laufwerke C:, D: ...)', 'info');
+  } else if (scope === 'onedrive') {
+    if (btnOd) btnOd.className = 'scope-btn active p-3 rounded-xl border border-sky-500/50 bg-sky-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-sky-500/20';
+    if (dirInput) dirInput.value = 'ONEDRIVE_ALL';
+    showToast('☁️ Suchbereich: Nur OneDrive (Privat & Geschäft)', 'info');
+  } else if (scope === 'network') {
+    if (btnNet) btnNet.className = 'scope-btn active p-3 rounded-xl border border-emerald-500/50 bg-emerald-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-emerald-500/20';
+    if (dirInput) dirInput.value = 'NETWORK';
+    showToast('🌐 Suchbereich: Nur Netzwerk (Freigaben & Netzlaufwerke)', 'info');
+  } else if (scope === 'folder') {
+    if (btnFold) btnFold.className = 'scope-btn active p-3 rounded-xl border border-amber-500/50 bg-amber-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-amber-500/20';
+    if (dirInput && ['THIS_PC', 'ONEDRIVE_ALL', 'NETWORK'].includes(dirInput.value)) {
+      dirInput.value = 'C:\\Users\\01\\Documents';
+    }
   }
 }
 
@@ -135,23 +169,85 @@ function renderLocationShortcuts() {
     container.appendChild(btn);
   });
 
-  // 5. Benutzerdefinierte gespeicherte Pfade (Favoriten)
-  state.savedPaths.forEach(fav => {
+  // 6. Gespeicherte Netzwerk-Pfade
+  state.networkPaths.forEach(net => {
     const wrap = document.createElement('div');
-    wrap.className = 'inline-flex items-center rounded-lg border border-amber-500/40 bg-amber-950/40 p-0.5 shadow-sm group';
+    wrap.className = 'inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-950/40 p-0.5 shadow-sm group';
     wrap.innerHTML = `
-      <button type="button" class="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-amber-200 hover:text-white transition" title="${fav.path}">
-        <i class="fa-solid fa-star text-amber-400 text-[11px]"></i>
-        <span>${fav.name}</span>
+      <button type="button" class="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-emerald-200 hover:text-white transition" title="${net.path}">
+        <i class="fa-solid fa-network-wired text-emerald-400 text-[11px]"></i>
+        <span>${net.name}</span>
       </button>
-      <button type="button" class="px-1.5 py-0.5 text-[11px] text-amber-400 hover:text-red-400 hover:bg-red-500/20 rounded transition" title="Diesen gespeicherten Pfad löschen">
+      <button type="button" class="px-1.5 py-0.5 text-[11px] text-emerald-400 hover:text-red-400 hover:bg-red-500/20 rounded transition" title="Diesen Netzwerkpfad löschen">
         <i class="fa-solid fa-xmark"></i>
       </button>
     `;
-    wrap.querySelector('button:first-child').onclick = () => setLocation(fav.path, false);
-    wrap.querySelector('button:last-child').onclick = (e) => deleteCustomPath(fav.id, fav.name, e);
+    wrap.querySelector('button:first-child').onclick = () => setLocation(net.path, false);
+    wrap.querySelector('button:last-child').onclick = (e) => deleteNetworkPath(net.id, net.name, e);
     container.appendChild(wrap);
   });
+}
+
+// Netzwerk-Freigaben Modal Funktionen
+function openAddNetworkModal() {
+  document.getElementById('modal-add-network-path').classList.remove('hidden');
+  setTimeout(() => document.getElementById('net-path-name').focus(), 100);
+}
+
+function closeAddNetworkModal() {
+  document.getElementById('modal-add-network-path').classList.add('hidden');
+}
+
+async function submitAddNetworkPath() {
+  const name = document.getElementById('net-path-name').value.trim();
+  const dirPath = document.getElementById('net-path-dir').value.trim();
+
+  if (!dirPath) {
+    showToast('Bitte einen Netzwerk-Pfad eingeben', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/add-network-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || dirPath, path: dirPath })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.networkPaths = d.network_paths || [];
+      renderLocationShortcuts();
+      showToast(`🌐 Netzwerk-Pfad "${name || dirPath}" gespeichert!`, 'success');
+      closeAddNetworkModal();
+    } else {
+      showToast(d.error || 'Fehler beim Speichern', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+async function deleteNetworkPath(pathId, name, event) {
+  if (event) event.stopPropagation();
+  if (!confirm(`Soll der Netzwerkpfad "${name}" entfernt werden?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/delete-network-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pathId })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.networkPaths = d.network_paths || [];
+      renderLocationShortcuts();
+      showToast('Netzwerk-Pfad entfernt.', 'info');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
 }
 
 function openSavePathModal() {
@@ -270,10 +366,17 @@ function setLocation(path, isOneDrive) {
   if (dirInput) {
     dirInput.value = path;
   }
-  const onedriveToggle = document.getElementById('toggle-only-onedrive');
-  if (onedriveToggle) {
-    onedriveToggle.checked = Boolean(isOneDrive);
+  
+  if (isOneDrive === 'personal' || isOneDrive === 'business') {
+    setSearchScope('onedrive');
+  } else if (path === 'THIS_PC') {
+    setSearchScope('pc');
+  } else if (path === 'NETWORK') {
+    setSearchScope('network');
+  } else {
+    setSearchScope('folder');
   }
+
   showToast(`Verzeichnis gewählt: ${path}`, 'info');
   executeSearch();
 }
