@@ -318,18 +318,18 @@ function renderResults() {
       card.innerHTML = `
         <div class="flex items-start justify-between">
           <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" onclick="event.stopPropagation()">
-          ${file.is_onedrive ? '<span class="text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20"><i class="fa-solid fa-cloud"></i></span>' : ''}
+          ${file.is_onedrive ? '<span class="text-[11px] text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 font-medium"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>' : ''}
         </div>
         <div class="flex flex-col items-center text-center py-2 space-y-2" onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')">
           ${fileIcon}
-          <h4 class="text-xs font-semibold text-slate-200 truncate w-full" title="${file.name}">${file.name}</h4>
-          <span class="text-[10px] text-slate-500 font-mono">${file.size_formatted} &bull; ${file.modified_formatted.split(' ')[0]}</span>
+          <h4 class="text-xs font-bold text-white truncate w-full" title="${file.name}">${file.name}</h4>
+          <span class="text-[11px] text-slate-300 font-mono font-medium">${file.size_formatted} &bull; ${file.modified_formatted}</span>
         </div>
-        <div class="pt-2 border-t border-slate-800/80 flex items-center justify-around text-slate-400 text-xs" onclick="event.stopPropagation()">
-          <button onclick="openFolder('${escapeJs(file.path)}')" class="hover:text-amber-400 p-1" title="Explorer"><i class="fa-solid fa-folder-open"></i></button>
-          <button onclick="printSingleFile('${escapeJs(file.path)}')" class="hover:text-emerald-400 p-1" title="Drucken"><i class="fa-solid fa-print"></i></button>
-          <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="hover:text-teams p-1" title="Teilen"><i class="fa-solid fa-paper-plane"></i></button>
-          <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="hover:text-red-400 p-1" title="Löschen"><i class="fa-solid fa-trash-can"></i></button>
+        <div class="pt-2 border-t border-slate-800/80 flex items-center justify-around text-slate-300 text-xs" onclick="event.stopPropagation()">
+          <button onclick="openFolder('${escapeJs(file.path)}')" class="hover:text-amber-400 p-1.5" title="Explorer"><i class="fa-solid fa-folder-open"></i></button>
+          <button onclick="printSingleFile('${escapeJs(file.path)}')" class="hover:text-emerald-400 p-1.5" title="Drucken"><i class="fa-solid fa-print"></i></button>
+          <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="hover:text-teams p-1.5" title="Teilen"><i class="fa-solid fa-paper-plane"></i></button>
+          <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="hover:text-red-400 p-1.5" title="Löschen"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `;
       gridWrapper.appendChild(card);

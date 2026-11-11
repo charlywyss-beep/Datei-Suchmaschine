@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.2.0"
+APP_VERSION = "v1.2.1"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -296,7 +296,7 @@ def fast_search(
                             "size": size,
                             "size_formatted": format_size(size),
                             "modified": mtime_dt.isoformat(),
-                            "modified_formatted": mtime_dt.strftime("%d.%m.%Y %H:%M"),
+                            "modified_formatted": mtime_dt.strftime("%d.%m.%y %H:%M"),
                             "is_onedrive": bool(is_onedrive_type),
                             "onedrive_type": is_onedrive_type
                         })
@@ -591,7 +591,7 @@ def save_text_file(filepath, content):
             "size": stat.st_size,
             "size_formatted": format_size(stat.st_size),
             "modified": mtime_dt.isoformat(),
-            "modified_formatted": mtime_dt.strftime("%d.%m.%Y %H:%M")
+            "modified_formatted": mtime_dt.strftime("%d.%m.%y %H:%M")
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -627,7 +627,7 @@ def get_git_info():
             info["branch"] = res.stdout.strip()
 
         # Last commit
-        res = subprocess.run(["git", "log", "-1", "--format=%h - %s (%cd)", "--date=short"], cwd=repo_dir, capture_output=True, text=True)
+        res = subprocess.run(["git", "log", "-1", "--format=%h - %s • %ad", "--date=format:%d.%m.%y %H:%M"], cwd=repo_dir, capture_output=True, text=True)
         if res.returncode == 0:
             info["last_commit"] = res.stdout.strip()
 

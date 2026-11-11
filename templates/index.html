@@ -86,9 +86,9 @@
       </button>
 
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
-      <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-medium transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
+      <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">v1.2.0</span>
+        <span id="header-version-tag">v1.2.1</span>
       </button>
 
       <!-- Print Search Results Button -->
@@ -593,9 +593,9 @@
             <div>
               <label class="block text-slate-400 font-medium mb-1">Datumsformat:</label>
               <select id="rename-date-fmt" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" onchange="updateRenamePreview()">
-                <option value="%Y-%m-%d">JJJJ-MM-TT (z.B. 2026-11-11)</option>
-                <option value="%Y%m%d">JJJJMMTT (z.B. 20261111)</option>
-                <option value="%d.%m.%Y">TT.MM.JJJJ (z.B. 11.11.2026)</option>
+                <option value="%d.%m.%y">TT.MM.JJ &bull; z.B. 11.11.26</option>
+                <option value="%y%m%d">JJMMTT &bull; z.B. 261111</option>
+                <option value="%Y-%m-%d">JJJJ-MM-TT &bull; z.B. 2026-11-11</option>
               </select>
             </div>
           </div>
@@ -838,7 +838,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">v1.2.0</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">v1.2.1</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
