@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.4.9"
+APP_VERSION = "v1.5.0"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -734,19 +734,20 @@ def open_file_in_system(filepath):
         except Exception:
             pass
 
-    # Falls PDF X als hängender Hintergrundprozess blockiert ist, Zombie-Instanzen aufräumen
+    # Falls PDF X als hängender Hintergrundprozess ohne Fenster blockiert ist, Zombie-Instanzen aufräumen
     if ext == ".pdf":
         try:
-            cmd = "if ((Get-Process pdfeditor -ErrorAction SilentlyContinue).Count -gt 2) { Stop-Process -Name pdfeditor -Force -ErrorAction SilentlyContinue }"
-            subprocess.run(["powershell", "-NoProfile", "-Command", cmd], check=False, timeout=2)
+            cmd = "Get-Process pdfeditor, PDFLauncher -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -eq 0 } | Stop-Process -Force -ErrorAction SilentlyContinue"
+            subprocess.run(["powershell", "-NoProfile", "-Command", cmd], check=False, timeout=3)
         except Exception:
             pass
 
-    # 1. Native Windows ShellExecuteW (direkt über Shell-Subsystem)
+    # 1. PowerShell Start-Process (nutzt den echten Windows-Desktop-Kontext für UWP & Standard-Apps)
     try:
-        import ctypes
-        res = ctypes.windll.shell32.ShellExecuteW(None, "open", target_open_path, None, None, 1)
-        if res > 32:
+        escaped_p = target_open_path.replace("'", "''")
+        cmd = f"Start-Process -FilePath '{escaped_p}'"
+        res = subprocess.run(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", cmd], capture_output=True, text=True, timeout=5)
+        if res.returncode == 0:
             return {"success": True, "message": f"In {app_name} geöffnet."}
     except Exception:
         pass
@@ -758,7 +759,7 @@ def open_file_in_system(filepath):
     except Exception:
         pass
 
-    # 3. Direkter Aufruf über os.startfile
+    # 3. Direkter Aufruf über os.startfile als Fallback
     try:
         os.startfile(target_open_path)
         return {"success": True, "message": f"In {app_name} geöffnet."}
