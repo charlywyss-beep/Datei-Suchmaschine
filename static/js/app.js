@@ -665,7 +665,7 @@ function renderResults() {
         <td class="py-2.5 px-4 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
           <div class="flex items-center justify-end gap-1">
             <!-- Direktes Öffnen (Blau / Play) -->
-            <button onclick="openFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="Direkt in ${getAppLabelForExt(file.ext)} öffnen">
+            <button onclick="openInPdfXAutomated('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="In ${getAppLabelForExt(file.ext)} öffnen">
               <i class="fa-solid fa-play text-xs"></i>
             </button>
             <!-- Vorschau (Blau / Sky) -->
@@ -1140,6 +1140,28 @@ function openInBrowserViewer() {
   if (currentPreviewPath) {
     window.open('/api/preview?path=' + encodeURIComponent(currentPreviewPath), '_blank');
   }
+}
+
+function openInPdfXAutomated(path) {
+  const targetPath = path || currentPreviewPath;
+  if (!targetPath) return;
+
+  // 1. Speichern / Download triggern (nutzt den schnellen Browser-Pfad)
+  const a = document.createElement('a');
+  a.href = `/api/download?path=${encodeURIComponent(targetPath)}`;
+  a.download = targetPath.split(/[/\\]/).pop();
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // 2. Parallel System-Start via ShellExecuteW
+  fetch('/api/open-file', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: targetPath })
+  }).catch(() => {});
+
+  showToast('In PDF-X wird bereitgestellt...', 'success');
 }
 
 function openFileFromPreview() {

@@ -328,6 +328,14 @@ def send_email_route():
     res = file_service.send_file_via_email(path, recipient)
     return jsonify(res)
 
+@app.route("/api/download", methods=["GET"])
+def download_file_route():
+    path = request.args.get("path")
+    if not path or not os.path.exists(path):
+        return abort(404, "File not found")
+    filename = os.path.basename(path)
+    return send_file(path, as_attachment=True, download_name=filename)
+
 @app.route("/api/file-preview", methods=["GET"])
 @app.route("/api/preview", methods=["GET"])
 def file_preview():
