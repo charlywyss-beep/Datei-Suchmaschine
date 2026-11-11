@@ -828,7 +828,7 @@ async function openFile(path) {
     });
     const d = await res.json();
     if (d.success) {
-      showToast('Datei wird geöffnet...', 'info');
+      showToast(d.message || 'Datei wird in App geöffnet...', 'success');
     } else {
       showToast(d.error || 'Fehler beim Öffnen', 'error');
     }
@@ -846,7 +846,7 @@ async function openWith(path) {
     });
     const d = await res.json();
     if (d.success) {
-      showToast('Windows "Öffnen mit..." Dialog aufgerufen', 'info');
+      showToast(d.message || 'Windows "App auswählen" geöffnet. Bitte Taskleiste beachten.', 'info');
     } else {
       showToast(d.error || 'Fehler beim Aufrufen', 'error');
     }
