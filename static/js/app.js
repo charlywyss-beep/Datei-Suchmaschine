@@ -12,6 +12,10 @@ let state = {
   sortAsc: true,
   systemLocations: [],
   onedrivePath: '',
+  onedriveInfo: null,
+  gitInfo: null,
+  networkUrl: '',
+  localIp: '',
   duplicateData: null,
   duplicateSelectedPaths: new Set(),
   renameFiles: [],
@@ -34,19 +38,26 @@ async function initSystemInfo() {
     const res = await fetch('/api/system-info');
     const data = await res.json();
     state.systemLocations = data.locations || [];
-    state.onedrivePath = data.onedrive_path || '';
+    state.onedriveInfo = data.onedrive_info || {};
+    state.gitInfo = data.git_info || {};
+    state.networkUrl = data.network_url || '';
+    state.localIp = data.local_ip || '';
 
-    if (data.onedrive_available) {
-      const pill = document.getElementById('onedrive-status-pill');
-      if (pill) pill.classList.remove('hidden');
-      if (pill) pill.classList.add('flex');
+    // Version im Header aktualisieren
+    const vTag = document.getElementById('header-version-tag');
+    if (vTag && data.app_version) {
+      vTag.textContent = data.app_version;
+    }
+    const gitV = document.getElementById('git-modal-version');
+    if (gitV && data.app_version) {
+      gitV.textContent = data.app_version;
     }
 
     // Default Suchpfad auf OneDrive oder Documents setzen
     const dirInput = document.getElementById('target-directory');
     if (dirInput && !dirInput.value) {
-      if (data.onedrive_available) {
-        dirInput.value = state.onedrivePath;
+      if (state.onedriveInfo?.personal?.exists) {
+        dirInput.value = state.onedriveInfo.personal.path;
       } else {
         dirInput.value = 'C:\\';
       }
@@ -221,7 +232,14 @@ function renderResults() {
       row.className = `result-row transition cursor-pointer select-none ${isSelected ? 'selected' : ''}`;
       
       const fileIcon = getCategoryIconHtml(file.category, file.ext);
-      const onedriveBadge = file.is_onedrive ? `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-2" title="In OneDrive gesichert"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>` : '';
+      let onedriveBadge = '';
+      if (file.onedrive_type === 'personal') {
+        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-2" title="In OneDrive Privat gesichert"><i class="fa-solid fa-cloud mr-1"></i>Privat</span>`;
+      } else if (file.onedrive_type === 'business') {
+        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 ml-2" title="In OneDrive Geschäft gesichert"><i class="fa-solid fa-building mr-1"></i>Geschäft</span>`;
+      } else if (file.is_onedrive) {
+        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-2" title="OneDrive"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>`;
+      }
 
       row.innerHTML = `
         <td class="py-2.5 px-4 text-center" onclick="event.stopPropagation()">
@@ -1165,7 +1183,176 @@ function escapeHtml(text) {
     .replace(/'/g, "&#039;");
 }
 
-function escapeJs(str) {
-  if (!str) return '';
-  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+// ==========================================
+// GITHUB UPDATE MODAL (WIE IN PORTFOLIO-MANAGER)
+// ==========================================
+async function openGitUpdateModal() {
+  document.getElementById('modal-git-update').classList.remove('hidden');
+  try {
+    const res = await fetch('/api/git-info');
+    const data = await res.json();
+    state.gitInfo = data;
+    document.getElementById('git-branch').textContent = data.branch || 'master';
+    document.getElementById('git-last-commit').textContent = data.last_commit || 'Keine Commit-Information';
+    document.getElementById('git-remote-input').value = data.remote_url || '';
+  } catch (err) {
+    console.error('Git-Info Fehler:', err);
+  }
+}
+
+function closeGitUpdateModal() {
+  document.getElementById('modal-git-update').classList.add('hidden');
+}
+
+async function saveGitRemote() {
+  const url = document.getElementById('git-remote-input').value.trim();
+  if (!url) {
+    showToast('Bitte eine gültige Git-URL angeben', 'error');
+    return;
+  }
+  try {
+    const res = await fetch('/api/git-set-remote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ remote_url: url })
+    });
+    const d = await res.json();
+    if (d.success) {
+      showToast('GitHub Remote-Repository erfolgreich gespeichert!', 'success');
+    } else {
+      showToast(d.error || 'Fehler beim Speichern des Remotes', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+async function runGitUpdate() {
+  const btn = document.getElementById('btn-run-git-update');
+  const logContainer = document.getElementById('git-log-container');
+  const logOutput = document.getElementById('git-log-output');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Aktualisiere von GitHub...</span>';
+  logContainer.classList.remove('hidden');
+  logOutput.textContent = 'Verbinde mit GitHub und führe "git pull" aus...\n';
+
+  try {
+    const res = await fetch('/api/git-update', { method: 'POST' });
+    const d = await res.json();
+
+    logOutput.textContent = d.output || d.message || d.error || 'Keine Rückmeldung';
+
+    if (d.success) {
+      showToast('🎉 Erfolgreich auf den neuesten GitHub-Stand aktualisiert!', 'success');
+      btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Aktuell!</span>';
+      setTimeout(() => location.reload(), 2500);
+    } else {
+      showToast(d.message || d.error || 'Update fehlgeschlagen', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i><span>Erneut versuchen</span>';
+    }
+  } catch (err) {
+    logOutput.textContent = `Fehler: ${err.message}`;
+    showToast(`Update-Fehler: ${err.message}`, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i><span>Jetzt aktualisieren</span>';
+  }
+}
+
+// ==========================================
+// IPAD, IPHONE & DATENAUSTAUSCH MODAL
+// ==========================================
+function openMobileSyncModal() {
+  const url = state.networkUrl || `http://${window.location.hostname}:5005`;
+  const qrImg = document.getElementById('qr-code-img');
+  const netLink = document.getElementById('mobile-network-link');
+
+  if (qrImg) {
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}`;
+  }
+  if (netLink) {
+    netLink.href = url;
+    netLink.querySelector('span').textContent = url;
+  }
+
+  document.getElementById('modal-mobile-sync').classList.remove('hidden');
+}
+
+function closeMobileSyncModal() {
+  document.getElementById('modal-mobile-sync').classList.add('hidden');
+}
+
+async function uploadMobileFile() {
+  const fileInput = document.getElementById('mobile-upload-input');
+  if (!fileInput.files || fileInput.files.length === 0) {
+    showToast('Bitte eine Datei oder ein Foto auswählen!', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  if (state.onedriveInfo?.transfer?.path) {
+    formData.append('target_dir', state.onedriveInfo.transfer.path);
+  }
+
+  showToast('Übertrage Datei...', 'info');
+
+  try {
+    const res = await fetch('/api/upload-file', {
+      method: 'POST',
+      body: formData
+    });
+    const d = await res.json();
+    if (d.success) {
+      showToast(`✅ "${d.name}" erfolgreich übertragen! Liegt im Transfer-Hub.`, 'success');
+      fileInput.value = '';
+      closeMobileSyncModal();
+      // Wenn wir im Transfer-Ordner suchen, aktualisieren
+      executeSearch();
+    } else {
+      showToast(d.error || 'Übertragung fehlgeschlagen', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+// ==========================================
+// ONEDRIVE GESCHÄFTLICH EINSTELLUNGEN
+// ==========================================
+function openOneDriveSettingsModal() {
+  const input = document.getElementById('input-business-onedrive');
+  if (input && state.onedriveInfo?.business?.path) {
+    input.value = state.onedriveInfo.business.path;
+  }
+  document.getElementById('modal-onedrive-settings').classList.remove('hidden');
+}
+
+function closeOneDriveSettingsModal() {
+  document.getElementById('modal-onedrive-settings').classList.add('hidden');
+}
+
+async function saveOneDriveSettings() {
+  const bizPath = document.getElementById('input-business-onedrive').value.trim();
+  if (!bizPath) {
+    showToast('Bitte einen Pfad eingeben', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/save-onedrive-paths', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ business: bizPath })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.onedriveInfo = d.onedrive_info;
+      showToast('Pfad für geschäftliches OneDrive gespeichert!', 'success');
+      closeOneDriveSettingsModal();
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
 }

@@ -16,11 +16,58 @@ def index():
 @app.route("/api/system-info", methods=["GET"])
 def system_info():
     locations = file_service.get_system_locations()
+    od_info = file_service.detect_onedrive_paths()
+    local_ip = file_service.get_local_ip()
+    git_info = file_service.get_git_info()
+    
     return jsonify({
-        "onedrive_path": file_service.ONEDRIVE_PATH,
-        "onedrive_available": bool(file_service.ONEDRIVE_PATH and os.path.exists(file_service.ONEDRIVE_PATH)),
+        "app_version": file_service.APP_VERSION,
+        "local_ip": local_ip,
+        "network_url": f"http://{local_ip}:5005",
+        "onedrive_info": od_info,
+        "git_info": git_info,
         "locations": locations
     })
+
+@app.route("/api/save-onedrive-paths", methods=["POST"])
+def save_onedrive_paths():
+    data = request.get_json() or {}
+    cfg = file_service.load_config()
+    if "personal" in data:
+        cfg["onedrive_personal"] = data["personal"]
+    if "business" in data:
+        cfg["onedrive_business"] = data["business"]
+    file_service.save_config(cfg)
+    return jsonify({"success": True, "onedrive_info": file_service.detect_onedrive_paths()})
+
+@app.route("/api/git-info", methods=["GET"])
+def git_info_route():
+    return jsonify(file_service.get_git_info())
+
+@app.route("/api/git-update", methods=["POST"])
+def git_update_route():
+    res = file_service.git_pull_update()
+    return jsonify(res)
+
+@app.route("/api/git-set-remote", methods=["POST"])
+def git_set_remote_route():
+    data = request.get_json() or {}
+    remote_url = data.get("remote_url", "")
+    if not remote_url:
+        return jsonify({"error": "Remote URL fehlt"}), 400
+    res = file_service.git_set_remote(remote_url)
+    return jsonify(res)
+
+@app.route("/api/upload-file", methods=["POST"])
+def upload_file_route():
+    if 'file' not in request.files:
+        return jsonify({"error": "Keine Datei im Request"}), 400
+    uploaded_file = request.files['file']
+    if uploaded_file.filename == '':
+        return jsonify({"error": "Keine Datei ausgewählt"}), 400
+    target_dir = request.form.get("target_dir")
+    res = file_service.save_uploaded_file(uploaded_file, target_dir)
+    return jsonify(res)
 
 @app.route("/api/search", methods=["POST"])
 def search():
@@ -255,9 +302,13 @@ if __name__ == "__main__":
     except Exception:
         pass
     port = 5005
-    print(f"Datei-Suchmaschine laeuft auf http://localhost:{port}")
+    local_ip = file_service.get_local_ip()
+    print(f"Datei-Suchmaschine laeuft auf:")
+    print(f"  - Lokal:        http://localhost:{port}")
+    print(f"  - iPad / iPhone: http://{local_ip}:{port}")
     try:
         webbrowser.open(f"http://localhost:{port}")
     except Exception:
         pass
-    app.run(host="127.0.0.1", port=port, debug=False)
+    # Auf 0.0.0.0 lauschen für Zugriff von iPad, iPhone & Heim/Geschäftsnetzwerk
+    app.run(host="0.0.0.0", port=port, debug=False)

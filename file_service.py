@@ -1,6 +1,8 @@
 import os
 import sys
+import json
 import time
+import socket
 import hashlib
 import subprocess
 import mimetypes
@@ -8,7 +10,95 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-ONEDRIVE_PATH = os.environ.get("OneDrive") or os.environ.get("OneDriveConsumer") or os.path.expanduser("~/OneDrive")
+APP_VERSION = "v1.2.0"
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_config(cfg):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception:
+        return False
+
+def detect_onedrive_paths():
+    user_home = os.path.expanduser("~")
+    cfg = load_config()
+
+    # 1. Privates OneDrive
+    personal_path = cfg.get("onedrive_personal") or os.environ.get("OneDriveConsumer") or os.environ.get("OneDrive") or os.path.join(user_home, "OneDrive")
+    if not os.path.exists(personal_path):
+        personal_path = os.path.join(user_home, "OneDrive")
+
+    # 2. Geschäftliches OneDrive
+    business_path = cfg.get("onedrive_business") or os.environ.get("OneDriveCommercial")
+
+    if not business_path or not os.path.exists(business_path):
+        # Automatisch im Benutzerordner nach 'OneDrive - *' suchen
+        try:
+            for item in os.listdir(user_home):
+                item_lower = item.lower()
+                if item_lower.startswith("onedrive -") or item_lower.startswith("onedrive-"):
+                    cand = os.path.join(user_home, item)
+                    if os.path.isdir(cand):
+                        business_path = cand
+                        break
+        except Exception:
+            pass
+
+    # Fallback / Platzhalter falls noch nicht existiert
+    if not business_path:
+        business_path = os.path.join(user_home, "OneDrive - Geschaeft")
+
+    # 3. Transfer-Hub Ordner (für einfachen Austausch mit iPad/iPhone & Geschäft/Zuhause)
+    base_cloud = personal_path if os.path.exists(personal_path) else (business_path if os.path.exists(business_path) else user_home)
+    transfer_path = os.path.join(base_cloud, "Transfer_Zuhause_Geschaeft_iPad")
+    if not os.path.exists(transfer_path):
+        try:
+            os.makedirs(transfer_path, exist_ok=True)
+        except Exception:
+            pass
+
+    return {
+        "personal": {
+            "name": "OneDrive Privat",
+            "path": personal_path,
+            "exists": os.path.exists(personal_path)
+        },
+        "business": {
+            "name": "OneDrive Geschäftlich",
+            "path": business_path,
+            "exists": os.path.exists(business_path)
+        },
+        "transfer": {
+            "name": "Transfer-Hub (Zuhause ⇄ Geschäft)",
+            "path": transfer_path,
+            "exists": os.path.exists(transfer_path)
+        }
+    }
+
+ONEDRIVE_INFO = detect_onedrive_paths()
+ONEDRIVE_PATH = ONEDRIVE_INFO["personal"]["path"]
+
+def get_local_ip():
+    """Ermittelt die lokale Netzwerk-IP für iPad / iPhone Zugriff"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 CATEGORY_EXTENSIONS = {
     "pdf": {".pdf"},
@@ -34,8 +124,12 @@ def format_size(size_bytes):
 
 def get_system_locations():
     user_home = os.path.expanduser("~")
+    od_info = detect_onedrive_paths()
+    
     locations = [
-        {"id": "onedrive", "name": "OneDrive", "path": ONEDRIVE_PATH, "icon": "cloud", "exists": os.path.exists(ONEDRIVE_PATH)},
+        {"id": "onedrive_personal", "name": "OneDrive Privat", "path": od_info["personal"]["path"], "icon": "cloud", "badge": "Privat", "exists": od_info["personal"]["exists"]},
+        {"id": "onedrive_business", "name": "OneDrive Geschäftlich", "path": od_info["business"]["path"], "icon": "building", "badge": "Business", "exists": od_info["business"]["exists"]},
+        {"id": "transfer_hub", "name": "Transfer-Hub (Sync)", "path": od_info["transfer"]["path"], "icon": "arrows-rotate", "badge": "iPad/iPhone", "exists": od_info["transfer"]["exists"]},
         {"id": "documents", "name": "Dokumente", "path": os.path.join(user_home, "Documents"), "icon": "folder", "exists": os.path.exists(os.path.join(user_home, "Documents"))},
         {"id": "downloads", "name": "Downloads", "path": os.path.join(user_home, "Downloads"), "icon": "download", "exists": os.path.exists(os.path.join(user_home, "Downloads"))},
         {"id": "desktop", "name": "Desktop", "path": os.path.join(user_home, "Desktop"), "icon": "monitor", "exists": os.path.exists(os.path.join(user_home, "Desktop"))},
@@ -53,14 +147,20 @@ def get_system_locations():
     return locations
 
 def is_onedrive_path(path_str):
-    if not ONEDRIVE_PATH or not os.path.exists(ONEDRIVE_PATH):
-        return False
+    od_info = detect_onedrive_paths()
     try:
-        norm_one = os.path.normcase(os.path.abspath(ONEDRIVE_PATH))
         norm_file = os.path.normcase(os.path.abspath(path_str))
-        return norm_file.startswith(norm_one)
+        p_pers = od_info["personal"]["path"]
+        if p_pers and os.path.exists(p_pers):
+            if norm_file.startswith(os.path.normcase(os.path.abspath(p_pers))):
+                return "personal"
+        p_biz = od_info["business"]["path"]
+        if p_biz and os.path.exists(p_biz):
+            if norm_file.startswith(os.path.normcase(os.path.abspath(p_biz))):
+                return "business"
     except Exception:
-        return False
+        pass
+    return None
 
 def get_file_category(ext):
     ext_lower = ext.lower()
@@ -97,6 +197,9 @@ def fast_search(
         allowed_exts = CATEGORY_EXTENSIONS[category]
 
     norm_onedrive = os.path.normcase(os.path.abspath(ONEDRIVE_PATH)) if ONEDRIVE_PATH and os.path.exists(ONEDRIVE_PATH) else None
+    od_info = detect_onedrive_paths()
+    p_personal = os.path.normcase(os.path.abspath(od_info["personal"]["path"])) if od_info["personal"]["exists"] else None
+    p_business = os.path.normcase(os.path.abspath(od_info["business"]["path"])) if od_info["business"]["exists"] else None
 
     # Skip heavy system / cache directories if searching C:\
     skip_dirs = {"$recycle.bin", "system volume information", "windows", "appdata\\local\\temp", "node_modules", ".git"}
@@ -165,13 +268,21 @@ def fast_search(
                         if modified_before_ts is not None and mtime > modified_before_ts:
                             continue
 
-                        # OneDrive check
-                        is_in_onedrive = False
-                        if norm_onedrive:
-                            is_in_onedrive = os.path.normcase(os.path.abspath(entry.path)).startswith(norm_onedrive)
+                        # OneDrive check (Personal vs Business)
+                        norm_entry = os.path.normcase(os.path.abspath(entry.path))
+                        is_onedrive_type = None
+                        if p_personal and norm_entry.startswith(p_personal):
+                            is_onedrive_type = "personal"
+                        elif p_business and norm_entry.startswith(p_business):
+                            is_onedrive_type = "business"
 
-                        if only_onedrive and not is_in_onedrive:
-                            continue
+                        if only_onedrive:
+                            if only_onedrive == "business" and is_onedrive_type != "business":
+                                continue
+                            elif only_onedrive == "personal" and is_onedrive_type != "personal":
+                                continue
+                            elif only_onedrive in (True, "any") and not is_onedrive_type:
+                                continue
 
                         cat = get_file_category(ext)
                         mtime_dt = datetime.fromtimestamp(mtime)
@@ -186,7 +297,8 @@ def fast_search(
                             "size_formatted": format_size(size),
                             "modified": mtime_dt.isoformat(),
                             "modified_formatted": mtime_dt.strftime("%d.%m.%Y %H:%M"),
-                            "is_onedrive": is_in_onedrive
+                            "is_onedrive": bool(is_onedrive_type),
+                            "onedrive_type": is_onedrive_type
                         })
                         count += 1
         except (PermissionError, OSError):
@@ -483,6 +595,116 @@ def save_text_file(filepath, content):
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+# ==========================================
+# GITHUB AKTUALISIERUNG (WIE IN PORTFOLIO-MANAGER)
+# ==========================================
+def get_git_info():
+    """Liest aktuellen Git-Status, Version und Remote-URL"""
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    info = {
+        "version": APP_VERSION,
+        "is_git": os.path.exists(os.path.join(repo_dir, ".git")),
+        "remote_url": "",
+        "branch": "master",
+        "last_commit": "",
+        "commit_date": "",
+        "dirty": False
+    }
+
+    if not info["is_git"]:
+        return info
+
+    try:
+        # Remote URL
+        res = subprocess.run(["git", "remote", "get-url", "origin"], cwd=repo_dir, capture_output=True, text=True)
+        if res.returncode == 0:
+            info["remote_url"] = res.stdout.strip()
+        
+        # Branch
+        res = subprocess.run(["git", "branch", "--show-current"], cwd=repo_dir, capture_output=True, text=True)
+        if res.returncode == 0 and res.stdout.strip():
+            info["branch"] = res.stdout.strip()
+
+        # Last commit
+        res = subprocess.run(["git", "log", "-1", "--format=%h - %s (%cd)", "--date=short"], cwd=repo_dir, capture_output=True, text=True)
+        if res.returncode == 0:
+            info["last_commit"] = res.stdout.strip()
+
+        # Status check
+        res = subprocess.run(["git", "status", "--porcelain"], cwd=repo_dir, capture_output=True, text=True)
+        info["dirty"] = bool(res.stdout.strip())
+    except Exception as e:
+        info["error"] = str(e)
+
+    return info
+
+def git_pull_update():
+    """Führt git pull aus, um die neueste Version von GitHub zu laden"""
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        # Check if remote exists
+        check_rem = subprocess.run(["git", "remote", "-v"], cwd=repo_dir, capture_output=True, text=True)
+        if not check_rem.stdout.strip():
+            return {
+                "success": False, 
+                "error": "Kein GitHub-Remote konfiguriert. Bitte erst die GitHub Repository URL eintragen!"
+            }
+
+        res = subprocess.run(["git", "pull"], cwd=repo_dir, capture_output=True, text=True, timeout=25)
+        output = (res.stdout + "\n" + res.stderr).strip()
+        success = res.returncode == 0
+
+        return {
+            "success": success,
+            "output": output,
+            "message": "Update erfolgreich eingespielt!" if success else "Update fehlgeschlagen (siehe Details)."
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def git_set_remote(remote_url):
+    """Setzt oder ändert die GitHub Remote URL"""
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        # Remove existing if any
+        subprocess.run(["git", "remote", "remove", "origin"], cwd=repo_dir, capture_output=True)
+        res = subprocess.run(["git", "remote", "add", "origin", remote_url.strip()], cwd=repo_dir, capture_output=True, text=True)
+        if res.returncode == 0:
+            return {"success": True, "remote_url": remote_url.strip()}
+        else:
+            return {"success": False, "error": res.stderr.strip()}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def save_uploaded_file(uploaded_file, target_dir=None):
+    """Speichert vom iPad/iPhone hochgeladene Dateien"""
+    od_info = detect_onedrive_paths()
+    if not target_dir or not os.path.exists(target_dir):
+        target_dir = od_info["transfer"]["path"]
+    
+    os.makedirs(target_dir, exist_ok=True)
+    filename = uploaded_file.filename
+    # Sanitize filename
+    filename = os.path.basename(filename)
+    dest_path = os.path.join(target_dir, filename)
+
+    # Avoid overwrite if exists
+    base, ext = os.path.splitext(filename)
+    counter = 1
+    while os.path.exists(dest_path):
+        dest_path = os.path.join(target_dir, f"{base}_{counter}{ext}")
+        counter += 1
+
+    uploaded_file.save(dest_path)
+    stat = os.stat(dest_path)
+    return {
+        "success": True,
+        "name": os.path.basename(dest_path),
+        "path": dest_path,
+        "size": format_size(stat.st_size),
+        "folder": target_dir
+    }
 
 def print_file_in_windows(filepath):
     """Druckt Datei über Windows Standard-Druckbefehl"""

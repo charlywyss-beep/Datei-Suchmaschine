@@ -78,12 +78,18 @@
     </nav>
 
     <!-- Header Right Quick Actions -->
-    <div class="flex items-center space-x-3">
-      <!-- OneDrive Status Indicator -->
-      <div id="onedrive-status-pill" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-medium" title="OneDrive verbunden">
-        <i class="fa-solid fa-cloud"></i>
-        <span>OneDrive aktiv</span>
-      </div>
+    <div class="flex items-center space-x-2.5">
+      <!-- Mobile / iPad / iPhone Sync Button -->
+      <button onclick="openMobileSyncModal()" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium transition flex items-center gap-1.5 shadow-sm" title="Mit iPad / iPhone oder Geschäfts-PC verbinden">
+        <i class="fa-solid fa-mobile-screen-button"></i>
+        <span>iPad &amp; iPhone</span>
+      </button>
+
+      <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
+      <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-medium transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
+        <i class="fa-brands fa-github text-sm"></i>
+        <span id="header-version-tag">v1.2.0</span>
+      </button>
 
       <!-- Print Search Results Button -->
       <button onclick="printSearchResults()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-medium transition flex items-center gap-1.5 shadow-sm" title="Aktuelle Liste ausdrucken">
@@ -221,10 +227,27 @@
 
             <!-- Schnell-Speicherort Buttons -->
             <div class="flex flex-wrap gap-1.5 pt-1" id="location-shortcuts">
-              <button type="button" onclick="setLocation('C:\\Users\\01\\OneDrive', true)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800/80 transition">
+              <!-- OneDrive Privat -->
+              <button type="button" onclick="setLocation(state.onedriveInfo?.personal?.path || 'C:\\Users\\01\\OneDrive', 'personal')" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800/80 transition" title="Privates OneDrive durchsuchen">
                 <i class="fa-solid fa-cloud text-sky-400"></i>
-                <span>OneDrive</span>
+                <span>OneDrive Privat</span>
               </button>
+              <!-- OneDrive Geschäftlich -->
+              <div class="inline-flex rounded-lg border border-purple-800/80 bg-purple-950/60 p-0.5">
+                <button type="button" onclick="setLocation(state.onedriveInfo?.business?.path || 'C:\\Users\\01\\OneDrive - Geschaeft', 'business')" class="flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium text-purple-300 hover:text-white transition" title="Geschäftliches OneDrive durchsuchen">
+                  <i class="fa-solid fa-building text-purple-400"></i>
+                  <span>OneDrive Geschäft</span>
+                </button>
+                <button type="button" onclick="openOneDriveSettingsModal()" class="px-1.5 py-0.5 text-[10px] text-purple-400 hover:text-white hover:bg-purple-900/50 rounded transition" title="Geschäftlichen OneDrive-Pfad anpassen">
+                  <i class="fa-solid fa-gear"></i>
+                </button>
+              </div>
+              <!-- Transfer-Hub Ordner -->
+              <button type="button" onclick="setLocation(state.onedriveInfo?.transfer?.path, false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/80 transition" title="Gemeinsamer Austausch-Ordner für PC Geschäft, PC Zuhause, iPad & iPhone">
+                <i class="fa-solid fa-arrows-rotate text-emerald-400"></i>
+                <span>Transfer-Hub (Sync)</span>
+              </button>
+              <!-- Standard-Ordner -->
               <button type="button" onclick="setLocation('C:\\Users\\01\\Documents', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
                 <i class="fa-solid fa-folder text-amber-400"></i>
                 <span>Dokumente</span>
@@ -233,17 +256,13 @@
                 <i class="fa-solid fa-download text-emerald-400"></i>
                 <span>Downloads</span>
               </button>
-              <button type="button" onclick="setLocation('C:\\Users\\01\\Pictures', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
-                <i class="fa-solid fa-image text-purple-400"></i>
-                <span>Bilder</span>
-              </button>
               <button type="button" onclick="setLocation('C:\\Users\\01\\Desktop', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
                 <i class="fa-solid fa-desktop text-blue-400"></i>
                 <span>Desktop</span>
               </button>
               <button type="button" onclick="setLocation('C:\\', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
                 <i class="fa-solid fa-hard-drive text-slate-400"></i>
-                <span>Ganzes Laufwerk C:\</span>
+                <span>Laufwerk C:\</span>
               </button>
             </div>
           </div>
@@ -802,6 +821,172 @@
           </div>
           <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: GITHUB UPDATE (WIE PORTFOLIO-MGR)   -->
+  <!-- ========================================== -->
+  <div id="modal-git-update" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl border border-indigo-500/30">
+            <i class="fa-brands fa-github"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              GitHub Versions-Aktualisierung
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">v1.2.0</span>
+            </h3>
+            <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
+          </div>
+        </div>
+        <button onclick="closeGitUpdateModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Git Repo Status Info -->
+      <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+        <div class="flex justify-between">
+          <span class="text-slate-400">Branch:</span>
+          <span id="git-branch" class="font-mono text-slate-200 font-semibold">master</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Aktueller Commit:</span>
+          <span id="git-last-commit" class="font-mono text-indigo-300 text-[11px] truncate max-w-xs">-</span>
+        </div>
+        <div class="flex flex-col space-y-1 pt-1 border-t border-slate-800/80">
+          <span class="text-slate-400">GitHub Remote-Repository:</span>
+          <div class="flex gap-2">
+            <input type="text" id="git-remote-input" placeholder="https://github.com/nutzer/repo.git" class="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-200 text-xs font-mono">
+            <button onclick="saveGitRemote()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700">
+              Speichern
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Update Output Console -->
+      <div id="git-log-container" class="hidden">
+        <label class="block text-[11px] font-medium text-slate-400 mb-1">Update-Protokoll:</label>
+        <pre id="git-log-output" class="w-full max-h-36 overflow-auto p-3 bg-slate-950 font-mono text-[11px] text-emerald-400 rounded-xl border border-slate-800 whitespace-pre-wrap leading-tight"></pre>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeGitUpdateModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Schließen
+        </button>
+        <button id="btn-run-git-update" onclick="runGitUpdate()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-2 shadow-lg shadow-indigo-600/30">
+          <i class="fa-solid fa-cloud-arrow-down"></i>
+          <span>Jetzt von GitHub aktualisieren</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: IPAD / IPHONE / DATENAUSTAUSCH      -->
+  <!-- ========================================== -->
+  <div id="modal-mobile-sync" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl border border-emerald-500/30">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">iPad, iPhone &amp; Geschäfts-PC Datenaustausch</h3>
+            <p class="text-xs text-slate-400">Nahtloser Dateiaustausch und drahtloser Zugriff im selben WLAN</p>
+          </div>
+        </div>
+        <button onclick="closeMobileSyncModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- 2-Spalten: QR Code & Erklärung -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center bg-slate-950/70 p-4 rounded-xl border border-slate-800">
+        <!-- Linke Spalte: QR Code -->
+        <div class="flex flex-col items-center text-center space-y-2 p-2">
+          <div class="p-2 bg-white rounded-xl shadow-lg inline-block">
+            <img id="qr-code-img" src="" alt="QR Code" class="w-36 h-36 object-contain">
+          </div>
+          <p class="text-[11px] text-slate-400">Mit Kamera vom <strong>iPad</strong> oder <strong>iPhone</strong> scannen</p>
+        </div>
+
+        <!-- Rechte Spalte: Direkte URL & Info -->
+        <div class="space-y-3 text-xs">
+          <div>
+            <span class="text-slate-400 block mb-1">Direkte Adresse im WLAN:</span>
+            <a id="mobile-network-link" href="#" target="_blank" class="text-indigo-400 font-mono font-bold hover:underline flex items-center gap-1.5 break-all">
+              <span>http://192.168.0.27:5005</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>
+          </div>
+          <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-300 space-y-1">
+            <p><i class="fa-solid fa-cloud text-sky-400 mr-1"></i> <strong>OneDrive Sync:</strong> Auf dem iPad/iPhone die Microsoft OneDrive App nutzen – alle Ordner synchronisieren vollautomatisch!</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Direkt-Upload vom Mobilgerät / Zweit-PC -->
+      <div class="space-y-2">
+        <label class="text-xs font-semibold text-slate-300 block flex items-center gap-1.5">
+          <i class="fa-solid fa-upload text-emerald-400"></i>
+          <span>Datei oder Foto vom iPad / iPhone direkt auf den PC übertragen:</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <input type="file" id="mobile-upload-input" class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer bg-slate-950 border border-slate-800 rounded-xl p-1.5">
+          <button onclick="uploadMobileFile()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shrink-0 flex items-center gap-1.5">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Übertragen</span>
+          </button>
+        </div>
+        <p class="text-[10px] text-slate-500">Dateien landen automatisch im Ordner: <code class="font-mono text-emerald-400">Transfer_Zuhause_Geschaeft_iPad</code></p>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="closeMobileSyncModal()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition">
+          Fertig
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: ONEDRIVE PFAD-EINSTELLUNGEN        -->
+  <!-- ========================================== -->
+  <div id="modal-onedrive-settings" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-building text-purple-400"></i>
+          <span>Geschäftliches OneDrive einbinden</span>
+        </h3>
+        <button onclick="closeOneDriveSettingsModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Pfad zum geschäftlichen OneDrive / SharePoint:</label>
+          <input type="text" id="input-business-onedrive" placeholder="C:\Users\01\OneDrive - FirmenName" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-mono text-xs">
+          <span class="text-[10px] text-slate-500 block mt-1">Hier den lokalen Pfad Ihres Geschäfts-OneDrive (z.B. Microsoft 365 Business) eintragen.</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeOneDriveSettingsModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Abbrechen
+        </button>
+        <button onclick="saveOneDriveSettings()" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition">
+          Pfad speichern
+        </button>
       </div>
     </div>
   </div>
