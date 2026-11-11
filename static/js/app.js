@@ -4,6 +4,7 @@
 
 let state = {
   currentFiles: [],
+  allRawFiles: [],
   selectedFilePaths: new Set(),
   currentCategory: 'all',
   activeTab: 'search',
@@ -83,6 +84,18 @@ async function initSystemInfo() {
 function toGermanDisplayPath(path) {
   if (!path || typeof path !== 'string') return path || '';
   return path.replace(/\\Documents\b/gi, '\\Dokumente').replace(/\/Documents\b/gi, '/Dokumente');
+}
+
+function formatBytes(bytes) {
+  if (!bytes || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0;
+  let val = bytes;
+  while (val >= 1024 && i < units.length - 1) {
+    val /= 1024;
+    i++;
+  }
+  return `${val.toFixed(1)} ${units[i]}`;
 }
 
 // Suchbereich (Scope) umschalten: pc, onedrive, network, folder
@@ -388,6 +401,57 @@ function switchTab(tabName) {
 // ==========================================
 // FILTER & SPEICHERORT-LOGIK
 // ==========================================
+function applyClientCategoryFilter() {
+  if (!state.allRawFiles || state.allRawFiles.length === 0) return;
+
+  const cat = state.currentCategory;
+  if (!cat || cat === 'all') {
+    state.currentFiles = [...state.allRawFiles];
+  } else if (cat === 'pdf') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'pdf' || f.ext === 'PDF');
+  } else if (cat === 'word') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'word' || ['DOCX', 'DOC', 'ODT', 'RTF'].includes(f.ext));
+  } else if (cat === 'excel') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'excel' || ['XLSX', 'XLS', 'CSV', 'ODS', 'XLSM'].includes(f.ext));
+  } else if (cat === 'office') {
+    state.currentFiles = state.allRawFiles.filter(f => ['pdf', 'word', 'excel', 'powerpoint'].includes(f.category) || ['PDF', 'DOCX', 'DOC', 'XLSX', 'XLS', 'CSV', 'PPTX', 'PPT', 'ODT', 'ODS'].includes(f.ext));
+  } else if (cat === 'image') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'image' || ['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes(f.ext));
+  } else if (cat === 'archive') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'archive' || ['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(f.ext));
+  } else if (cat === 'code') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'code' || ['TXT', 'MD', 'PY', 'JS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1'].includes(f.ext));
+  } else {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === cat);
+  }
+
+  // Zähler sofort aktualisieren
+  const statCount = document.getElementById('stat-count');
+  if (statCount) statCount.textContent = state.currentFiles.length;
+
+  const statSize = document.getElementById('stat-size');
+  if (statSize) {
+    const totalBytes = state.currentFiles.reduce((acc, cur) => acc + (cur.size || 0), 0);
+    statSize.textContent = formatBytes(totalBytes);
+  }
+
+  const emptyState = document.getElementById('empty-state');
+  const tableWrapper = document.getElementById('view-table-wrapper');
+  const gridWrapper = document.getElementById('view-grid-wrapper');
+  const resultsToolbar = document.getElementById('results-toolbar');
+
+  if (state.currentFiles.length === 0) {
+    if (emptyState) emptyState.classList.remove('hidden');
+    if (tableWrapper) tableWrapper.classList.add('hidden');
+    if (gridWrapper) gridWrapper.classList.add('hidden');
+  } else {
+    if (emptyState) emptyState.classList.add('hidden');
+    if (resultsToolbar) resultsToolbar.classList.remove('hidden');
+    applySorting();
+    renderResults();
+  }
+}
+
 function setCategoryFilter(category, btnElement) {
   state.currentCategory = category;
 
@@ -398,8 +462,14 @@ function setCategoryFilter(category, btnElement) {
     btnElement.classList.add('active');
   }
 
-  // Sofortige Suche auslösen
-  executeSearch();
+  // Falls bereits Suchergebnisse vorliegen: SOFORT im Speicher filtern (OHNE Neusuche!)
+  if (state.allRawFiles && state.allRawFiles.length > 0) {
+    applyClientCategoryFilter();
+    showToast(`Filter aktiv: ${category.toUpperCase()} (${state.currentFiles.length} von ${state.allRawFiles.length} Treffern)`, 'info');
+  } else {
+    // Noch keine Ergebnisse: Neue Suche ausführen
+    executeSearch();
+  }
 }
 
 function setLocation(path, isOneDrive) {
@@ -486,10 +556,15 @@ async function executeSearch() {
     });
 
     const data = await response.json();
-    state.currentFiles = data.results || [];
+    state.allRawFiles = data.results || [];
+    if (state.currentCategory && state.currentCategory !== 'all') {
+      applyClientCategoryFilter();
+    } else {
+      state.currentFiles = [...state.allRawFiles];
+    }
 
     // Stats aktualisieren
-    document.getElementById('stat-count').textContent = data.count || 0;
+    document.getElementById('stat-count').textContent = state.currentFiles.length;
     document.getElementById('stat-size').textContent = data.total_size_formatted || '0 B';
     document.getElementById('stat-time').textContent = `${data.elapsed_seconds || 0}s`;
 
@@ -563,47 +638,47 @@ function renderResults() {
           </span>
           ${onedriveBadge}
         </td>
+        <td class="py-2.5 px-4 text-slate-300 font-mono text-[11px] truncate max-w-xs" title="${toGermanDisplayPath(file.folder)}">
+          ${toGermanDisplayPath(file.folder)}
+        </td>
         <td class="py-2.5 px-4 text-right text-slate-400 font-mono text-[11px] whitespace-nowrap">
           ${file.size_formatted}
         </td>
         <td class="py-2.5 px-4 text-slate-400 whitespace-nowrap text-[11px]">
           ${file.modified_formatted}
         </td>
-        <td class="py-2.5 px-4 text-slate-400 font-mono text-[11px] truncate max-w-xs" title="${toGermanDisplayPath(file.folder)}">
-          ${toGermanDisplayPath(file.folder)}
-        </td>
         <td class="py-2.5 px-4 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
           <div class="flex items-center justify-end gap-1">
-            <!-- Vorschau -->
-            <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition" title="Schnellvorschau">
+            <!-- Vorschau (Blau / Sky) -->
+            <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="p-1.5 rounded-lg text-sky-400 hover:text-sky-300 hover:bg-sky-500/20 transition" title="Schnellvorschau">
               <i class="fa-solid fa-eye text-xs"></i>
             </button>
-            <!-- Bearbeiten -->
-            <button onclick="editFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition" title="Datei bearbeiten">
+            <!-- Bearbeiten (Amber / Orange) -->
+            <button onclick="editFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 transition" title="Datei bearbeiten">
               <i class="fa-solid fa-file-pen text-xs"></i>
             </button>
-            <!-- Öffnen mit... -->
-            <button onclick="openWith('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition" title="Öffnen mit... (App auswählen)">
+            <!-- Öffnen mit... (Indigo / Lila) -->
+            <button onclick="openWith('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20 transition" title="Öffnen mit... (App auswählen)">
               <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
             </button>
-            <!-- In Explorer zeigen -->
-            <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-slate-400 hover:text-yellow-400 hover:bg-slate-800 transition" title="Im Explorer anzeigen">
+            <!-- In Explorer zeigen (Gelb / Ordner) -->
+            <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 transition" title="Im Windows Explorer anzeigen">
               <i class="fa-solid fa-folder-open text-xs"></i>
             </button>
-            <!-- Drucken -->
-            <button onclick="printSingleFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition" title="Drucken">
+            <!-- Drucken (Grün / Emerald) -->
+            <button onclick="printSingleFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20 transition" title="Drucken">
               <i class="fa-solid fa-print text-xs"></i>
             </button>
-            <!-- Teams / Mail Teilen -->
-            <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-slate-400 hover:text-teams hover:bg-slate-800 transition" title="Per Teams oder E-Mail senden">
+            <!-- Teams / Mail Teilen (Violett / Teams) -->
+            <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-violet-400 hover:text-violet-300 hover:bg-violet-500/20 transition" title="Per Teams oder E-Mail senden">
               <i class="fa-solid fa-paper-plane text-xs"></i>
             </button>
-            <!-- Umbenennen -->
-            <button onclick="openSingleRename('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition" title="Umbenennen">
+            <!-- Umbenennen (Cyan / Türkis) -->
+            <button onclick="openSingleRename('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 transition" title="Umbenennen">
               <i class="fa-solid fa-pen text-xs"></i>
             </button>
-            <!-- In Papierkorb -->
-            <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition" title="In Windows-Papierkorb">
+            <!-- In Papierkorb (Rot / Rose) -->
+            <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition" title="In Windows-Papierkorb löschen">
               <i class="fa-solid fa-trash-can text-xs"></i>
             </button>
           </div>
@@ -634,11 +709,12 @@ function renderResults() {
           <h4 class="text-xs font-bold text-white truncate w-full" title="${file.name}">${file.name}</h4>
           <span class="text-[11px] text-slate-300 font-mono font-medium">${file.size_formatted} &bull; ${file.modified_formatted}</span>
         </div>
-        <div class="pt-2 border-t border-slate-800/80 flex items-center justify-around text-slate-300 text-xs" onclick="event.stopPropagation()">
-          <button onclick="openFolder('${escapeJs(file.path)}')" class="hover:text-amber-400 p-1.5" title="Explorer"><i class="fa-solid fa-folder-open"></i></button>
-          <button onclick="printSingleFile('${escapeJs(file.path)}')" class="hover:text-emerald-400 p-1.5" title="Drucken"><i class="fa-solid fa-print"></i></button>
-          <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="hover:text-teams p-1.5" title="Teilen"><i class="fa-solid fa-paper-plane"></i></button>
-          <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="hover:text-red-400 p-1.5" title="Löschen"><i class="fa-solid fa-trash-can"></i></button>
+        <div class="pt-2 border-t border-slate-800/80 flex items-center justify-around text-xs" onclick="event.stopPropagation()">
+          <button onclick="previewFile('${escapeJs(file.path)}', '${escapeJs(file.name)}', '${file.ext}', '${file.size_formatted}')" class="text-sky-400 hover:text-sky-300 p-1.5" title="Vorschau"><i class="fa-solid fa-eye"></i></button>
+          <button onclick="openFolder('${escapeJs(file.path)}')" class="text-yellow-400 hover:text-yellow-300 p-1.5" title="Im Explorer anzeigen"><i class="fa-solid fa-folder-open"></i></button>
+          <button onclick="printSingleFile('${escapeJs(file.path)}')" class="text-emerald-400 hover:text-emerald-300 p-1.5" title="Drucken"><i class="fa-solid fa-print"></i></button>
+          <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="text-violet-400 hover:text-violet-300 p-1.5" title="Teilen"><i class="fa-solid fa-paper-plane"></i></button>
+          <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="text-rose-400 hover:text-rose-300 p-1.5" title="Löschen"><i class="fa-solid fa-trash-can"></i></button>
         </div>
       `;
       gridWrapper.appendChild(card);

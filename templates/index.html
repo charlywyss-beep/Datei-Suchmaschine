@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.3.6' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.3.7' }}</span>
       </button>
 
       <!-- Print Search Results Button -->
@@ -391,11 +391,14 @@
               <thead>
                 <tr class="border-b border-slate-800 bg-slate-950/60 text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
                   <th class="py-3 px-4 w-10 text-center">
-                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
                   </th>
                   <th class="py-3 px-4 w-12 text-center">Typ</th>
                   <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('name')">
                     Dateiname <i class="fa-solid fa-sort ml-1"></i>
+                  </th>
+                  <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('folder')">
+                    Ordner-Pfad <i class="fa-solid fa-sort ml-1"></i>
                   </th>
                   <th class="py-3 px-4 w-28 text-right cursor-pointer hover:text-slate-200 transition" onclick="sortResults('size')">
                     Größe <i class="fa-solid fa-sort ml-1"></i>
@@ -403,8 +406,7 @@
                   <th class="py-3 px-4 w-36 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('modified')">
                     Geändert am <i class="fa-solid fa-sort ml-1"></i>
                   </th>
-                  <th class="py-3 px-4">Ordner-Pfad</th>
-                  <th class="py-3 px-4 w-52 text-right">Aktionen</th>
+                  <th class="py-3 px-4 w-60 text-right">Aktionen</th>
                 </tr>
               </thead>
               <tbody id="results-tbody" class="divide-y divide-slate-800/60 text-slate-300">
@@ -945,7 +947,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.3.6' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.3.7' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1125,6 +1127,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.3.6' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.3.7' }}"></script>
 </body>
 </html>
