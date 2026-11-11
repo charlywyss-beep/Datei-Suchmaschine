@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.5.0"
+APP_VERSION = "v1.5.1"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -701,27 +701,41 @@ def execute_batch_rename(preview_items):
             results["errors"].append({"path": old_path, "error": res["error"]})
     return results
 
+def _is_isolated_desktop():
+    """Prüft, ob der Server-Prozess in einem isolierten Sandbox-Desktop (z.B. exebox) statt auf dem Hauptmonitor ('Default') läuft."""
+    try:
+        import ctypes
+        u = ctypes.windll.user32
+        k = ctypes.windll.kernel32
+        hdesk = u.GetThreadDesktop(k.GetCurrentThreadId())
+        buf = ctypes.create_unicode_buffer(256)
+        u.GetUserObjectInformationW(hdesk, 2, buf, 512, None)
+        desk_name = (buf.value or "").strip().lower()
+        return bool(desk_name and desk_name != "default")
+    except Exception:
+        return False
+
 def open_file_in_system(filepath):
-    """Öffnet Datei in der Windows-Standardanwendung (z.B. PDF X für PDFs, Word für docx, etc.)"""
-    if not os.path.exists(filepath):
+    """Öffnet Datei direkt in PDF X (über pdflab-service-editor:// Protokoll bzw. PowerShell-Skript) oder der jeweiligen Standard-App."""
+    filepath = resolve_german_alias_path(filepath)
+    if not filepath or not os.path.exists(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
     
     abs_p = os.path.abspath(filepath)
-    ext = os.path.splitext(filepath)[1].lower().strip()
+    ext = os.path.splitext(abs_p)[1].lower().strip()
     if ext == ".pdf":
         app_name = "PDF X"
-    elif ext in [".docx", ".doc"]:
+    elif ext in [".docx", ".doc", ".rtf", ".odt"]:
         app_name = "Microsoft Word"
-    elif ext in [".xlsx", ".xls", ".csv"]:
+    elif ext in [".xlsx", ".xls", ".csv", ".ods"]:
         app_name = "Microsoft Excel"
     elif ext in [".pptx", ".ppt"]:
         app_name = "PowerPoint"
     else:
         app_name = "Standard-App"
 
-    # UWP-Sandbox-Schutz: Store-Apps (wie PDF X) dürfen aus Sicherheitsgründen
-    # nicht auf Dateien in AppData (z.B. Outlook Attachments) zugreifen.
-    # Daher in ein freigegebenes Benutzerverzeichnis spiegeln:
+    # UWP/MSIX-Sandbox-Schutz: Store-Apps (wie PDF X) virtualisieren AppData\Local (inkl. $env:TEMP und Outlook-Attachments)
+    # und finden dort abgelegte Dateien nicht. Daher immer in Documents\Suchmaschine_Temp spiegeln:
     target_open_path = abs_p
     if "\\appdata\\" in abs_p.lower():
         import shutil
@@ -734,35 +748,57 @@ def open_file_in_system(filepath):
         except Exception:
             pass
 
-    # Falls PDF X als hängender Hintergrundprozess ohne Fenster blockiert ist, Zombie-Instanzen aufräumen
+    # Direktes App-Protokoll konstruieren (umgeht den Windows 11 '.pdf -> Nur einmal' Auswahldialog komplett!)
+    import urllib.parse
+    protocol_url = None
     if ext == ".pdf":
+        encoded_path = urllib.parse.quote(target_open_path, safe="")
+        protocol_url = f"pdflab-service-editor://open/?fpath={encoded_path}"
+    elif ext in [".docx", ".doc", ".rtf"]:
+        protocol_url = f"ms-word:ofe|u|{Path(target_open_path).as_uri()}"
+    elif ext in [".xlsx", ".xls", ".csv"]:
+        protocol_url = f"ms-excel:ofe|u|{Path(target_open_path).as_uri()}"
+    elif ext in [".pptx", ".ppt"]:
+        protocol_url = f"ms-powerpoint:ofe|u|{Path(target_open_path).as_uri()}"
+
+    # Wenn der Python-Server aus einer isolierten Terminal-Sandbox (exebox) gestartet wurde,
+    # würden vom Server gestartete Fenster auf dem unsichtbaren Sandbox-Desktop landen.
+    # Daher übergibt der Server die Protokoll-URL direkt an den Browser auf dem echten Desktop:
+    if _is_isolated_desktop() and protocol_url:
+        return {
+            "success": True,
+            "use_browser_protocol": True,
+            "protocol_url": protocol_url,
+            "open_path": target_open_path,
+            "message": f"Wird direkt in {app_name} geöffnet..."
+        }
+
+    # Wenn der Server regulär auf dem Benutzer-Desktop ('Default') läuft:
+    # 1. Für PDFs direkt das PDF-X-Protokoll per PowerShell Start-Process aufrufen (umgeht den 'Nur einmal'-Dialog)
+    if ext == ".pdf" and protocol_url:
         try:
-            cmd = "Get-Process pdfeditor, PDFLauncher -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -eq 0 } | Stop-Process -Force -ErrorAction SilentlyContinue"
-            subprocess.run(["powershell", "-NoProfile", "-Command", cmd], check=False, timeout=3)
+            escaped_uri = protocol_url.replace("'", "''")
+            cmd = f"Start-Process '{escaped_uri}'"
+            res = subprocess.run(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", cmd], capture_output=True, text=True, timeout=5)
+            if res.returncode == 0:
+                return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
         except Exception:
             pass
 
-    # 1. PowerShell Start-Process (nutzt den echten Windows-Desktop-Kontext für UWP & Standard-Apps)
+    # 2. PowerShell Start-Process auf den Dateipfad
     try:
         escaped_p = target_open_path.replace("'", "''")
         cmd = f"Start-Process -FilePath '{escaped_p}'"
         res = subprocess.run(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", cmd], capture_output=True, text=True, timeout=5)
         if res.returncode == 0:
-            return {"success": True, "message": f"In {app_name} geöffnet."}
+            return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
     except Exception:
         pass
 
-    # 2. Explorer Desktop-Shell Aufruf
+    # 3. cmd /c start "" "<Pfad>"
     try:
-        subprocess.Popen(["explorer.exe", target_open_path])
-        return {"success": True, "message": f"In {app_name} geöffnet."}
-    except Exception:
-        pass
-
-    # 3. Direkter Aufruf über os.startfile als Fallback
-    try:
-        os.startfile(target_open_path)
-        return {"success": True, "message": f"In {app_name} geöffnet."}
+        subprocess.Popen(["cmd.exe", "/c", "start", "", target_open_path])
+        return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
     except Exception as e:
         return {"success": False, "error": str(e)}
 

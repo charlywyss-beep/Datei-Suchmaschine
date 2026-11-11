@@ -846,6 +846,15 @@ function applySorting() {
 // ==========================================
 // DATEIAKTIONEN: ÖFFNEN, ÖFFNEN MIT, BEARBEITEN, DRUCKEN, TEAMS, MAIL
 // ==========================================
+function triggerDesktopProtocol(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 1000);
+}
+
 async function openFile(path) {
   try {
     const res = await fetch('/api/open-file', {
@@ -855,6 +864,9 @@ async function openFile(path) {
     });
     const d = await res.json();
     if (d.success) {
+      if (d.use_browser_protocol && d.protocol_url) {
+        triggerDesktopProtocol(d.protocol_url);
+      }
       showToast(d.message || 'Datei wird in App geöffnet...', 'success');
     } else {
       showToast(d.error || 'Fehler beim Öffnen', 'error');
