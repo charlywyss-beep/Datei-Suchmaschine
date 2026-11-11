@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.4.2"
+APP_VERSION = "v1.4.3"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -708,7 +708,16 @@ def open_file_in_system(filepath):
     
     abs_p = os.path.abspath(filepath)
     ext = os.path.splitext(filepath)[1].lower().strip()
-    app_name = "PDF X" if ext == ".pdf" else "Standard-App"
+    if ext == ".pdf":
+        app_name = "PDF X"
+    elif ext in [".docx", ".doc"]:
+        app_name = "Microsoft Word"
+    elif ext in [".xlsx", ".xls", ".csv"]:
+        app_name = "Microsoft Excel"
+    elif ext in [".pptx", ".ppt"]:
+        app_name = "PowerPoint"
+    else:
+        app_name = "Standard-App"
 
     # 1. Start-Process über PowerShell (nutzt saubere Windows-Zuordnung)
     try:

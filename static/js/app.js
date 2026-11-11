@@ -665,7 +665,7 @@ function renderResults() {
         <td class="py-2.5 px-4 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
           <div class="flex items-center justify-end gap-1">
             <!-- Direktes Öffnen (Blau / Play) -->
-            <button onclick="openFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="Direkt öffnen in ${file.ext.toLowerCase() === '.pdf' ? 'PDF X' : 'Standard-App'}">
+            <button onclick="openFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="Direkt in ${getAppLabelForExt(file.ext)} öffnen">
               <i class="fa-solid fa-play text-xs"></i>
             </button>
             <!-- Vorschau (Blau / Sky) -->
@@ -675,10 +675,6 @@ function renderResults() {
             <!-- Bearbeiten (Amber / Orange) -->
             <button onclick="editFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/20 transition" title="Datei bearbeiten">
               <i class="fa-solid fa-file-pen text-xs"></i>
-            </button>
-            <!-- Öffnen mit... (Indigo / Lila) -->
-            <button onclick="openWith('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20 transition" title="Öffnen mit... (App auswählen)">
-              <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
             </button>
             <!-- In Explorer zeigen (Gelb / Ordner) -->
             <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 transition" title="Im Windows Explorer anzeigen">
@@ -741,6 +737,30 @@ function renderResults() {
       gridWrapper.appendChild(card);
     });
   }
+}
+
+// Kategorie anhand der Dateiendung ermitteln
+function getCategoryForExt(ext) {
+  const e = (ext || '').replace(/^\./, '').toUpperCase().trim();
+  if (['PDF'].includes(e)) return 'pdf';
+  if (['DOCX', 'DOC', 'ODT', 'RTF'].includes(e)) return 'word';
+  if (['XLSX', 'XLS', 'CSV', 'ODS', 'XLSM'].includes(e)) return 'excel';
+  if (['PPTX', 'PPT', 'ODP'].includes(e)) return 'word';
+  if (['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes(e)) return 'image';
+  if (['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(e)) return 'archive';
+  if (['TXT', 'MD', 'PY', 'JS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1'].includes(e)) return 'code';
+  return 'other';
+}
+
+// App-Bezeichnung ermitteln je nach Dateiendung
+function getAppLabelForExt(ext) {
+  const e = (ext || '').toLowerCase().trim();
+  if (e === '.pdf') return 'PDF X';
+  if (['.docx', '.doc'].includes(e)) return 'Microsoft Word';
+  if (['.xlsx', '.xls', '.csv'].includes(e)) return 'Microsoft Excel';
+  if (['.pptx', '.ppt'].includes(e)) return 'PowerPoint';
+  if (['.txt', '.log', '.json', '.xml', '.md'].includes(e)) return 'Editor';
+  return 'Standard-App';
 }
 
 // Icon Helfer je nach Kategorie
@@ -1087,21 +1107,25 @@ async function previewFile(path, name, ext, sizeFormatted) {
         </div>
       `;
     } else {
+      const appName = getAppLabelForExt(ext);
+      const cat = getCategoryForExt(ext);
       body.innerHTML = `
-        <div class="text-center space-y-4 p-8">
-          <i class="fa-solid fa-file-lines text-6xl text-slate-600"></i>
-          <div>
-            <h4 class="text-base font-semibold text-slate-200">Office-Dokument oder Binärdatei</h4>
-            <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Diese Datei kann mit Windows-Programmen (z.B. Microsoft Word, Excel, PowerPoint) geöffnet und bearbeitet werden.</p>
+        <div class="text-center space-y-5 p-10 flex flex-col items-center justify-center h-full min-h-[50vh]">
+          <div class="w-20 h-20 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-4xl shadow-xl">
+            ${getCategoryIconHtml(cat, ext, true)}
           </div>
-          <div class="flex items-center justify-center gap-2 pt-2">
-            <button onclick="editFileFromPreview()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-amber-600/25">
-              <i class="fa-solid fa-file-pen"></i>
-              <span>Im Editor / Office bearbeiten</span>
+          <div class="space-y-1 max-w-md">
+            <h4 class="text-lg font-bold text-white">${escapeHtml(name)}</h4>
+            <p class="text-xs text-slate-400">Direkt mit 1 Klick im zugehörigen Programm (<strong>${appName}</strong>) öffnen:</p>
+          </div>
+          <div class="flex items-center justify-center gap-3 pt-2">
+            <button onclick="openFileFromPreview()" class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold flex items-center gap-2.5 shadow-xl shadow-blue-600/30 hover:scale-105 active:scale-95 transition cursor-pointer">
+              <i class="fa-solid fa-play text-sm"></i>
+              <span>▶ In ${appName} öffnen</span>
             </button>
-            <button onclick="openWithFromPreview()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-2">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i>
-              <span>Öffnen mit...</span>
+            <button onclick="openFolder(currentPreviewPath)" class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-2 border border-slate-700 transition cursor-pointer">
+              <i class="fa-solid fa-folder-open text-yellow-400"></i>
+              <span>Im Ordner anzeigen</span>
             </button>
           </div>
         </div>
