@@ -1,0 +1,129 @@
+/* Modern Glassmorphism & Custom Styling */
+
+:root {
+  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%);
+}
+
+body {
+  background-image: var(--bg-gradient);
+  background-attachment: fixed;
+}
+
+/* Glassmorphism Cards */
+.glass-card {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Active Category Pill */
+.cat-pill.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.6);
+  color: #ffffff;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+}
+
+.cat-pill:hover:not(.active) {
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+/* Tab Navigation Buttons */
+.tab-btn {
+  color: #94a3b8;
+}
+
+.tab-btn:hover {
+  color: #e2e8f0;
+}
+
+.tab-btn.active {
+  background: rgba(99, 102, 241, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+/* Row hover highlight */
+.result-row:hover {
+  background-color: rgba(30, 41, 59, 0.6);
+}
+
+.result-row.selected {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Print Stylesheet */
+@media print {
+  header, 
+  #results-toolbar, 
+  .loc-btn, 
+  #category-filter-group, 
+  #advanced-filters, 
+  .no-print,
+  #btn-search,
+  #target-directory,
+  .action-cell,
+  th:last-child,
+  td:last-child,
+  th:first-child,
+  td:first-child {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+  }
+
+  .glass-card {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    color: #000000 !important;
+    font-size: 10pt !important;
+  }
+
+  th, td {
+    border: 1px solid #cccccc !important;
+    padding: 6px !important;
+    color: #000000 !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    font-weight: bold !important;
+  }
+
+  #results-container::before {
+    content: "Suchergebnis-Bericht (Datei-Suchmaschine Pro)";
+    display: block;
+    font-size: 16pt;
+    font-weight: bold;
+    margin-bottom: 12px;
+  }
+}

@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Datei-Suchmaschine Pro | Lokale Suche, Duplikate & Automatisierung</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#312e81',
+            },
+            onedrive: '#0078D4',
+            teams: '#5059C9',
+            outlook: '#0072C6',
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Font Awesome & Lucide Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-['Inter'] antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Top App Navigation / Header -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/80 border-b border-slate-800/80 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+        <i class="fa-solid fa-magnifying-glass-chart text-white text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+          Datei-Suchmaschine <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">PRO</span>
+        </h1>
+        <p class="text-xs text-slate-400">Lokale PC-Suche &bull; OneDrive &bull; Duplikat-Beseitigung &bull; Teams &amp; Mail</p>
+      </div>
+    </div>
+
+    <!-- Center Navigation Tabs -->
+    <nav class="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60 shadow-inner">
+      <button id="tab-search" onclick="switchTab('search')" class="tab-btn active px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+        <i class="fa-solid fa-search"></i>
+        <span>Dateisuche</span>
+      </button>
+      <button id="tab-duplicates" onclick="switchTab('duplicates')" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+        <i class="fa-solid fa-clone"></i>
+        <span>Doppel-Eliminierung</span>
+        <span id="badge-duplicates-count" class="hidden text-xs bg-amber-500/30 text-amber-300 px-1.5 py-0.2 rounded-full font-bold">0</span>
+      </button>
+      <button id="tab-rename" onclick="switchTab('rename')" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+        <i class="fa-solid fa-pen-to-square"></i>
+        <span>Massen-Umbenennung</span>
+        <span id="badge-rename-count" class="hidden text-xs bg-indigo-500/30 text-indigo-300 px-1.5 py-0.2 rounded-full font-bold">0</span>
+      </button>
+    </nav>
+
+    <!-- Header Right Quick Actions -->
+    <div class="flex items-center space-x-3">
+      <!-- OneDrive Status Indicator -->
+      <div id="onedrive-status-pill" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 text-xs font-medium" title="OneDrive verbunden">
+        <i class="fa-solid fa-cloud"></i>
+        <span>OneDrive aktiv</span>
+      </div>
+
+      <!-- Print Search Results Button -->
+      <button onclick="printSearchResults()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 font-medium transition flex items-center gap-1.5 shadow-sm" title="Aktuelle Liste ausdrucken">
+        <i class="fa-solid fa-print"></i>
+        <span>Drucken</span>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center transition" title="Design wechseln">
+        <i id="theme-icon" class="fa-solid fa-moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 flex flex-col p-6 max-w-[1700px] w-full mx-auto space-y-6">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: DATEISUCHE & FILTER MASKE          -->
+    <!-- ========================================== -->
+    <section id="view-search" class="space-y-6">
+      
+      <!-- Such-Konsole / Maske Card -->
+      <div class="glass-card rounded-2xl p-6 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-5">
+        
+        <!-- Haupt-Suchleiste mit Action Button -->
+        <div class="flex flex-col md:flex-row gap-3">
+          <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-magnifying-glass text-lg"></i>
+            </div>
+            <input 
+              type="text" 
+              id="search-query" 
+              placeholder="Teilnamen oder Suchbegriff eingeben (z.B. Rechnung, Notiz, 2026, Protokoll)..." 
+              class="w-full pl-12 pr-10 py-3.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base transition shadow-inner font-medium"
+              onkeydown="if(event.key === 'Enter') executeSearch()"
+            >
+            <button 
+              onclick="document.getElementById('search-query').value = ''; document.getElementById('search-query').focus();" 
+              class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition" 
+              title="Suchfeld leeren"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <!-- Suchen Button -->
+          <button 
+            id="btn-search" 
+            onclick="executeSearch()" 
+            class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold flex items-center justify-center gap-2.5 shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/40 transition active:scale-95"
+          >
+            <i class="fa-solid fa-bolt"></i>
+            <span>Dateien Suchen</span>
+          </button>
+        </div>
+
+        <!-- Schnell-Kategorien (PDF, Word, Excel, JPG, ...) -->
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5 block">
+            <i class="fa-solid fa-filter mr-1 text-indigo-400"></i> Dateityp-Schnellfilter:
+          </label>
+          <div class="flex flex-wrap gap-2" id="category-filter-group">
+            <button type="button" onclick="setCategoryFilter('all', this)" class="cat-pill active flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition">
+              <i class="fa-solid fa-layer-group"></i>
+              <span>Alle Typen</span>
+            </button>
+            <button type="button" onclick="setCategoryFilter('pdf', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-red-400 hover:bg-red-500/10 border-slate-700/80">
+              <i class="fa-solid fa-file-pdf text-red-500 text-sm"></i>
+              <span class="font-semibold">PDF-Dokumente</span>
+              <span class="text-[10px] text-slate-500">.pdf</span>
+            </button>
+            <button type="button" onclick="setCategoryFilter('word', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-blue-400 hover:bg-blue-500/10 border-slate-700/80">
+              <i class="fa-solid fa-file-word text-blue-500 text-sm"></i>
+              <span class="font-semibold">Word</span>
+              <span class="text-[10px] text-slate-500">.docx, .doc</span>
+            </button>
+            <button type="button" onclick="setCategoryFilter('excel', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-emerald-400 hover:bg-emerald-500/10 border-slate-700/80">
+              <i class="fa-solid fa-file-excel text-emerald-500 text-sm"></i>
+              <span class="font-semibold">Excel</span>
+              <span class="text-[10px] text-slate-500">.xlsx, .csv</span>
+            </button>
+            <button type="button" onclick="setCategoryFilter('office', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-amber-400 hover:bg-amber-500/10 border-slate-700/80">
+              <i class="fa-solid fa-briefcase text-amber-500 text-sm"></i>
+              <span class="font-semibold">Alle Office</span>
+              <span class="text-[10px] text-slate-500">PDF, Word, Excel, PPT</span>
+            </button>
+            <button type="button" onclick="setCategoryFilter('image', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-purple-400 hover:bg-purple-500/10 border-slate-700/80">
+              <i class="fa-solid fa-file-image text-purple-500 text-sm"></i>
+              <span class="font-semibold">Bilder & Fotos</span>
+              <span class="text-[10px] text-slate-500">.jpg, .png, .webp...</span>
+            </button>
+            <button type="button" onclick="setCategoryFilter('archive', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-yellow-400 hover:bg-yellow-500/10 border-slate-700/80">
+              <i class="fa-solid fa-file-zipper text-yellow-500 text-sm"></i>
+              <span class="font-semibold">Archive</span>
+              <span class="text-[10px] text-slate-500">.zip, .rar, .7z</span>
+            </button>
+            <button type="button" onclick="setCategoryFilter('code', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-cyan-400 hover:bg-cyan-500/10 border-slate-700/80">
+              <i class="fa-solid fa-file-code text-cyan-500 text-sm"></i>
+              <span class="font-semibold">Text &amp; Skripte</span>
+              <span class="text-[10px] text-slate-500">.txt, .md, .py...</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Speicherort-Auswahl (OneDrive & Standardordner) -->
+        <div class="pt-3 border-t border-slate-800 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+          <div class="flex-1 w-full space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+                <i class="fa-solid fa-folder-tree mr-1 text-indigo-400"></i> Suchverzeichnis:
+              </label>
+              <!-- OneDrive Toggle Switch -->
+              <label class="inline-flex items-center cursor-pointer select-none">
+                <input type="checkbox" id="toggle-only-onedrive" class="sr-only peer" onchange="onOneDriveToggleChange()">
+                <div class="relative w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-600"></div>
+                <span class="ms-2 text-xs font-medium text-slate-300 flex items-center gap-1">
+                  <i class="fa-solid fa-cloud text-sky-400"></i> Nur OneDrive durchsuchen
+                </span>
+              </label>
+            </div>
+
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <input 
+                  type="text" 
+                  id="target-directory" 
+                  value="C:\Users\01\OneDrive" 
+                  placeholder="Pfad eingeben (z.B. C:\Users\01\OneDrive oder C:\)..."
+                  class="w-full px-3.5 py-2 bg-slate-950/80 border border-slate-700/80 rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+              </div>
+            </div>
+
+            <!-- Schnell-Speicherort Buttons -->
+            <div class="flex flex-wrap gap-1.5 pt-1" id="location-shortcuts">
+              <button type="button" onclick="setLocation('C:\\Users\\01\\OneDrive', true)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800/80 transition">
+                <i class="fa-solid fa-cloud text-sky-400"></i>
+                <span>OneDrive</span>
+              </button>
+              <button type="button" onclick="setLocation('C:\\Users\\01\\Documents', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                <i class="fa-solid fa-folder text-amber-400"></i>
+                <span>Dokumente</span>
+              </button>
+              <button type="button" onclick="setLocation('C:\\Users\\01\\Downloads', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                <i class="fa-solid fa-download text-emerald-400"></i>
+                <span>Downloads</span>
+              </button>
+              <button type="button" onclick="setLocation('C:\\Users\\01\\Pictures', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                <i class="fa-solid fa-image text-purple-400"></i>
+                <span>Bilder</span>
+              </button>
+              <button type="button" onclick="setLocation('C:\\Users\\01\\Desktop', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                <i class="fa-solid fa-desktop text-blue-400"></i>
+                <span>Desktop</span>
+              </button>
+              <button type="button" onclick="setLocation('C:\\', false)" class="loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                <i class="fa-solid fa-hard-drive text-slate-400"></i>
+                <span>Ganzes Laufwerk C:\</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Toggle Erweiterte Filter -->
+          <div class="self-end">
+            <button type="button" onclick="toggleAdvancedFilters()" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 transition">
+              <i class="fa-solid fa-sliders"></i>
+              <span>Erweiterte Filter</span>
+              <i id="adv-chevron" class="fa-solid fa-chevron-down text-[10px] transition-transform"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Ausklappbare Erweiterte Filter (Größe, Datum, Eigene Endungen) -->
+        <div id="advanced-filters" class="hidden pt-4 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <!-- Eigene Dateiendungen -->
+          <div class="space-y-1.5">
+            <label class="text-slate-400 font-medium">Benutzerdefinierte Endungen (Kommagetrennt):</label>
+            <input type="text" id="custom-extensions" placeholder="z.B. .pdf, .docx, .png" class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
+          </div>
+          
+          <!-- Dateigröße (Min/Max MB) -->
+          <div class="space-y-1.5">
+            <label class="text-slate-400 font-medium">Dateigröße (in MB):</label>
+            <div class="flex items-center gap-2">
+              <input type="number" id="min-size-mb" placeholder="Min MB" class="w-1/2 px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
+              <span class="text-slate-500">-</span>
+              <input type="number" id="max-size-mb" placeholder="Max MB" class="w-1/2 px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
+            </div>
+          </div>
+
+          <!-- Änderungsdatum -->
+          <div class="space-y-1.5">
+            <label class="text-slate-400 font-medium">Geändert nach Datum:</label>
+            <input type="date" id="modified-after" class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
+          </div>
+        </div>
+      </div>
+
+      <!-- Ergebnis-Toolbar & Massen-Aktionen -->
+      <div id="results-toolbar" class="hidden flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-md px-5 py-3.5 rounded-2xl border border-slate-800 shadow-md">
+        <!-- Result Stats -->
+        <div class="flex items-center space-x-3 text-xs text-slate-300">
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+            <i class="fa-solid fa-list-check mr-1.5"></i>
+            <span id="stat-count">0</span> Treffer
+          </span>
+          <span class="text-slate-400">&bull;</span>
+          <span id="stat-size" class="font-medium text-slate-200">0 MB</span>
+          <span class="text-slate-400">&bull;</span>
+          <span id="stat-time" class="text-slate-400">0.00s</span>
+          <span class="text-slate-400">&bull;</span>
+          <span id="selected-counter" class="text-indigo-400 font-semibold">0 ausgewählt</span>
+        </div>
+
+        <!-- Massen-Aktionen Buttons -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Massen-Aktion: Umbenennen -->
+          <button onclick="openBatchRenameWithSelected()" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-to-square"></i>
+            <span>Massen-Umbenennung</span>
+          </button>
+          
+          <!-- Massen-Aktion: Duplikate analysieren -->
+          <button onclick="analyzeDuplicatesFromSearch()" class="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-clone"></i>
+            <span>Doppel-Eliminierung</span>
+          </button>
+
+          <!-- Ansichts-Umschaltung: Liste / Kacheln -->
+          <div class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+            <button onclick="setViewMode('table')" id="btn-view-table" class="px-2.5 py-1 rounded-md text-xs transition bg-slate-700 text-white" title="Tabellenansicht">
+              <i class="fa-solid fa-table-list"></i>
+            </button>
+            <button onclick="setViewMode('grid')" id="btn-view-grid" class="px-2.5 py-1 rounded-md text-xs transition text-slate-400 hover:text-white" title="Kachelansicht">
+              <i class="fa-solid fa-grip"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ladeanzeige (Spinner) -->
+      <div id="search-spinner" class="hidden py-16 flex flex-col items-center justify-center space-y-3">
+        <div class="w-12 h-12 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
+        <p class="text-sm font-medium text-slate-300">Durchsuche Verzeichnis blitzschnell...</p>
+        <p class="text-xs text-slate-500" id="search-spinner-path"></p>
+      </div>
+
+      <!-- Ergebnis-Tabelle / Grid Container -->
+      <div id="results-container" class="space-y-4">
+        <!-- Tabelle (Default) -->
+        <div id="view-table-wrapper" class="glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl bg-slate-900/50">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 bg-slate-950/60 text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
+                  <th class="py-3 px-4 w-10 text-center">
+                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                  </th>
+                  <th class="py-3 px-4 w-12 text-center">Typ</th>
+                  <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('name')">
+                    Dateiname <i class="fa-solid fa-sort ml-1"></i>
+                  </th>
+                  <th class="py-3 px-4 w-28 text-right cursor-pointer hover:text-slate-200 transition" onclick="sortResults('size')">
+                    Größe <i class="fa-solid fa-sort ml-1"></i>
+                  </th>
+                  <th class="py-3 px-4 w-36 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('modified')">
+                    Geändert am <i class="fa-solid fa-sort ml-1"></i>
+                  </th>
+                  <th class="py-3 px-4">Ordner-Pfad</th>
+                  <th class="py-3 px-4 w-52 text-right">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="results-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+                <!-- Dynamische Zeilen via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Kachel-Ansicht (Grid) -->
+        <div id="view-grid-wrapper" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <!-- Dynamische Kacheln via JS -->
+        </div>
+
+        <!-- Keine Ergebnisse / Start-State -->
+        <div id="empty-state" class="py-16 text-center space-y-3">
+          <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-800/60 flex items-center justify-center text-slate-500 text-2xl border border-slate-700/50">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </div>
+          <h3 class="text-base font-semibold text-slate-300">Bereit für die Suche</h3>
+          <p class="text-xs text-slate-500 max-w-md mx-auto">
+            Wähle einen Dateityp (PDF, Word, Excel, Bilder) oder gib einen Teilnamen ein und klicke auf "Dateien Suchen".
+          </p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: DOPPEL-ELIMINIERUNG (DUPLIKATE)     -->
+    <!-- ========================================== -->
+    <section id="view-duplicates" class="hidden space-y-6">
+      <!-- Info Header -->
+      <div class="glass-card rounded-2xl p-6 border border-slate-800/80 bg-slate-900/60 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+              <i class="fa-solid fa-clone"></i>
+            </div>
+            <h2 class="text-lg font-bold text-white">Doppel-Eliminierung &amp; Speicherbereinigung</h2>
+          </div>
+          <p class="text-xs text-slate-400">
+            Erkennt exakte Datei-Kopien anhand des SHA-256 Hashinhalts (100% sicher). Duplikate werden in den Windows-Papierkorb verschoben.
+          </p>
+        </div>
+
+        <!-- Action / Analyse Buttons -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="startDuplicateScanFromCurrentPath()" class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-amber-600/25 transition">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Pfad nach Duplikaten scannen</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Duplikat-Statistik-Leiste & Auswahl-Helfer -->
+      <div id="dup-stats-bar" class="hidden glass-card rounded-2xl p-4 border border-amber-500/20 bg-amber-950/10 shadow-lg space-y-3">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-3">
+            <span class="text-amber-300 font-semibold text-sm">
+              <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+              <span id="dup-stat-groups">0</span> Duplikat-Gruppen gefunden
+            </span>
+            <span class="text-slate-500">&bull;</span>
+            <span class="text-slate-300"><span id="dup-stat-total-files">0</span> Dateien betroffen</span>
+            <span class="text-slate-500">&bull;</span>
+            <span class="text-emerald-400 font-bold"><span id="dup-stat-wasted">0 MB</span> Speicher freigebbar</span>
+          </div>
+
+          <!-- Sicheres Löschen Button -->
+          <button id="btn-delete-duplicates" onclick="deleteSelectedDuplicates()" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition flex items-center gap-2 shadow-md shadow-red-600/30 disabled:opacity-50">
+            <i class="fa-solid fa-trash-can"></i>
+            <span>Ausgewählte Duplikate in Papierkorb werfen</span>
+          </button>
+        </div>
+
+        <!-- Schnell-Auswahlhilfen -->
+        <div class="pt-2 border-t border-amber-500/20 flex flex-wrap items-center gap-2 text-xs">
+          <span class="text-slate-400 font-medium">Auto-Auswahl:</span>
+          <button onclick="autoSelectDuplicates('keep_oldest')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+            Älteste behalten (Neuere löschen)
+          </button>
+          <button onclick="autoSelectDuplicates('keep_newest')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+            Neueste behalten (Ältere löschen)
+          </button>
+          <button onclick="autoSelectDuplicates('keep_onedrive')" class="px-2.5 py-1 rounded-lg bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800 transition">
+            <i class="fa-solid fa-cloud text-sky-400 mr-1"></i> OneDrive-Kopien bevorzugen
+          </button>
+          <button onclick="autoSelectDuplicates('select_copy_names')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+            Namen mit "(1)" / "Kopie" markieren
+          </button>
+          <button onclick="autoSelectDuplicates('none')" class="px-2 py-1 rounded-lg text-slate-400 hover:text-white transition">
+            Alle abwählen
+          </button>
+        </div>
+      </div>
+
+      <!-- Duplikat-Ladeanzeige -->
+      <div id="dup-spinner" class="hidden py-16 flex flex-col items-center justify-center space-y-3">
+        <div class="w-12 h-12 rounded-full border-4 border-amber-500/30 border-t-amber-500 animate-spin"></div>
+        <p class="text-sm font-medium text-slate-300">Analysiere Datei-Inhalte auf exakte Duplikate...</p>
+        <p class="text-xs text-slate-500">Berechne SHA-256 Hashes...</p>
+      </div>
+
+      <!-- Duplikat-Gruppen Liste -->
+      <div id="dup-groups-container" class="space-y-4">
+        <!-- Dynamische Gruppen via JS -->
+      </div>
+
+      <!-- Duplikat Empty State -->
+      <div id="dup-empty-state" class="py-16 text-center space-y-3">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-slate-800/60 flex items-center justify-center text-slate-500 text-2xl border border-slate-700/50">
+          <i class="fa-solid fa-shield-check"></i>
+        </div>
+        <h3 class="text-base font-semibold text-slate-300">Keine Duplikate zur Anzeige</h3>
+        <p class="text-xs text-slate-500 max-w-md mx-auto">
+          Führe eine Suche aus und klicke auf "Doppel-Eliminierung", oder starte einen Scan über den aktuellen Pfad.
+        </p>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: MASSEN-UMBENENNUNG (BATCH RENAME)  -->
+    <!-- ========================================== -->
+    <section id="view-rename" class="hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+              <i class="fa-solid fa-pen-to-square text-lg"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-white">Massen- &amp; Datei-Umbenennung Studio</h2>
+              <p class="text-xs text-slate-400">Dateinamen nach flexiblen Regeln strukturiert anpassen mit Live-Vorschau vor dem Speichern.</p>
+            </div>
+          </div>
+          <div class="text-xs text-slate-400">
+            <span id="rename-selected-count" class="font-bold text-indigo-400">0</span> Dateien im Studio geladen
+          </div>
+        </div>
+
+        <!-- Umbenennungs-Regel-Typen (Tabs) -->
+        <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-3" id="rename-rules-tabs">
+          <button type="button" onclick="setRenameRule('replace', this)" class="rule-btn active px-4 py-2 rounded-xl text-xs font-semibold transition border border-indigo-500/30 bg-indigo-500/20 text-indigo-300">
+            <i class="fa-solid fa-arrow-right-arrow-left mr-1.5"></i> Suchen &amp; Ersetzen
+          </button>
+          <button type="button" onclick="setRenameRule('prefix_suffix', this)" class="rule-btn px-4 py-2 rounded-xl text-xs font-semibold transition border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700">
+            <i class="fa-solid fa-plus-minus mr-1.5"></i> Vorne / Hinten anfügen
+          </button>
+          <button type="button" onclick="setRenameRule('numbering', this)" class="rule-btn px-4 py-2 rounded-xl text-xs font-semibold transition border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700">
+            <i class="fa-solid fa-arrow-down-1-9 mr-1.5"></i> Durchnummerieren
+          </button>
+          <button type="button" onclick="setRenameRule('date', this)" class="rule-btn px-4 py-2 rounded-xl text-xs font-semibold transition border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700">
+            <i class="fa-solid fa-calendar mr-1.5"></i> Datumsstempel
+          </button>
+          <button type="button" onclick="setRenameRule('case', this)" class="rule-btn px-4 py-2 rounded-xl text-xs font-semibold transition border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700">
+            <i class="fa-solid fa-font mr-1.5"></i> Groß- / Kleinschreibung
+          </button>
+        </div>
+
+        <!-- Regel-Parameter Eingabefelder -->
+        <div id="rule-form-container" class="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+          <!-- Dynamisches Regel-Formular je nach Rule-Tab -->
+          <div id="rule-form-replace" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Diesen Text suchen:</label>
+              <input type="text" id="rename-search" placeholder="z.B. _kopie oder Rechnung" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+            </div>
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Ersetzen durch:</label>
+              <input type="text" id="rename-replace" placeholder="z.B. _final oder Invoice" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+            </div>
+            <div class="flex items-center pt-5">
+              <label class="inline-flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="rename-case-sensitive" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" onchange="updateRenamePreview()">
+                <span class="text-slate-300">Groß-/Kleinschreibung beachten</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="rule-form-prefix-suffix" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Präfix (vorne anfügen):</label>
+              <input type="text" id="rename-prefix" placeholder="z.B. 2026_ oder PROJEKT_" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+            </div>
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Suffix (hinten anfügen, vor Dateiendung):</label>
+              <input type="text" id="rename-suffix" placeholder="z.B. _geprüft oder _v2" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+            </div>
+          </div>
+
+          <div id="rule-form-numbering" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Muster:</label>
+              <input type="text" id="rename-num-pattern" value="{name}_{index}" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+              <span class="text-[10px] text-slate-500">Platzhalter: {name}, {index}</span>
+            </div>
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Start-Nummer:</label>
+              <input type="number" id="rename-num-start" value="1" min="0" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+            </div>
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Stellen (z.B. 2 für 01, 3 für 001):</label>
+              <input type="number" id="rename-num-digits" value="2" min="1" max="5" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+            </div>
+          </div>
+
+          <div id="rule-form-date" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Position:</label>
+              <select id="rename-date-pos" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" onchange="updateRenamePreview()">
+                <option value="prefix">Vorne (z.B. 2026-11-11_Dokument.pdf)</option>
+                <option value="suffix">Hinten (z.B. Dokument_2026-11-11.pdf)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Datumsformat:</label>
+              <select id="rename-date-fmt" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" onchange="updateRenamePreview()">
+                <option value="%Y-%m-%d">JJJJ-MM-TT (z.B. 2026-11-11)</option>
+                <option value="%Y%m%d">JJJJMMTT (z.B. 20261111)</option>
+                <option value="%d.%m.%Y">TT.MM.JJJJ (z.B. 11.11.2026)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="rule-form-case" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Modus:</label>
+              <select id="rename-case-mode" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" onchange="updateRenamePreview()">
+                <option value="lower">alles kleinbuchstaben (test.pdf)</option>
+                <option value="upper">ALLES GROSSBUCHSTABEN (TEST.PDF)</option>
+                <option value="title">Erster Buchstabe Groß (Test.Pdf)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live-Vorschau Tabelle -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-xs">
+            <h4 class="font-semibold text-slate-300 flex items-center gap-2">
+              <i class="fa-solid fa-eye text-indigo-400"></i>
+              <span>Live Vorher-Nachher Vorschau</span>
+            </h4>
+            <span id="rename-change-count" class="text-slate-400">0 Änderungen erkannt</span>
+          </div>
+
+          <div class="max-h-[380px] overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/70">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="sticky top-0 bg-slate-900 text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-800">
+                <tr>
+                  <th class="py-2.5 px-4 w-1/2">Ursprünglicher Dateiname</th>
+                  <th class="py-2.5 px-4 w-1/2">Neuer Dateiname</th>
+                  <th class="py-2.5 px-4 w-24 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody id="rename-preview-tbody" class="divide-y divide-slate-800/60 font-mono text-xs">
+                <!-- Dynamische Vorschauzeilen via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ausführen Button -->
+        <div class="flex justify-end gap-3 pt-2">
+          <button onclick="switchTab('search')" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+            Abbrechen
+          </button>
+          <button id="btn-execute-rename" onclick="executeBatchRename()" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-2 shadow-lg shadow-indigo-600/30">
+            <i class="fa-solid fa-check"></i>
+            <span>Jetzt Umbenennung anwenden</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: DATEI-VORSCHAU                     -->
+  <!-- ========================================== -->
+  <div id="modal-preview" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <i id="preview-modal-icon" class="fa-solid fa-file text-indigo-400 text-xl"></i>
+          <div>
+            <h3 id="preview-modal-title" class="text-sm font-bold text-white truncate max-w-md">Dateiname</h3>
+            <p id="preview-modal-meta" class="text-xs text-slate-400 font-mono">0 KB &bull; Pfad</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- Öffnen mit... -->
+          <button onclick="openWithFromPreview()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="Mit anderer Anwendung öffnen">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Öffnen mit...</span>
+          </button>
+          <!-- Bearbeiten -->
+          <button onclick="editFileFromPreview()" class="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/30 text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Im Standard-Programm bearbeiten">
+            <i class="fa-solid fa-pen-nib"></i>
+            <span>Bearbeiten</span>
+          </button>
+          <!-- Standard Öffnen -->
+          <button onclick="openFileFromPreview()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5" title="In Standard-App öffnen">
+            <i class="fa-solid fa-play text-[10px]"></i>
+            <span>Öffnen</span>
+          </button>
+          <button onclick="closePreviewModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Preview Content) -->
+      <div id="preview-modal-body" class="flex-1 overflow-auto p-6 flex items-center justify-center min-h-[350px] bg-slate-950/60">
+        <!-- Dynamischer Inhalt (Bild, Textbox, PDF Viewer) -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: EINZEL-UMBENENNUNG                 -->
+  <!-- ========================================== -->
+  <div id="modal-single-rename" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-pen text-indigo-400"></i>
+          <span>Datei umbenennen</span>
+        </h3>
+        <button onclick="closeSingleRenameModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-xs text-slate-400 font-medium">Neuer Dateiname (inklusive Endung):</label>
+        <input type="text" id="single-rename-input" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <input type="hidden" id="single-rename-oldpath">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeSingleRenameModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Abbrechen
+        </button>
+        <button onclick="submitSingleRename()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition">
+          Umbenennen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: TEAMS & E-MAIL VERSAND-DIALOG     -->
+  <!-- ========================================== -->
+  <div id="modal-share" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-teams/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+            <i class="fa-solid fa-paper-plane"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Datei teilen &amp; versenden</h3>
+            <p id="share-modal-filename" class="text-xs text-slate-400 font-mono truncate max-w-xs">dateiname.pdf</p>
+          </div>
+        </div>
+        <button onclick="closeShareModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="share-modal-path">
+
+      <!-- Optionen -->
+      <div class="space-y-3">
+        <!-- Öffnen mit... Option -->
+        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-indigo-500/50 transition cursor-pointer flex items-center justify-between group" onclick="actionOpenWithFromModal()">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-white group-hover:text-indigo-400 transition">Öffnen mit... (App auswählen)</h4>
+              <p class="text-xs text-slate-400">Windows-Auswahldialog starten (z.B. Word, Excel, Editor, Photoshop...)</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
+        </div>
+
+        <!-- Bearbeiten Option -->
+        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-amber-500/50 transition cursor-pointer flex items-center justify-between group" onclick="actionEditFromModal()">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-file-pen"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-white group-hover:text-amber-400 transition">Datei bearbeiten</h4>
+              <p class="text-xs text-slate-400">Öffnet die Datei im zugewiesenen Editor / Office-Programm</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
+        </div>
+
+        <!-- Teams Option -->
+        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-teams/50 transition cursor-pointer flex items-center justify-between group" onclick="actionCopyTeamsFromModal()">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-[#5059C9]/20 text-[#7B83EB] flex items-center justify-center text-lg">
+              <i class="fa-brands fa-microsoft"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-white group-hover:text-teams transition">Für Microsoft Teams kopieren</h4>
+              <p class="text-xs text-slate-400">Kopiert die Datei in die Zwischenablage &bull; Einfach <kbd class="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">Strg+V</kbd> in Teams drücken!</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
+        </div>
+
+        <!-- E-Mail Option -->
+        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-sky-500/50 transition cursor-pointer flex items-center justify-between group" onclick="actionSendEmailFromModal()">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-envelope"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-white group-hover:text-sky-400 transition">Per E-Mail versenden</h4>
+              <p class="text-xs text-slate-400">Öffnet Outlook / Mail-App mit angehängter Datei</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
+        </div>
+
+        <!-- Direkt Drucken Option -->
+        <div class="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-emerald-500/50 transition cursor-pointer flex items-center justify-between group" onclick="actionPrintFromModal()">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-print"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-white group-hover:text-emerald-400 transition">Auf Windows-Standarddrucker drucken</h4>
+              <p class="text-xs text-slate-400">Sendet die Datei direkt an Ihren installierten Drucker</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-slate-600 group-hover:text-white transition text-xs"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
