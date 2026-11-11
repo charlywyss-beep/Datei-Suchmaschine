@@ -160,7 +160,7 @@ def to_german_display_path(path_str):
     return re.sub(r'[\\/]Documents\b', lambda m: m.group(0)[0] + 'Dokumente', path_str, flags=re.IGNORECASE)
 
 def get_saved_paths():
-    """Gibt gespeicherte Suchpfade zurück (inkl. D:\01\Dokumente Standard-Favorit)"""
+    r"""Gibt gespeicherte Suchpfade zurück (inkl. D:\01\Dokumente Standard-Favorit)"""
     cfg = load_config()
     paths = cfg.get("saved_paths", [])
     if not paths and os.path.exists("D:\\01\\Documents"):
