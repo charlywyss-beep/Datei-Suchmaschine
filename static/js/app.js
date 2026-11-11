@@ -1145,23 +1145,7 @@ function openInBrowserViewer() {
 function openInPdfXAutomated(path) {
   const targetPath = path || currentPreviewPath;
   if (!targetPath) return;
-
-  // 1. Speichern / Download triggern (nutzt den schnellen Browser-Pfad)
-  const a = document.createElement('a');
-  a.href = `/api/download?path=${encodeURIComponent(targetPath)}`;
-  a.download = targetPath.split(/[/\\]/).pop();
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-
-  // 2. Parallel System-Start via ShellExecuteW
-  fetch('/api/open-file', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: targetPath })
-  }).catch(() => {});
-
-  showToast('In PDF-X wird bereitgestellt...', 'success');
+  openFile(targetPath);
 }
 
 function openFileFromPreview() {

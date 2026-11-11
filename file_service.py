@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.4.8"
+APP_VERSION = "v1.4.9"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -719,6 +719,21 @@ def open_file_in_system(filepath):
     else:
         app_name = "Standard-App"
 
+    # UWP-Sandbox-Schutz: Store-Apps (wie PDF X) dürfen aus Sicherheitsgründen
+    # nicht auf Dateien in AppData (z.B. Outlook Attachments) zugreifen.
+    # Daher in ein freigegebenes Benutzerverzeichnis spiegeln:
+    target_open_path = abs_p
+    if "\\appdata\\" in abs_p.lower():
+        import shutil
+        safe_dir = os.path.join(os.path.expanduser("~"), "Documents", "Suchmaschine_Temp")
+        os.makedirs(safe_dir, exist_ok=True)
+        safe_path = os.path.join(safe_dir, os.path.basename(abs_p))
+        try:
+            shutil.copy2(abs_p, safe_path)
+            target_open_path = safe_path
+        except Exception:
+            pass
+
     # Falls PDF X als hängender Hintergrundprozess blockiert ist, Zombie-Instanzen aufräumen
     if ext == ".pdf":
         try:
@@ -730,7 +745,7 @@ def open_file_in_system(filepath):
     # 1. Native Windows ShellExecuteW (direkt über Shell-Subsystem)
     try:
         import ctypes
-        res = ctypes.windll.shell32.ShellExecuteW(None, "open", abs_p, None, None, 1)
+        res = ctypes.windll.shell32.ShellExecuteW(None, "open", target_open_path, None, None, 1)
         if res > 32:
             return {"success": True, "message": f"In {app_name} geöffnet."}
     except Exception:
@@ -738,14 +753,14 @@ def open_file_in_system(filepath):
 
     # 2. Explorer Desktop-Shell Aufruf
     try:
-        subprocess.Popen(["explorer.exe", abs_p])
+        subprocess.Popen(["explorer.exe", target_open_path])
         return {"success": True, "message": f"In {app_name} geöffnet."}
     except Exception:
         pass
 
     # 3. Direkter Aufruf über os.startfile
     try:
-        os.startfile(abs_p)
+        os.startfile(target_open_path)
         return {"success": True, "message": f"In {app_name} geöffnet."}
     except Exception as e:
         return {"success": False, "error": str(e)}
