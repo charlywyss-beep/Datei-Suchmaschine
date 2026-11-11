@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.4.5"
+APP_VERSION = "v1.4.6"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -718,6 +718,14 @@ def open_file_in_system(filepath):
         app_name = "PowerPoint"
     else:
         app_name = "Standard-App"
+
+    # Falls PDF X als hängender Hintergrundprozess blockiert ist, Zombie-Instanzen aufräumen
+    if ext == ".pdf":
+        try:
+            cmd = "if ((Get-Process pdfeditor -ErrorAction SilentlyContinue).Count -gt 2) { Stop-Process -Name pdfeditor -Force -ErrorAction SilentlyContinue }"
+            subprocess.run(["powershell", "-NoProfile", "-Command", cmd], check=False, timeout=2)
+        except Exception:
+            pass
 
     # 1. Native Windows ShellExecuteW (direkt über Shell-Subsystem)
     try:
