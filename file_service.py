@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.3.2"
+APP_VERSION = "v1.3.3"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -122,8 +122,41 @@ def format_size(size_bytes):
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} PB"
 
-def get_saved_paths():
-    """Liest benutzerdefinierte gespeicherte Suchpfade"""
+def resolve_german_alias_path(path_str):
+    """Löst deutsche Pfadnamen wie Dokumente automatisch in den echten Windows-Pfad Documents auf"""
+    if not path_str or not isinstance(path_str, str):
+        return path_str
+    
+    clean_p = path_str.strip()
+    if os.path.exists(clean_p):
+        return clean_p
+
+    # Mapping von deutschen Anzeigenamen auf reale Windows-Dateinamen
+    replacements = [
+        ("\\Dokumente", "\\Documents"),
+        ("/Dokumente", "/Documents"),
+        ("\\dokumente", "\\Documents"),
+        ("/dokumente", "/Documents"),
+        ("\\Bilder", "\\Pictures"),
+        ("/Bilder", "/Pictures"),
+        ("\\bilder", "\\Pictures"),
+        ("/bilder", "/Pictures"),
+        ("\\Benutzer", "\\Users"),
+        ("/Benutzer", "/Users")
+    ]
+    cand = clean_p
+    for de, en in replacements:
+        cand = cand.replace(de, en)
+        if os.path.exists(cand):
+            return cand
+
+    return clean_p
+
+def to_german_display_path(path_str):
+    """Macht Windows-Pfade für die Anzeige im UI 100% deutsch (z.B. Documents -> Dokumente)"""
+    if not path_str or not isinstance(path_str, str):
+        return path_str
+    return path_str.replace("\\Documents", "\\Dokumente").replace("/Documents", "/Dokumente")
     cfg = load_config()
     paths = cfg.get("saved_paths", [])
     if not paths and os.path.exists("D:\\01\\Documents"):
@@ -328,7 +361,8 @@ def fast_search(
         net_list = get_network_paths()
         start_dirs = [n["path"] for n in net_list if os.path.exists(n["path"])]
     else:
-        abs_p = os.path.abspath(root_dir)
+        real_root = resolve_german_alias_path(root_dir)
+        abs_p = os.path.abspath(real_root)
         if os.path.exists(abs_p):
             start_dirs = [abs_p]
 
@@ -436,7 +470,7 @@ def fast_search(
                         results.append({
                             "name": filename,
                             "path": entry.path,
-                            "folder": os.path.dirname(entry.path),
+                            "folder": to_german_display_path(os.path.dirname(entry.path)),
                             "ext": ext.replace(".", "").upper(),
                             "category": cat,
                             "size": size,

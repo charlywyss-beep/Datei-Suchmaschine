@@ -100,7 +100,7 @@ function setSearchScope(scope) {
   } else if (scope === 'folder') {
     if (btnFold) btnFold.className = 'scope-btn active p-3 rounded-xl border border-amber-500/50 bg-amber-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-amber-500/20';
     if (dirInput && (dirInput.value.includes('Dieser PC') || dirInput.value.includes('OneDrive') || dirInput.value.includes('Netzwerk') || ['THIS_PC', 'ONEDRIVE_ALL', 'NETWORK'].includes(dirInput.value))) {
-      dirInput.value = 'C:\\Users\\01\\Documents';
+      dirInput.value = 'C:\\Users\\01\\Dokumente';
     }
   }
 }
@@ -368,8 +368,12 @@ function setCategoryFilter(category, btnElement) {
 
 function setLocation(path, isOneDrive) {
   const dirInput = document.getElementById('target-directory');
+  let displayPath = path;
+  if (path && typeof path === 'string') {
+    displayPath = path.replace(/\\Documents\b/gi, '\\Dokumente').replace(/\/Documents\b/gi, '/Dokumente');
+  }
   if (dirInput) {
-    dirInput.value = path;
+    dirInput.value = displayPath;
   }
   
   if (isOneDrive === 'personal' || isOneDrive === 'business') {
@@ -382,7 +386,7 @@ function setLocation(path, isOneDrive) {
     setSearchScope('folder');
   }
 
-  showToast(`Verzeichnis gewählt: ${path}`, 'info');
+  showToast(`Verzeichnis gewählt: ${displayPath}`, 'info');
   executeSearch();
 }
 
