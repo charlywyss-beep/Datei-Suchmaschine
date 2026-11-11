@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.3.0"
+APP_VERSION = "v1.3.1"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -312,17 +312,19 @@ def fast_search(
 
     # Mehrere Start-Ordner unterstützen (z.B. Ganzer PC: C:\ und D:\ gleichzeitig)
     start_dirs = []
+    root_str_lower = str(root_dir).strip().lower()
+
     if isinstance(root_dir, list):
         start_dirs = [os.path.abspath(d) for d in root_dir if os.path.exists(d)]
-    elif root_dir in ("THIS_PC", "pc", "all_drives"):
+    elif root_str_lower in ("this_pc", "pc", "all_drives") or "dieser pc" in root_str_lower or "alle laufwerke" in root_str_lower:
         start_dirs = [d for d in get_all_local_drives() if os.path.exists(d)]
-    elif root_dir in ("ONEDRIVE_ALL", "onedrive"):
+    elif root_str_lower in ("onedrive_all", "onedrive") or "onedrive" in root_str_lower and ("privat" in root_str_lower or "geschäft" in root_str_lower):
         od_info = detect_onedrive_paths()
         if od_info["personal"]["exists"]:
             start_dirs.append(od_info["personal"]["path"])
         if od_info["business"]["exists"]:
             start_dirs.append(od_info["business"]["path"])
-    elif root_dir in ("NETWORK", "network"):
+    elif root_str_lower in ("network", "netzwerk") or "netzwerk" in root_str_lower:
         net_list = get_network_paths()
         start_dirs = [n["path"] for n in net_list if os.path.exists(n["path"])]
     else:

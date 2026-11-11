@@ -87,19 +87,19 @@ function setSearchScope(scope) {
 
   if (scope === 'pc') {
     if (btnPc) btnPc.className = 'scope-btn active p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-indigo-500/20';
-    if (dirInput) dirInput.value = 'THIS_PC';
+    if (dirInput) dirInput.value = 'Dieser PC (Alle lokalen Laufwerke: C:\\, D:\\)';
     showToast('💻 Suchbereich: Ganzer PC (Alle Laufwerke C:, D: ...)', 'info');
   } else if (scope === 'onedrive') {
     if (btnOd) btnOd.className = 'scope-btn active p-3 rounded-xl border border-sky-500/50 bg-sky-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-sky-500/20';
-    if (dirInput) dirInput.value = 'ONEDRIVE_ALL';
+    if (dirInput) dirInput.value = 'OneDrive (Privat & Geschäft)';
     showToast('☁️ Suchbereich: Nur OneDrive (Privat & Geschäft)', 'info');
   } else if (scope === 'network') {
     if (btnNet) btnNet.className = 'scope-btn active p-3 rounded-xl border border-emerald-500/50 bg-emerald-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-emerald-500/20';
-    if (dirInput) dirInput.value = 'NETWORK';
+    if (dirInput) dirInput.value = 'Netzwerk (Alle Netzlaufwerke & Freigaben)';
     showToast('🌐 Suchbereich: Nur Netzwerk (Freigaben & Netzlaufwerke)', 'info');
   } else if (scope === 'folder') {
     if (btnFold) btnFold.className = 'scope-btn active p-3 rounded-xl border border-amber-500/50 bg-amber-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-amber-500/20';
-    if (dirInput && ['THIS_PC', 'ONEDRIVE_ALL', 'NETWORK'].includes(dirInput.value)) {
+    if (dirInput && (dirInput.value.includes('Dieser PC') || dirInput.value.includes('OneDrive') || dirInput.value.includes('Netzwerk') || ['THIS_PC', 'ONEDRIVE_ALL', 'NETWORK'].includes(dirInput.value))) {
       dirInput.value = 'C:\\Users\\01\\Documents';
     }
   }
