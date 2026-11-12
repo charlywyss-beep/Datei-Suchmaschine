@@ -133,6 +133,19 @@ def save_onedrive_paths():
         cfg["onedrive_personal"] = data["personal"]
     if "business" in data:
         cfg["onedrive_business"] = data["business"]
+    if "icloud" in data:
+        cfg["icloud_drive"] = data["icloud"]
+    if "gdrive" in data or "google_drive" in data:
+        cfg["google_drive"] = data.get("gdrive") or data.get("google_drive")
+    file_service.save_config(cfg)
+    return jsonify({"success": True, "onedrive_info": file_service.detect_onedrive_paths()})
+
+@app.route("/api/save-gdrive-path", methods=["POST"])
+def save_gdrive_path_route():
+    data = request.get_json() or {}
+    path = (data.get("path") or "").strip()
+    cfg = file_service.load_config()
+    cfg["google_drive"] = path
     file_service.save_config(cfg)
     return jsonify({"success": True, "onedrive_info": file_service.detect_onedrive_paths()})
 

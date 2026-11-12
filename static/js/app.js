@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof closeAddNetworkModal === 'function') closeAddNetworkModal();
       if (typeof closeOneDriveSettingsModal === 'function') closeOneDriveSettingsModal();
       if (typeof closeSettingsModal === 'function') closeSettingsModal();
+      if (typeof closeGdriveSettingsModal === 'function') closeGdriveSettingsModal();
       if (typeof closeShareModal === 'function') closeShareModal();
       if (typeof closeGitModal === 'function') closeGitModal();
       if (typeof closeMobileModal === 'function') closeMobileModal();
@@ -190,7 +191,41 @@ function renderLocationShortcuts() {
   bizWrapper.querySelector('button').onclick = () => setLocation(odBiz?.path || 'C:\\Users\\01\\OneDrive - Geschaeft', 'business');
   container.appendChild(bizWrapper);
 
-  // 3. Transfer-Hub (Sync)
+  // 3. iCloud Drive
+  const icloud = state.onedriveInfo?.icloud || state.systemLocations?.find(l => l.id === 'icloud_drive');
+  if (icloud && icloud.exists) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-sky-950/60 hover:bg-sky-900/60 text-sky-300 border border-sky-800/80 transition';
+    btn.title = 'iCloud Drive durchsuchen (Apple)';
+    btn.innerHTML = `<i class="fa-brands fa-apple text-sky-300 text-sm"></i><span>iCloud Drive</span>`;
+    btn.onclick = () => setLocation(icloud.path, 'icloud');
+    container.appendChild(btn);
+  }
+
+  // 4. Google Drive
+  const gdrive = state.onedriveInfo?.gdrive || state.systemLocations?.find(l => l.id === 'gdrive');
+  const gdriveWrapper = document.createElement('div');
+  gdriveWrapper.className = 'inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-950/50 p-0.5 shadow-sm group';
+  gdriveWrapper.innerHTML = `
+    <button type="button" class="flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold text-emerald-300 hover:text-white transition" title="${gdrive?.exists ? 'Google Drive durchsuchen: ' + gdrive.path : 'Google Drive Pfad einrichten'}">
+      <i class="fa-brands fa-google-drive text-emerald-400"></i>
+      <span>Google Drive</span>
+    </button>
+    <button type="button" onclick="openGdriveSettingsModal()" class="px-1.5 py-0.5 text-[11px] text-emerald-400 hover:text-white hover:bg-emerald-900/50 rounded transition" title="Google Drive Pfad anpassen">
+      <i class="fa-solid fa-gear"></i>
+    </button>
+  `;
+  gdriveWrapper.querySelector('button').onclick = () => {
+    if (gdrive?.exists) {
+      setLocation(gdrive.path, 'gdrive');
+    } else {
+      openGdriveSettingsModal();
+    }
+  };
+  container.appendChild(gdriveWrapper);
+
+  // 5. Transfer-Hub (Sync)
   const transfer = state.onedriveInfo?.transfer;
   if (transfer) {
     const btn = document.createElement('button');
@@ -202,9 +237,9 @@ function renderLocationShortcuts() {
     container.appendChild(btn);
   }
 
-  // 4. Standard Systemordner
+  // 5. Standard Systemordner
   state.systemLocations.forEach(loc => {
-    if (loc.id.startsWith('onedrive') || loc.id === 'transfer_hub') return;
+    if (loc.id.startsWith('onedrive') || loc.id === 'transfer_hub' || loc.id === 'icloud_drive' || loc.id === 'gdrive') return;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
@@ -528,6 +563,8 @@ function setLocation(path, isOneDrive) {
   
   if (isOneDrive === 'personal' || isOneDrive === 'business') {
     setSearchScope('onedrive');
+  } else if (isOneDrive === 'icloud') {
+    setSearchScope('folder');
   } else if (path === 'THIS_PC') {
     setSearchScope('pc');
   } else if (path === 'NETWORK') {
@@ -910,7 +947,11 @@ function renderResults() {
       
       const fileIcon = getCategoryIconHtml(file.category, file.ext);
       let onedriveBadge = '';
-      if (file.onedrive_type === 'personal') {
+      if (file.is_gdrive || file.cloud_type === 'gdrive' || (file.path && (file.path.toLowerCase().includes('google drive') || file.path.toLowerCase().includes('meine ablage')))) {
+        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30 ml-2 font-semibold" title="In Google Drive gesichert"><i class="fa-brands fa-google-drive mr-1"></i>Google Drive</span>`;
+      } else if (file.is_icloud || file.cloud_type === 'icloud' || (file.path && file.path.toLowerCase().includes('\\iclouddrive'))) {
+        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-500/30 ml-2 font-semibold" title="In iCloud Drive gesichert"><i class="fa-brands fa-apple mr-1"></i>iCloud</span>`;
+      } else if (file.onedrive_type === 'personal') {
         onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-2" title="In OneDrive Privat gesichert"><i class="fa-solid fa-cloud mr-1"></i>Privat</span>`;
       } else if (file.onedrive_type === 'business') {
         onedriveBadge = `<span class="inline-flex items-center text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 ml-2" title="In OneDrive Geschäft gesichert"><i class="fa-solid fa-building mr-1"></i>Geschäft</span>`;
@@ -987,7 +1028,7 @@ function renderResults() {
       card.innerHTML = `
         <div class="flex items-start justify-between">
           <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" onclick="event.stopPropagation()">
-          ${file.is_onedrive ? '<span class="text-[11px] text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 font-medium"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>' : ''}
+          ${(file.is_icloud || file.cloud_type === 'icloud' || (file.path && file.path.toLowerCase().includes('\\iclouddrive'))) ? '<span class="text-[11px] text-sky-300 bg-sky-500/15 px-2 py-0.5 rounded border border-sky-500/30 font-semibold"><i class="fa-brands fa-apple mr-1"></i>iCloud</span>' : (file.is_onedrive ? '<span class="text-[11px] text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 font-medium"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>' : '')}
         </div>
         <div class="flex flex-col items-center text-center py-2 space-y-2" onclick="openFile('${escapeJs(file.path)}')">
           ${fileIcon}
@@ -2275,4 +2316,45 @@ function showConfirmDialog({
 
     modal.classList.remove('hidden');
   });
+}
+
+
+function openGdriveSettingsModal() {
+  const gdrive = state.onedriveInfo?.gdrive;
+  const input = document.getElementById('input-gdrive-path');
+  if (input && gdrive) {
+    input.value = gdrive.path || 'G:\\Meine Ablage';
+  }
+  const modal = document.getElementById('modal-gdrive-settings');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeGdriveSettingsModal() {
+  const modal = document.getElementById('modal-gdrive-settings');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function saveGdriveSettings() {
+  const input = document.getElementById('input-gdrive-path');
+  const path = input ? input.value.trim() : '';
+  if (!path) {
+    showToast('Bitte einen Pfad eingeben', 'warning');
+    return;
+  }
+  try {
+    const res = await fetch('/api/save-gdrive-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.onedriveInfo = d.onedrive_info;
+      renderLocationShortcuts();
+      showToast('Google Drive Pfad erfolgreich gespeichert!', 'success');
+      closeGdriveSettingsModal();
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
 }

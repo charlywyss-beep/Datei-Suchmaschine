@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.6.4' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.7.0' }}</span>
       </button>
 
       <!-- Theme Switcher (Dunkel / Hell) -->
@@ -957,7 +957,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.6.4' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.0' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1139,6 +1139,40 @@
     <!-- ========================================== -->
   <!-- MODAL: APP-EINSTELLUNGEN (ZAHNRAD)         -->
   <!-- ========================================== -->
+    <!-- ========================================== -->
+  <!-- MODAL: GOOGLE DRIVE PFAD-EINSTELLUNGEN     -->
+  <!-- ========================================== -->
+  <div id="modal-gdrive-settings" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-brands fa-google-drive text-emerald-400 text-lg"></i>
+          <span>Google Drive Pfad einbinden</span>
+        </h3>
+        <button onclick="closeGdriveSettingsModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Pfad zu Ihrem lokalen Google Drive Ordner / Laufwerk:</label>
+          <input type="text" id="input-gdrive-path" placeholder="G:\Meine Ablage (oder C:\Users\01\Google Drive)" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 font-mono text-xs">
+          <span class="text-[10px] text-slate-400 block mt-1">Geben Sie hier das Google Drive Desktop-Laufwerk (z.B. G:\ oder G:\Meine Ablage) oder Ihren lokalen Ordner an.</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeGdriveSettingsModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Abbrechen
+        </button>
+        <button onclick="saveGdriveSettings()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition">
+          Pfad speichern
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-settings" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -1168,13 +1202,23 @@
           </div>
         </div>
 
-        <!-- 2. OneDrive Pfade -->
+        <!-- 2. Cloud Speicherorte (OneDrive & iCloud) -->
         <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
-          <span class="font-semibold text-slate-200 block">OneDrive Speicherorte:</span>
+          <span class="font-semibold text-slate-200 block">Cloud Speicherorte:</span>
           <div class="space-y-2">
             <div class="flex items-center justify-between text-slate-400">
               <span>OneDrive Privat:</span>
               <span class="font-mono text-slate-300">C:\Users\01\OneDrive</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="flex items-center gap-1.5"><i class="fa-brands fa-apple text-sky-400"></i> iCloud Drive:</span>
+              <span class="font-mono text-slate-300">C:\Users\01\iCloudDrive</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-400">
+              <span class="flex items-center gap-1.5"><i class="fa-brands fa-google-drive text-emerald-400"></i> Google Drive:</span>
+              <button onclick="closeSettingsModal(); openGdriveSettingsModal();" class="text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1 font-semibold">
+                <i class="fa-solid fa-pen text-[10px]"></i> Konfigurieren / Anpassen
+              </button>
             </div>
             <div class="flex items-center justify-between text-slate-400">
               <span>OneDrive Geschäftlich:</span>
@@ -1201,7 +1245,7 @@
         <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
           <div>
             <span class="font-semibold text-slate-200 block">Datei-Suchmaschine Pro</span>
-            <span class="text-[11px] text-slate-400">Version v1.6.4 • GitHub Auto-Update</span>
+            <span class="text-[11px] text-slate-400">Version v1.7.0 • GitHub Auto-Update</span>
           </div>
           <button onclick="closeSettingsModal(); openGitUpdateModal();" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shadow-sm">
             Updates prüfen
@@ -1245,6 +1289,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.6.4' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.7.0' }}"></script>
 </body>
 </html>

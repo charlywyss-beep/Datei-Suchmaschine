@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.6.4"
+APP_VERSION = "v1.7.0"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -68,6 +68,27 @@ def detect_onedrive_paths():
         except Exception:
             pass
 
+    # 4. iCloud Drive (Apple)
+    icloud_path = cfg.get("icloud_drive") or os.path.join(user_home, "iCloudDrive")
+    icloud_exists = os.path.exists(icloud_path)
+
+    # 5. Google Drive
+    gdrive_path = cfg.get("google_drive")
+    if not gdrive_path:
+        for cand in [
+            "G:\\Meine Ablage",
+            "G:\\My Drive",
+            "G:\\",
+            os.path.join(user_home, "Google Drive"),
+            os.path.join(user_home, "GoogleDrive"),
+        ]:
+            if os.path.exists(cand):
+                gdrive_path = cand
+                break
+    if not gdrive_path:
+        gdrive_path = "G:\\Meine Ablage"
+    gdrive_exists = os.path.exists(gdrive_path)
+
     return {
         "personal": {
             "name": "OneDrive Privat",
@@ -83,6 +104,16 @@ def detect_onedrive_paths():
             "name": "Transfer-Hub (Zuhause ⇄ Geschäft)",
             "path": transfer_path,
             "exists": os.path.exists(transfer_path)
+        },
+        "icloud": {
+            "name": "iCloud Drive",
+            "path": icloud_path,
+            "exists": icloud_exists
+        },
+        "gdrive": {
+            "name": "Google Drive",
+            "path": gdrive_path,
+            "exists": gdrive_exists
         }
     }
 
@@ -358,6 +389,8 @@ def get_system_locations():
         {"id": "onedrive_personal", "name": "OneDrive Privat", "path": od_info["personal"]["path"], "icon": "cloud", "badge": "Privat", "exists": od_info["personal"]["exists"]},
         {"id": "onedrive_business", "name": "OneDrive Geschäftlich", "path": od_info["business"]["path"], "icon": "building", "badge": "Business", "exists": od_info["business"]["exists"]},
         {"id": "transfer_hub", "name": "Transfer-Hub (Sync)", "path": od_info["transfer"]["path"], "icon": "arrows-rotate", "badge": "iPad/iPhone", "exists": od_info["transfer"]["exists"]},
+        {"id": "icloud_drive", "name": "iCloud Drive", "path": od_info["icloud"]["path"], "icon": "cloud", "badge": "iCloud", "exists": od_info["icloud"]["exists"]},
+        {"id": "gdrive", "name": "Google Drive", "path": od_info["gdrive"]["path"], "icon": "google-drive", "badge": "Google", "exists": od_info["gdrive"]["exists"]},
         {"id": "documents", "name": "Dokumente (C:)", "path": os.path.join(user_home, "Documents") + "\\", "icon": "folder", "exists": (os.path.exists(os.path.join(user_home, "Documents")) or os.path.exists(os.path.join(user_home, "Dokumente")))},
     ]
 
@@ -431,12 +464,23 @@ def fast_search(
         start_dirs = [os.path.abspath(d) for d in root_dir if os.path.exists(d)]
     elif root_str_lower in ("this_pc", "pc", "all_drives") or "dieser pc" in root_str_lower or "alle laufwerke" in root_str_lower:
         start_dirs = [d for d in get_all_local_drives() if os.path.exists(d)]
-    elif root_str_lower in ("onedrive_all", "onedrive") or "onedrive" in root_str_lower and ("privat" in root_str_lower or "geschäft" in root_str_lower):
+    elif root_str_lower in ("onedrive_all", "onedrive", "cloud", "all_cloud", "iclouddrive", "icloud") or any(k in root_str_lower for k in ("onedrive", "icloud", "cloud")):
         od_info = detect_onedrive_paths()
-        if od_info["personal"]["exists"]:
-            start_dirs.append(od_info["personal"]["path"])
-        if od_info["business"]["exists"]:
-            start_dirs.append(od_info["business"]["path"])
+        if "icloud" in root_str_lower and "onedrive" not in root_str_lower:
+            if od_info.get("icloud", {}).get("exists"):
+                start_dirs.append(od_info["icloud"]["path"])
+        elif "onedrive" in root_str_lower and "icloud" not in root_str_lower:
+            if od_info["personal"]["exists"]:
+                start_dirs.append(od_info["personal"]["path"])
+            if od_info["business"]["exists"]:
+                start_dirs.append(od_info["business"]["path"])
+        else:
+            if od_info["personal"]["exists"]:
+                start_dirs.append(od_info["personal"]["path"])
+            if od_info["business"]["exists"]:
+                start_dirs.append(od_info["business"]["path"])
+            if od_info.get("icloud", {}).get("exists"):
+                start_dirs.append(od_info["icloud"]["path"])
     elif root_str_lower in ("network", "netzwerk") or "netzwerk" in root_str_lower:
         net_list = get_network_paths()
         start_dirs = [n["path"] for n in net_list if os.path.exists(n["path"])]
@@ -460,6 +504,8 @@ def fast_search(
     od_info = detect_onedrive_paths()
     p_personal = os.path.normcase(os.path.abspath(od_info["personal"]["path"])) if od_info["personal"]["exists"] else None
     p_business = os.path.normcase(os.path.abspath(od_info["business"]["path"])) if od_info["business"]["exists"] else None
+    p_icloud = os.path.normcase(os.path.abspath(od_info["icloud"]["path"])) if od_info.get("icloud", {}).get("exists") else None
+    p_gdrive = os.path.normcase(os.path.abspath(od_info["gdrive"]["path"])) if od_info.get("gdrive", {}).get("exists") else None
 
     # Skip heavy system / program / cache directories unless user explicitly searches inside them
     skip_dirs = {"$recycle.bin", "system volume information", "windows", "appdata", "node_modules", ".git", "__pycache__"}
@@ -534,11 +580,16 @@ def fast_search(
                                 continue
 
                             norm_entry = os.path.normcase(os.path.abspath(entry.path))
-                            is_onedrive_type = None
-                            if p_personal and norm_entry.startswith(p_personal):
-                                is_onedrive_type = "personal"
+                            cloud_type = None
+                            if p_gdrive and norm_entry.startswith(p_gdrive):
+                                cloud_type = "gdrive"
+                            elif p_icloud and norm_entry.startswith(p_icloud):
+                                cloud_type = "icloud"
+                            elif p_personal and norm_entry.startswith(p_personal):
+                                cloud_type = "personal"
                             elif p_business and norm_entry.startswith(p_business):
-                                is_onedrive_type = "business"
+                                cloud_type = "business"
+                            is_onedrive_type = cloud_type if cloud_type in ("personal", "business") else None
 
                             if only_onedrive:
                                 if only_onedrive == "business" and is_onedrive_type != "business":
@@ -561,7 +612,10 @@ def fast_search(
                                 "modified": mtime_dt.isoformat(),
                                 "modified_formatted": mtime_dt.strftime("%d.%m.%y %H:%M"),
                                 "is_onedrive": bool(is_onedrive_type),
-                                "onedrive_type": is_onedrive_type
+                                "onedrive_type": is_onedrive_type,
+                                "cloud_type": cloud_type,
+                                "is_icloud": cloud_type == "icloud",
+                                "is_gdrive": cloud_type == "gdrive"
                             })
                             count += 1
                     else:
@@ -603,13 +657,18 @@ def fast_search(
                         if modified_before_ts is not None and mtime > modified_before_ts:
                             continue
 
-                        # OneDrive check (Personal vs Business)
+                        # Cloud-Check (OneDrive vs iCloud)
                         norm_entry = os.path.normcase(os.path.abspath(entry.path))
-                        is_onedrive_type = None
-                        if p_personal and norm_entry.startswith(p_personal):
-                            is_onedrive_type = "personal"
+                        cloud_type = None
+                        if p_gdrive and norm_entry.startswith(p_gdrive):
+                            cloud_type = "gdrive"
+                        elif p_icloud and norm_entry.startswith(p_icloud):
+                            cloud_type = "icloud"
+                        elif p_personal and norm_entry.startswith(p_personal):
+                            cloud_type = "personal"
                         elif p_business and norm_entry.startswith(p_business):
-                            is_onedrive_type = "business"
+                            cloud_type = "business"
+                        is_onedrive_type = cloud_type if cloud_type in ("personal", "business") else None
 
                         if only_onedrive:
                             if only_onedrive == "business" and is_onedrive_type != "business":
@@ -633,7 +692,10 @@ def fast_search(
                             "modified": mtime_dt.isoformat(),
                             "modified_formatted": mtime_dt.strftime("%d.%m.%y %H:%M"),
                             "is_onedrive": bool(is_onedrive_type),
-                            "onedrive_type": is_onedrive_type
+                            "onedrive_type": is_onedrive_type,
+                            "cloud_type": cloud_type,
+                            "is_icloud": cloud_type == "icloud",
+                            "is_gdrive": cloud_type == "gdrive"
                         })
                         count += 1
         except (PermissionError, OSError):
