@@ -13,7 +13,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.7"
+APP_VERSION = "v1.7.8"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -1513,13 +1513,38 @@ def send_via_mapi_threaded(filepath, subject="", body="", recipient=""):
     t.start()
     return True
 
+def _cleanup_stale_thunderbird_locks():
+    """Löscht verwaiste parent.lock und .startup-incomplete Dateien, falls kein Thunderbird-Prozess läuft"""
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", "Get-Process thunderbird -ErrorAction SilentlyContinue"],
+            capture_output=True, text=True, timeout=3
+        )
+        if "thunderbird" not in out.stdout.lower():
+            import glob
+            appdata = os.environ.get("APPDATA", "")
+            localappdata = os.environ.get("LOCALAPPDATA", "")
+            for lock_f in glob.glob(os.path.join(appdata, "Thunderbird", "Profiles", "*", "parent.lock")):
+                try:
+                    os.remove(lock_f)
+                except Exception:
+                    pass
+            for inc_f in glob.glob(os.path.join(localappdata, "Thunderbird", "Profiles", "*", ".startup-incomplete")):
+                try:
+                    os.remove(inc_f)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
 def send_file_via_email(filepath, recipient="", client=None):
     """
     Erstellt E-Mail Entwurf mit Anhang für das gewählte E-Mail-Programm:
-    - thunderbird: Mozilla Thunderbird via Windows MAPI / -compose (echter Dateianhang)
-    - gmail: Google Mail Web-Compose im Browser + Explorer-Ordner zum Drag & Drop
-    - outlook: Microsoft Outlook COM Automation mit echtem Anhang
-    - default: Windows Standard mailto: + Datei in Zwischenablage
+    - icloud: Apple iCloud Mail (https://www.icloud.com/mail/) im Browser + Strg+V
+    - gmail: Google Mail Web-Compose im Browser + Strg+V
+    - thunderbird: Mozilla Thunderbird + Strg+V Backup
+    - outlook: Microsoft Outlook + Strg+V
+    - default: Windows Standard mailto: + Strg+V
     """
     if not os.path.exists(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
@@ -1532,70 +1557,52 @@ def send_file_via_email(filepath, recipient="", client=None):
     filename = os.path.basename(filepath)
     clean_filename = filename.replace("'", "")
 
-    # 1. MOZILLA THUNDERBIRD
-    if client == "thunderbird":
+    # Grundsätzlich: Datei IMMER in die Windows-Zwischenablage legen!
+    # Damit funktioniert Strg+V in JEDEM Mail-Programm und jedem Browser zuverlässig!
+    copy_file_for_teams(filepath)
+
+    # 1. APPLE ICLOUD MAIL
+    if client == "icloud":
         try:
-            # 1. In Zwischenablage kopieren (Backup)
-            copy_file_for_teams(filepath)
-            
-            # 2. Primär: Windows Simple MAPI verwenden (sicherste Methode ohne Profil-Konflikte)
-            send_via_mapi_threaded(
-                abs_p_win,
-                subject=f"Datei: {filename}",
-                body=f"Hallo,\n\nim Anhang erhalten Sie die Datei: {filename}\n\nPfad: {abs_p_win}\n\nViele Grüße",
-                recipient=recipient
-            )
+            import webbrowser
+            # Windows Explorer mit markierter Datei im Hintergrund öffnen für Drag & Drop
+            try:
+                subprocess.Popen(['explorer.exe', f'/select,{abs_p_win}'])
+            except Exception:
+                pass
+                
+            icloud_url = "https://www.icloud.com/mail/"
+            try:
+                webbrowser.open(icloud_url)
+            except Exception:
+                pass
+                
             return {
                 "success": True,
-                "method": "thunderbird",
-                "message": f"Mozilla Thunderbird mit angehängter Datei '{filename}' geöffnet!"
+                "method": "icloud",
+                "web_url": icloud_url,
+                "message": f"iCloud Mail im Browser geöffnet & '{filename}' in Zwischenablage kopiert! Im Mail-Fenster einfach [Strg + V] drücken."
             }
-        except Exception as e_mapi:
-            logger.warning(f"MAPI failed, trying direct thunderbird CLI: {e_mapi}")
-            # Fallback auf CLI mit korrekter file:/// URI
-            tb_paths = [
-                r"C:\Program Files\Mozilla Thunderbird\thunderbird.exe",
-                r"C:\Program Files (x86)\Mozilla Thunderbird\thunderbird.exe"
-            ]
-            tb_exe = next((p for p in tb_paths if os.path.exists(p)), None)
-            if not tb_exe:
-                import shutil
-                tb_exe = shutil.which("thunderbird.exe") or shutil.which("thunderbird")
-            if tb_exe:
-                try:
-                    file_uri = Path(abs_p).as_uri()
-                    compose_arg = f"attachment='{file_uri}',subject='Datei: {clean_filename}'"
-                    if recipient:
-                        compose_arg = f"to='{recipient}'," + compose_arg
-                    subprocess.Popen([tb_exe, "-compose", compose_arg])
-                    return {
-                        "success": True,
-                        "method": "thunderbird",
-                        "message": f"Mozilla Thunderbird mit angehängter Datei '{filename}' geöffnet!"
-                    }
-                except Exception:
-                    pass
+        except Exception as e:
+            return {"success": False, "error": f"Fehler beim Öffnen von iCloud Mail: {str(e)}"}
 
     # 2. GOOGLE MAIL (GMAIL)
     elif client == "gmail":
         try:
             import urllib.parse
             import webbrowser
-            copy_file_for_teams(filepath)
-            
-            # Windows Explorer mit markierter Datei im Hintergrund öffnen für sofortiges Drag & Drop
+            # Windows Explorer mit markierter Datei im Hintergrund öffnen für Drag & Drop
             try:
                 subprocess.Popen(['explorer.exe', f'/select,{abs_p_win}'])
             except Exception:
                 pass
                 
-            # Text bewusst ohne Reizwort 'anbei' formulieren, damit Gmail keinen 'Dateianhang vergessen?' Dialog anzeigt
             subject = urllib.parse.quote(f"Datei: {filename}")
             body = urllib.parse.quote(
                 f"Hier ist die Datei: {filename}\n\n"
                 f"Lokaler Pfad: {abs_p_win}\n\n"
-                f"💡 HINWEIS: Der Windows-Ordner mit dieser Datei wurde für dich geöffnet!\n"
-                f"Ziehe die Datei einfach per Drag & Drop aus dem Ordner in dieses Gmail-Fenster."
+                f"💡 Die Datei ist bereits in der Zwischenablage kopiert!\n"
+                f"Einfach [Strg + V] drücken zum Einfügen."
             )
             gmail_url = f"https://mail.google.com/mail/u/0/?view=cm&fs=1&to={urllib.parse.quote(recipient)}&su={subject}&body={body}"
             
@@ -1608,12 +1615,61 @@ def send_file_via_email(filepath, recipient="", client=None):
                 "success": True,
                 "method": "gmail",
                 "web_url": gmail_url,
-                "message": f"Google Mail geöffnet! 📂 Der Ordner mit '{filename}' wurde für dich geöffnet – ziehe die Datei einfach per Drag & Drop in dein Gmail-Fenster!"
+                "message": f"Google Mail geöffnet & '{filename}' in Zwischenablage kopiert! Im Mail-Fenster einfach [Strg + V] drücken."
             }
         except Exception as e:
             return {"success": False, "error": f"Fehler beim Öffnen von Google Mail: {str(e)}"}
 
-    # 3. MICROSOFT OUTLOOK
+    # 3. MOZILLA THUNDERBIRD
+    elif client == "thunderbird":
+        # Verwaiste Locks aufräumen
+        _cleanup_stale_thunderbird_locks()
+        
+        # Ordner öffnen als Backup
+        try:
+            subprocess.Popen(['explorer.exe', f'/select,{abs_p_win}'])
+        except Exception:
+            pass
+
+        tb_paths = [
+            r"C:\Program Files\Mozilla Thunderbird\thunderbird.exe",
+            r"C:\Program Files (x86)\Mozilla Thunderbird\thunderbird.exe"
+        ]
+        tb_exe = next((p for p in tb_paths if os.path.exists(p)), None)
+        if not tb_exe:
+            import shutil
+            tb_exe = shutil.which("thunderbird.exe") or shutil.which("thunderbird")
+
+        if tb_exe:
+            try:
+                file_uri = Path(abs_p).as_uri()
+                compose_arg = f"attachment='{file_uri}',subject='Datei: {clean_filename}'"
+                if recipient:
+                    compose_arg = f"to='{recipient}'," + compose_arg
+                subprocess.Popen([tb_exe, "-compose", compose_arg])
+                return {
+                    "success": True,
+                    "method": "thunderbird",
+                    "message": f"Thunderbird geöffnet & '{filename}' angehängt (sowie in Zwischenablage für Strg+V)!"
+                }
+            except Exception as e_tb:
+                logger.warning(f"Thunderbird start failed: {e_tb}")
+
+        # Fallback auf mailto
+        import urllib.parse
+        subject = urllib.parse.quote(f"Datei: {filename}")
+        body = urllib.parse.quote(f"Hier ist die Datei: {filename}\n(Datei in Zwischenablage, einfach Strg+V drücken)")
+        try:
+            os.startfile(f"mailto:{recipient}?subject={subject}&body={body}")
+        except Exception:
+            pass
+        return {
+            "success": True,
+            "method": "thunderbird_fallback",
+            "message": f"E-Mail-Programm aufgerufen & '{filename}' in Zwischenablage kopiert (einfach [Strg + V] drücken)!"
+        }
+
+    # 4. MICROSOFT OUTLOOK
     elif client == "outlook":
         try:
             ps_cmd = (
@@ -1630,8 +1686,7 @@ def send_file_via_email(filepath, recipient="", client=None):
         except Exception:
             pass # Weiter zu mailto Fallback
 
-    # 4. WINDOWS STANDARD (MAILTO:) FALLBACK
-    copy_file_for_teams(filepath)
+    # 5. WINDOWS STANDARD (MAILTO:) FALLBACK
     import urllib.parse
     subject = urllib.parse.quote(f"Datei: {filename}")
     body = urllib.parse.quote(f"Hier ist die Datei: {filename}\n\nPfad: {filepath}\n(Datei in Zwischenablage, einfach Strg+V drücken)")
@@ -1643,5 +1698,5 @@ def send_file_via_email(filepath, recipient="", client=None):
     return {
         "success": True,
         "method": "clipboard_mailto",
-        "message": f"E-Mail-Programm geöffnet & '{filename}' in Zwischenablage kopiert (in E-Mail einfach [Strg + V] drücken)!"
+        "message": f"E-Mail geöffnet & '{filename}' in Zwischenablage kopiert (in E-Mail einfach [Strg + V] drücken)!"
     }

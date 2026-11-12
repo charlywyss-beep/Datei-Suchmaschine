@@ -1447,21 +1447,22 @@ async function sendEmail(path) {
 // ==========================================
 function getEmailClientLabel(client) {
   switch (client) {
-    case 'thunderbird': return 'Thunderbird';
+    case 'icloud': return 'Apple iCloud Mail';
     case 'gmail': return 'Google Mail (GMail)';
+    case 'thunderbird': return 'Thunderbird';
     case 'outlook': return 'Outlook';
     default: return 'Windows-Standard';
   }
 }
 
 function updateEmailClientUI() {
-  const client = state.emailClient || 'thunderbird';
+  const client = state.emailClient || 'gmail';
 
   // 1. Settings Modal
   const currentTextEl = document.getElementById('settings-email-current');
   if (currentTextEl) currentTextEl.textContent = getEmailClientLabel(client);
 
-  const clients = ['thunderbird', 'gmail', 'outlook', 'default'];
+  const clients = ['gmail', 'icloud', 'thunderbird', 'outlook', 'default'];
   clients.forEach(c => {
     const btn = document.getElementById(`btn-email-${c}`);
     if (btn) {
@@ -1476,9 +1477,9 @@ function updateEmailClientUI() {
     const pill = document.getElementById(`share-pill-${c}`);
     if (pill) {
       if (c === client) {
-        pill.className = 'py-1 px-2 rounded-lg text-xs font-bold border border-indigo-500/60 bg-indigo-500/25 text-white flex items-center justify-center gap-1.5 transition shadow-sm';
+        pill.className = 'py-1 px-1.5 rounded-lg text-[11px] font-bold border border-indigo-500/60 bg-indigo-500/25 text-white flex items-center justify-center gap-1 transition shadow-sm';
       } else {
-        pill.className = 'py-1 px-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center gap-1.5 transition';
+        pill.className = 'py-1 px-1.5 rounded-lg text-[11px] font-medium border border-slate-700 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center gap-1 transition';
       }
     }
   });
@@ -1489,26 +1490,31 @@ function updateEmailClientUI() {
 
   const descEl = document.getElementById('share-email-desc');
   if (descEl) {
-    if (client === 'thunderbird') {
-      descEl.textContent = 'Öffnet Mozilla Thunderbird mit direkt angehängter Datei';
+    if (client === 'icloud') {
+      descEl.textContent = 'Öffnet iCloud Mail im Browser & kopiert Datei für [Strg + V]';
     } else if (client === 'gmail') {
-      descEl.textContent = 'Öffnet Google Mail im Browser & öffnet Ordner zum Drag & Drop';
+      descEl.textContent = 'Öffnet Google Mail im Browser & kopiert Datei für [Strg + V]';
+    } else if (client === 'thunderbird') {
+      descEl.textContent = 'Öffnet Thunderbird & kopiert Datei für [Strg + V]';
     } else if (client === 'outlook') {
       descEl.textContent = 'Öffnet Microsoft Outlook mit angehängter Datei';
     } else {
-      descEl.textContent = 'Öffnet Standard-Mail-App & kopiert Datei';
+      descEl.textContent = 'Öffnet Standard-Mail-App & kopiert Datei für [Strg + V]';
     }
   }
 
   const iconEl = document.getElementById('share-email-icon');
   const iconBox = document.getElementById('share-email-icon-box');
   if (iconEl && iconBox) {
-    if (client === 'thunderbird') {
-      iconEl.className = 'fa-solid fa-dove text-sky-400';
+    if (client === 'icloud') {
+      iconEl.className = 'fa-solid fa-cloud text-sky-400';
       iconBox.className = 'w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg';
     } else if (client === 'gmail') {
       iconEl.className = 'fa-solid fa-envelope text-red-500';
       iconBox.className = 'w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center text-lg';
+    } else if (client === 'thunderbird') {
+      iconEl.className = 'fa-solid fa-dove text-sky-400';
+      iconBox.className = 'w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg';
     } else if (client === 'outlook') {
       iconEl.className = 'fa-solid fa-envelope-open-text text-blue-400';
       iconBox.className = 'w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-lg';

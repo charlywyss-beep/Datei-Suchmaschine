@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.7.7' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.7.8' }}</span>
       </button>
 
       <!-- Theme Switcher (Dunkel / Hell) -->
@@ -879,20 +879,24 @@
             <span>E-Mail-Programm / Dienst wählen:</span>
             <span class="text-[10px] text-indigo-400 font-semibold cursor-pointer hover:underline" onclick="closeShareModal(); openSettingsModal();">Standard festlegen &rarr;</span>
           </div>
-          <div class="grid grid-cols-4 gap-1.5" id="share-email-pills">
-            <button type="button" onclick="event.stopPropagation(); setEmailClient('thunderbird');" id="share-pill-thunderbird" class="py-1 px-2 rounded-lg text-xs font-semibold border transition flex items-center justify-center gap-1.5 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Mozilla Thunderbird">
-              <i class="fa-solid fa-dove text-sky-400"></i>
-              <span>Thunderbird</span>
-            </button>
-            <button type="button" onclick="event.stopPropagation(); setEmailClient('gmail');" id="share-pill-gmail" class="py-1 px-2 rounded-lg text-xs font-semibold border transition flex items-center justify-center gap-1.5 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Google Mail (GMail)">
+          <div class="grid grid-cols-5 gap-1.5" id="share-email-pills">
+            <button type="button" onclick="event.stopPropagation(); setEmailClient('gmail');" id="share-pill-gmail" class="py-1 px-1.5 rounded-lg text-[11px] font-semibold border transition flex items-center justify-center gap-1 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Google Mail (GMail)">
               <i class="fa-solid fa-envelope text-red-500"></i>
               <span>GMail</span>
             </button>
-            <button type="button" onclick="event.stopPropagation(); setEmailClient('outlook');" id="share-pill-outlook" class="py-1 px-2 rounded-lg text-xs font-semibold border transition flex items-center justify-center gap-1.5 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Microsoft Outlook">
+            <button type="button" onclick="event.stopPropagation(); setEmailClient('icloud');" id="share-pill-icloud" class="py-1 px-1.5 rounded-lg text-[11px] font-semibold border transition flex items-center justify-center gap-1 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Apple iCloud Mail">
+              <i class="fa-solid fa-cloud text-sky-400"></i>
+              <span>iCloud</span>
+            </button>
+            <button type="button" onclick="event.stopPropagation(); setEmailClient('thunderbird');" id="share-pill-thunderbird" class="py-1 px-1.5 rounded-lg text-[11px] font-semibold border transition flex items-center justify-center gap-1 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Mozilla Thunderbird">
+              <i class="fa-solid fa-dove text-sky-400"></i>
+              <span>Thunderbird</span>
+            </button>
+            <button type="button" onclick="event.stopPropagation(); setEmailClient('outlook');" id="share-pill-outlook" class="py-1 px-1.5 rounded-lg text-[11px] font-semibold border transition flex items-center justify-center gap-1 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Microsoft Outlook">
               <i class="fa-solid fa-envelope-open-text text-blue-500"></i>
               <span>Outlook</span>
             </button>
-            <button type="button" onclick="event.stopPropagation(); setEmailClient('default');" id="share-pill-default" class="py-1 px-2 rounded-lg text-xs font-semibold border transition flex items-center justify-center gap-1.5 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Windows-Standard Mail">
+            <button type="button" onclick="event.stopPropagation(); setEmailClient('default');" id="share-pill-default" class="py-1 px-1.5 rounded-lg text-[11px] font-semibold border transition flex items-center justify-center gap-1 bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800" title="Windows-Standard Mail">
               <i class="fa-solid fa-desktop text-emerald-400"></i>
               <span>Standard</span>
             </button>
@@ -992,7 +996,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.7' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.8' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1271,19 +1275,23 @@
             <span id="settings-email-current" class="text-xs text-sky-400 font-bold">Thunderbird</span>
           </div>
           <div class="grid grid-cols-2 gap-2" id="settings-email-selector">
-            <button type="button" onclick="setEmailClient('thunderbird')" id="btn-email-thunderbird" class="py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-medium flex items-center justify-center gap-2 transition hover:bg-slate-800 text-xs">
-              <i class="fa-solid fa-dove text-sky-400"></i>
-              <span>Thunderbird</span>
-            </button>
             <button type="button" onclick="setEmailClient('gmail')" id="btn-email-gmail" class="py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-medium flex items-center justify-center gap-2 transition hover:bg-slate-800 text-xs">
               <i class="fa-solid fa-envelope text-red-500"></i>
               <span>Google Mail (GMail)</span>
+            </button>
+            <button type="button" onclick="setEmailClient('icloud')" id="btn-email-icloud" class="py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-medium flex items-center justify-center gap-2 transition hover:bg-slate-800 text-xs">
+              <i class="fa-solid fa-cloud text-sky-400"></i>
+              <span>Apple iCloud Mail</span>
+            </button>
+            <button type="button" onclick="setEmailClient('thunderbird')" id="btn-email-thunderbird" class="py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-medium flex items-center justify-center gap-2 transition hover:bg-slate-800 text-xs">
+              <i class="fa-solid fa-dove text-sky-400"></i>
+              <span>Thunderbird</span>
             </button>
             <button type="button" onclick="setEmailClient('outlook')" id="btn-email-outlook" class="py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-medium flex items-center justify-center gap-2 transition hover:bg-slate-800 text-xs">
               <i class="fa-solid fa-envelope-open-text text-blue-500"></i>
               <span>Outlook</span>
             </button>
-            <button type="button" onclick="setEmailClient('default')" id="btn-email-default" class="py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-medium flex items-center justify-center gap-2 transition hover:bg-slate-800 text-xs">
+            <button type="button" onclick="setEmailClient('default')" id="btn-email-default" class="py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-medium flex items-center justify-center gap-2 transition hover:bg-slate-800 text-xs col-span-2">
               <i class="fa-solid fa-desktop text-emerald-400"></i>
               <span>Windows-Standard</span>
             </button>
@@ -1307,7 +1315,7 @@
         <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
           <div>
             <span class="font-semibold text-slate-200 block">Datei-Suchmaschine Pro</span>
-            <span class="text-[11px] text-slate-400">Version v1.7.7 • GitHub Auto-Update</span>
+            <span class="text-[11px] text-slate-400">Version v1.7.8 • GitHub Auto-Update</span>
           </div>
           <button onclick="closeSettingsModal(); openGitUpdateModal();" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shadow-sm">
             Updates prüfen
@@ -1351,6 +1359,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.7.7' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.7.8' }}"></script>
 </body>
 </html>
