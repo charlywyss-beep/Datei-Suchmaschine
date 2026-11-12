@@ -88,12 +88,17 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.5.9' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.6.0' }}</span>
       </button>
 
-      <!-- Theme Switcher -->
-      <button onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center transition" title="Design wechseln">
-        <i id="theme-icon" class="fa-solid fa-moon"></i>
+      <!-- Theme Switcher (Dunkel / Hell) -->
+      <button id="theme-toggle-btn" onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center transition shadow-sm" title="Design wechseln (Dunkel / Hell)">
+        <i id="theme-icon" class="fa-solid fa-moon text-indigo-400"></i>
+      </button>
+
+      <!-- Einstellungen Button (Zahnrad) -->
+      <button id="btn-open-settings" onclick="openSettingsModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition shadow-sm" title="Einstellungen &amp; Optionen">
+        <i class="fa-solid fa-gear"></i>
       </button>
     </div>
   </header>
@@ -952,7 +957,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.5.9' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.6.0' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1131,6 +1136,87 @@
   <!-- ========================================== -->
   <!-- MODAL: MODERNES BESTÄTIGUNGS-DIALOG        -->
   <!-- ========================================== -->
+    <!-- ========================================== -->
+  <!-- MODAL: APP-EINSTELLUNGEN (ZAHNRAD)         -->
+  <!-- ========================================== -->
+  <div id="modal-settings" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-gear text-indigo-400"></i>
+          <span>Einstellungen &amp; Optionen</span>
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Settings Sections -->
+      <div class="space-y-3.5 text-xs">
+        <!-- 1. Erscheinungsbild / Design -->
+        <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+          <span class="font-semibold text-slate-200 block">Erscheinungsbild / Farb-Design:</span>
+          <div class="flex gap-2">
+            <button type="button" onclick="applyTheme('dark'); updateSettingsThemeBtns();" id="btn-theme-dark" class="flex-1 py-2 px-3 rounded-lg border border-indigo-500/50 bg-indigo-500/20 text-white font-semibold flex items-center justify-center gap-2 transition">
+              <i class="fa-solid fa-moon text-indigo-400"></i>
+              <span>Dunkles Design (Dark)</span>
+            </button>
+            <button type="button" onclick="applyTheme('light'); updateSettingsThemeBtns();" id="btn-theme-light" class="flex-1 py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-400 hover:text-white font-medium flex items-center justify-center gap-2 transition">
+              <i class="fa-solid fa-sun text-amber-400"></i>
+              <span>Helles Design (Light)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. OneDrive Pfade -->
+        <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+          <span class="font-semibold text-slate-200 block">OneDrive Speicherorte:</span>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-slate-400">
+              <span>OneDrive Privat:</span>
+              <span class="font-mono text-slate-300">C:\Users\01\OneDrive</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-400">
+              <span>OneDrive Geschäftlich:</span>
+              <button onclick="closeSettingsModal(); openOneDriveSettingsModal();" class="text-purple-400 hover:text-purple-300 hover:underline flex items-center gap-1 font-semibold">
+                <i class="fa-solid fa-pen text-[10px]"></i> Anpassen
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Verlauf & Speicher leeren -->
+        <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+          <span class="font-semibold text-slate-200 block">Suchverlauf:</span>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">Such-History zurücksetzen:</span>
+            <button onclick="closeSettingsModal(); clearSearchHistory();" class="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 font-semibold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can"></i>
+              <span>Verlauf leeren</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. System & Version -->
+        <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <span class="font-semibold text-slate-200 block">Datei-Suchmaschine Pro</span>
+            <span class="text-[11px] text-slate-400">Version v1.6.0 • GitHub Auto-Update</span>
+          </div>
+          <button onclick="closeSettingsModal(); openGitUpdateModal();" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shadow-sm">
+            Updates prüfen
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-800">
+        <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+          Schließen
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-confirm-dialog" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="glass-card bg-slate-900 border border-slate-700/90 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-start gap-4">
@@ -1159,6 +1245,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.5.9' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.6.0' }}"></script>
 </body>
 </html>

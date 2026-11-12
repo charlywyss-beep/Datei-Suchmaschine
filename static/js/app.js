@@ -32,6 +32,7 @@ let state = {
 
 // Initialisierung bei DOM-Ready
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   initSystemInfo();
   // Lucide icons init if available
   if (window.lucide) {
@@ -57,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof closeSavePathModal === 'function') closeSavePathModal();
       if (typeof closeAddNetworkModal === 'function') closeAddNetworkModal();
       if (typeof closeOneDriveSettingsModal === 'function') closeOneDriveSettingsModal();
+      if (typeof closeSettingsModal === 'function') closeSettingsModal();
       if (typeof closeShareModal === 'function') closeShareModal();
       if (typeof closeGitModal === 'function') closeGitModal();
       if (typeof closeMobileModal === 'function') closeMobileModal();
@@ -1910,10 +1912,72 @@ function showToast(message, type = 'info', duration = 4000) {
   }, duration);
 }
 
-function toggleTheme() {
+function initTheme() {
+  const savedTheme = localStorage.getItem('suchmaschine_theme') || 'dark';
+  applyTheme(savedTheme, false);
+}
+
+function applyTheme(theme, showNotice = false) {
   const html = document.documentElement;
-  const isDark = html.classList.toggle('dark');
-  document.getElementById('theme-icon').className = isDark ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+  const icon = document.getElementById('theme-icon');
+  const btn = document.getElementById('theme-toggle-btn');
+
+  if (theme === 'light') {
+    html.classList.remove('dark');
+    html.classList.add('light');
+    if (icon) {
+      icon.className = 'fa-solid fa-sun text-amber-500';
+    }
+    if (btn) {
+      btn.title = 'Zu dunklem Design wechseln';
+    }
+  } else {
+    html.classList.remove('light');
+    html.classList.add('dark');
+    if (icon) {
+      icon.className = 'fa-solid fa-moon text-indigo-400';
+    }
+    if (btn) {
+      btn.title = 'Zu hellem Design wechseln';
+    }
+  }
+  localStorage.setItem('suchmaschine_theme', theme);
+  updateSettingsThemeBtns();
+  if (showNotice) {
+    showToast(theme === 'light' ? 'Helles Design aktiviert ☀️' : 'Dunkles Design aktiviert 🌙', 'info');
+  }
+}
+
+function toggleTheme() {
+  const isLight = document.documentElement.classList.contains('light');
+  const newTheme = isLight ? 'dark' : 'light';
+  applyTheme(newTheme, true);
+}
+
+function openSettingsModal() {
+  updateSettingsThemeBtns();
+  const el = document.getElementById('modal-settings');
+  if (el) el.classList.remove('hidden');
+}
+
+function closeSettingsModal() {
+  const el = document.getElementById('modal-settings');
+  if (el) el.classList.add('hidden');
+}
+
+function updateSettingsThemeBtns() {
+  const isLight = document.documentElement.classList.contains('light');
+  const btnDark = document.getElementById('btn-theme-dark');
+  const btnLight = document.getElementById('btn-theme-light');
+  if (!btnDark || !btnLight) return;
+
+  if (isLight) {
+    btnLight.className = 'flex-1 py-2 px-3 rounded-lg border border-amber-500/50 bg-amber-500/20 text-amber-700 font-semibold flex items-center justify-center gap-2 shadow-sm transition';
+    btnDark.className = 'flex-1 py-2 px-3 rounded-lg border border-slate-300 bg-slate-100 text-slate-600 hover:text-slate-900 font-medium flex items-center justify-center gap-2 transition';
+  } else {
+    btnDark.className = 'flex-1 py-2 px-3 rounded-lg border border-indigo-500/50 bg-indigo-500/20 text-white font-semibold flex items-center justify-center gap-2 shadow-sm transition';
+    btnLight.className = 'flex-1 py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-400 hover:text-white font-medium flex items-center justify-center gap-2 transition';
+  }
 }
 
 function escapeHtml(text) {
