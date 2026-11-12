@@ -15,5 +15,12 @@
     }
   ],
   "network_paths": [],
-  "search_history": []
+  "search_history": [
+    {
+      "id": "hist_a4f7d0c1",
+      "query": "Hauskauf",
+      "category": "all",
+      "timestamp": "12.11. 09:25"
+    }
+  ]
 }

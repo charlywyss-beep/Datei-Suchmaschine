@@ -1,77 +1,141 @@
-/* Modern Glassmorphism & Custom Styling */
+/* Modern Glassmorphism & Custom Styling (Portfolio-Manager Slate-Navy Theme) */
 
 :root {
-  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%);
+  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.10) 0%, transparent 60%);
 }
 
-body {
+/* Portfolio-Manager Dunkles Design (#0f172a Slate-Navy statt pechschwarz #020617) */
+html.dark body,
+body:not(.light) {
+  background-color: #0f172a !important;
   background-image: var(--bg-gradient);
   background-attachment: fixed;
+  color: #f1f5f9 !important;
 }
 
-/* Glassmorphism Cards */
-.glass-card {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* Header in Portfolio Manager Dark */
+html.dark header,
+body:not(.light) header {
+  background-color: rgba(15, 23, 42, 0.90) !important;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
 }
 
-/* Active Category Pill */
-.cat-pill.active {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.6);
-  color: #ffffff;
-  box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+/* Glassmorphism Cards in Portfolio Manager Dark */
+html.dark .glass-card,
+body:not(.light) .glass-card {
+  background-color: rgba(30, 41, 59, 0.85) !important; /* #1e293b Slate-800 */
+  border-color: rgba(51, 65, 85, 0.7) !important;      /* #334155 */
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 2px 6px -1px rgba(0, 0, 0, 0.15) !important;
 }
 
-.cat-pill:hover:not(.active) {
-  border-color: rgba(148, 163, 184, 0.4);
+/* Suchfeld & Verzeichnis-Eingabe in Portfolio Manager Dark */
+html.dark #search-query,
+body:not(.light) #search-query {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
 }
 
-/* Tab Navigation Buttons */
-.tab-btn {
-  color: #94a3b8;
+html.dark #target-directory,
+body:not(.light) #target-directory {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
 }
 
-.tab-btn:hover {
-  color: #e2e8f0;
+/* Suchen-Button in Portfolio-Manager Blau */
+html.dark #btn-search,
+body:not(.light) #btn-search {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+html.dark #btn-search:hover,
+body:not(.light) #btn-search:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
 }
 
-.tab-btn.active {
-  background: rgba(99, 102, 241, 0.25);
-  color: #ffffff;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+/* Scope Buttons in Portfolio Manager Dark */
+html.dark .scope-btn:not(.active),
+body:not(.light) .scope-btn:not(.active) {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+  border-color: #334155 !important;
+}
+html.dark .scope-btn:not(.active):hover,
+body:not(.light) .scope-btn:not(.active):hover {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+}
+html.dark .scope-btn.active,
+body:not(.light) .scope-btn.active {
+  background: rgba(37, 99, 235, 0.22) !important;
+  border: 1.5px solid #3b82f6 !important;
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.25) !important;
 }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Schnellfilter Buttons in Portfolio Manager Dark */
+html.dark .cat-pill,
+body:not(.light) .cat-pill {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  border-color: #334155 !important;
+}
+html.dark .cat-pill:hover:not(.active),
+body:not(.light) .cat-pill:hover:not(.active) {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+}
+html.dark .cat-pill.active,
+body:not(.light) .cat-pill.active {
+  background: rgba(37, 99, 235, 0.3) !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.35) !important;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+/* Location Shortcuts & Systemordner */
+html.dark .loc-btn,
+body:not(.light) .loc-btn {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+html.dark .loc-btn:hover,
+body:not(.light) .loc-btn:hover {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
-  border-radius: 4px;
+/* Modals in Portfolio Manager Dark */
+html.dark [id^="modal-"] > div,
+body:not(.light) [id^="modal-"] > div {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+html.dark [id^="modal-"] [class*="bg-slate-950"],
+body:not(.light) [id^="modal-"] [class*="bg-slate-950"] {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.6);
+/* Tabelle in Portfolio Manager Dark */
+html.dark table thead tr,
+body:not(.light) table thead tr {
+  background-color: #0f172a !important;
+  border-bottom: 1px solid #334155 !important;
+}
+html.dark table thead th,
+body:not(.light) table thead th {
+  color: #94a3b8 !important;
+}
+html.dark .result-row,
+body:not(.light) .result-row {
+  border-bottom: 1px solid rgba(51, 65, 85, 0.4) !important;
+}
+html.dark .result-row:hover,
+body:not(.light) .result-row:hover {
+  background-color: rgba(51, 65, 85, 0.3) !important;
 }
 
-/* Row hover highlight */
-.result-row:hover {
-  background-color: rgba(30, 41, 59, 0.6);
-}
-
-.result-row.selected {
-  background-color: rgba(99, 102, 241, 0.15) !important;
-}
-
-/* Print Stylesheet */
 @media print {
   header, 
   #results-toolbar, 
