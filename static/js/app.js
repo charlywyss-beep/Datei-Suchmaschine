@@ -984,6 +984,11 @@ function renderResults() {
         onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-2" title="OneDrive"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>`;
       }
 
+      const isFolder = file.category === 'folder' || (file.ext && file.ext.toUpperCase() === 'ORDNER') || file.is_dir;
+      const typeBadgeClass = isFolder
+        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+        : 'bg-slate-800/90 text-slate-300 border-slate-700/70';
+
       row.innerHTML = `
         <td class="py-2.5 px-4 text-center" onclick="event.stopPropagation()">
           <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
@@ -991,7 +996,7 @@ function renderResults() {
         <td class="py-2.5 px-4 text-left whitespace-nowrap">
           <div class="inline-flex items-center gap-1.5" title="Dateityp: ${file.ext || 'DATEI'} (${getAppLabelForExt(file.ext)})">
             ${fileIcon}
-            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${file.ext || 'DATEI'}</span>
+            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${typeBadgeClass}">${file.ext || 'DATEI'}</span>
           </div>
         </td>
         <td class="py-2.5 px-4 font-medium text-slate-100 max-w-xs md:max-w-md truncate" onclick="openFile('${escapeJs(file.path)}')">
@@ -1077,6 +1082,7 @@ function renderResults() {
 // Kategorie anhand der Dateiendung ermitteln
 function getCategoryForExt(ext) {
   const e = (ext || '').replace(/^\./, '').toUpperCase().trim();
+  if (e === 'ORDNER' || e === 'DIR' || e === 'FOLDER') return 'folder';
   if (['PDF'].includes(e)) return 'pdf';
   if (['DOCX', 'DOC', 'ODT', 'RTF'].includes(e)) return 'word';
   if (['XLSX', 'XLS', 'CSV', 'ODS', 'XLSM', 'XLSB'].includes(e)) return 'excel';
@@ -1095,6 +1101,7 @@ function getCategoryForExt(ext) {
 // App-Bezeichnung ermitteln je nach Dateiendung
 function getAppLabelForExt(ext) {
   const e = (ext || '').replace(/^\./, '').toLowerCase().trim();
+  if (e === 'ordner' || e === 'dir' || e === 'folder') return 'Windows Explorer (Ordner)';
   if (e === 'pdf') return 'PDF X';
   if (['accdb', 'mdb', 'accde', 'accdr'].includes(e)) return 'Microsoft Access';
   if (['docx', 'doc', 'rtf', 'odt'].includes(e)) return 'Microsoft Word';
@@ -1114,6 +1121,11 @@ function getAppLabelForExt(ext) {
 function getCategoryIconHtml(category, ext, large = false) {
   const sizeClass = large ? 'text-3xl' : 'text-base';
   const e = (ext || '').replace(/^\./, '').toUpperCase().trim();
+
+  // Ordner / Verzeichnisse (Gelbes / goldenes Ordner-Symbol statt graues Blatt!)
+  if (category === 'folder' || e === 'ORDNER' || e === 'DIR' || e === 'FOLDER') {
+    return `<i class="fa-solid fa-folder text-amber-400 ${sizeClass}" title="Ordner / Verzeichnis"></i>`;
+  }
 
   if (category === 'access' || ['ACCDB', 'MDB', 'ACCDE', 'ACCDR'].includes(e)) {
     return `<i class="fa-solid fa-database text-rose-500 ${sizeClass}" title="Microsoft Access Datenbank (.${e.toLowerCase()})"></i>`;
@@ -1138,6 +1150,8 @@ function getCategoryIconHtml(category, ext, large = false) {
   }
 
   switch (category) {
+    case 'folder':
+      return `<i class="fa-solid fa-folder text-amber-400 ${sizeClass}" title="Ordner / Verzeichnis"></i>`;
     case 'pdf':
       return `<i class="fa-solid fa-file-pdf text-red-500 ${sizeClass}" title="PDF-Dokument"></i>`;
     case 'word':
