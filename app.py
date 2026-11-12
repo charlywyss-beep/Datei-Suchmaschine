@@ -43,7 +43,8 @@ def system_info():
         "network_paths": network_paths,
         "locations": locations,
         "search_history": search_history,
-        "saved_searches": saved_searches
+        "saved_searches": saved_searches,
+        "email_client": file_service.get_email_client()
     })
 
 @app.route("/api/network-paths", methods=["GET"])
@@ -384,14 +385,22 @@ def copy_teams_route():
     res = file_service.copy_file_for_teams(path)
     return jsonify(res)
 
+@app.route("/api/set-email-client", methods=["POST"])
+def set_email_client_route():
+    data = request.get_json() or {}
+    client = data.get("client", "thunderbird")
+    res = file_service.set_email_client(client)
+    return jsonify(res)
+
 @app.route("/api/send-email", methods=["POST"])
 def send_email_route():
     data = request.get_json() or {}
     path = data.get("path")
     recipient = data.get("recipient", "")
+    client = data.get("client")
     if not path:
         return jsonify({"error": "Pfad fehlt"}), 400
-    res = file_service.send_file_via_email(path, recipient)
+    res = file_service.send_file_via_email(path, recipient, client=client)
     return jsonify(res)
 
 @app.route("/api/download", methods=["GET"])

@@ -27,7 +27,8 @@ let state = {
   currentRenameRule: 'replace',
   renamePreview: [],
   searchHistory: [],
-  savedSearches: []
+  savedSearches: [],
+  emailClient: 'thunderbird'
 };
 
 // Initialisierung bei DOM-Ready
@@ -106,6 +107,7 @@ async function initSystemInfo() {
     state.localIp = data.local_ip || '';
     state.searchHistory = data.search_history || [];
     state.savedSearches = data.saved_searches || [];
+    state.emailClient = data.email_client || 'thunderbird';
 
     // Version im Header aktualisieren
     const vTag = document.getElementById('header-version-tag');
@@ -119,6 +121,7 @@ async function initSystemInfo() {
 
     renderLocationShortcuts();
     renderSearchHistoryAndSaved();
+    updateEmailClientUI();
 
     // Standard-Suchverzeichnis: DIESER PC (Alle Laufwerke C:, D: etc.)
     setSearchScope('pc');
@@ -1413,15 +1416,16 @@ async function copyTeams(path) {
 
 async function sendEmail(path) {
   try {
-    showToast('Bereite E-Mail vor...', 'info');
+    const clientLabel = getEmailClientLabel(state.emailClient);
+    showToast(`Bereite E-Mail vor (${clientLabel})...`, 'info');
     const res = await fetch('/api/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: path })
+      body: JSON.stringify({ path: path, client: state.emailClient })
     });
     const d = await res.json();
     if (d.success) {
-      showToast(d.message || 'E-Mail geöffnet!', 'success', 5000);
+      showToast(d.message || 'E-Mail geöffnet!', 'success', 6000);
     } else {
       showToast(d.error || 'Mail-Fehler', 'error');
     }
@@ -1431,11 +1435,107 @@ async function sendEmail(path) {
 }
 
 // ==========================================
+// E-MAIL CLIENT VERWALTUNG (Thunderbird, GMail, Outlook, Standard)
+// ==========================================
+function getEmailClientLabel(client) {
+  switch (client) {
+    case 'thunderbird': return 'Thunderbird';
+    case 'gmail': return 'Google Mail (GMail)';
+    case 'outlook': return 'Outlook';
+    default: return 'Windows-Standard';
+  }
+}
+
+function updateEmailClientUI() {
+  const client = state.emailClient || 'thunderbird';
+
+  // 1. Settings Modal
+  const currentTextEl = document.getElementById('settings-email-current');
+  if (currentTextEl) currentTextEl.textContent = getEmailClientLabel(client);
+
+  const clients = ['thunderbird', 'gmail', 'outlook', 'default'];
+  clients.forEach(c => {
+    const btn = document.getElementById(`btn-email-${c}`);
+    if (btn) {
+      if (c === client) {
+        btn.className = 'py-2 px-3 rounded-lg border border-indigo-500/60 bg-indigo-500/25 text-white font-bold flex items-center justify-center gap-2 transition text-xs shadow-sm active:scale-95';
+      } else {
+        btn.className = 'py-2 px-3 rounded-lg border border-slate-700 bg-slate-900 text-slate-300 font-medium flex items-center justify-center gap-2 transition hover:bg-slate-800 text-xs active:scale-95';
+      }
+    }
+
+    // 2. Share Modal Pills
+    const pill = document.getElementById(`share-pill-${c}`);
+    if (pill) {
+      if (c === client) {
+        pill.className = 'py-1 px-2 rounded-lg text-xs font-bold border border-indigo-500/60 bg-indigo-500/25 text-white flex items-center justify-center gap-1.5 transition shadow-sm';
+      } else {
+        pill.className = 'py-1 px-2 rounded-lg text-xs font-medium border border-slate-700 bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center gap-1.5 transition';
+      }
+    }
+  });
+
+  // 3. Share Modal Main Option
+  const badgeEl = document.getElementById('share-email-badge');
+  if (badgeEl) badgeEl.textContent = getEmailClientLabel(client);
+
+  const descEl = document.getElementById('share-email-desc');
+  if (descEl) {
+    if (client === 'thunderbird') {
+      descEl.textContent = 'Öffnet Mozilla Thunderbird mit angehängter Datei';
+    } else if (client === 'gmail') {
+      descEl.textContent = 'Öffnet Google Mail im Browser & kopiert Datei für Strg+V';
+    } else if (client === 'outlook') {
+      descEl.textContent = 'Öffnet Microsoft Outlook mit angehängter Datei';
+    } else {
+      descEl.textContent = 'Öffnet Standard-Mail-App & kopiert Datei';
+    }
+  }
+
+  const iconEl = document.getElementById('share-email-icon');
+  const iconBox = document.getElementById('share-email-icon-box');
+  if (iconEl && iconBox) {
+    if (client === 'thunderbird') {
+      iconEl.className = 'fa-solid fa-dove text-sky-400';
+      iconBox.className = 'w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg';
+    } else if (client === 'gmail') {
+      iconEl.className = 'fa-solid fa-envelope text-red-500';
+      iconBox.className = 'w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center text-lg';
+    } else if (client === 'outlook') {
+      iconEl.className = 'fa-solid fa-envelope-open-text text-blue-400';
+      iconBox.className = 'w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-lg';
+    } else {
+      iconEl.className = 'fa-solid fa-desktop text-emerald-400';
+      iconBox.className = 'w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg';
+    }
+  }
+}
+
+async function setEmailClient(client, showNotice = true) {
+  state.emailClient = client;
+  updateEmailClientUI();
+  try {
+    const res = await fetch('/api/set-email-client', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client: client })
+    });
+    const d = await res.json();
+    if (d.success && showNotice) {
+      showToast(`Standard-Mail: ${getEmailClientLabel(client)} ausgewählt`, 'info');
+    }
+  } catch (err) {
+    console.error('Fehler beim Speichern des Mail-Clients:', err);
+  }
+}
+
+// ==========================================
 // MODAL: TEILEN & VERSENDEN
 // ==========================================
 function openShareModal(path, filename) {
   document.getElementById('share-modal-path').value = path;
   document.getElementById('share-modal-filename').textContent = filename;
+  updateEmailClientUI();
   document.getElementById('modal-share').classList.remove('hidden');
 }
 

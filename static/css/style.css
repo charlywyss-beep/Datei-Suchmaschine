@@ -941,3 +941,39 @@ html.light #view-table-wrapper table thead th {
   color: #1e293b !important;
   border-bottom: 2px solid #cbd5e1 !important;
 }
+
+/* Light Mode Stile fuer E-Mail-Programm Selektor */
+html.light #settings-email-selector button {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+html.light #settings-email-selector button:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+html.light #settings-email-selector button.font-bold {
+  background-color: #e0e7ff !important;
+  border-color: #6366f1 !important;
+  color: #312e81 !important;
+}
+
+html.light #share-email-pills button {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.light #share-email-pills button:hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+html.light #share-email-pills button.font-bold {
+  background-color: #e0e7ff !important;
+  border-color: #6366f1 !important;
+  color: #312e81 !important;
+}

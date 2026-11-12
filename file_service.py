@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.7.4"
+APP_VERSION = "v1.7.5"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -1415,42 +1415,123 @@ def copy_file_for_teams(filepath):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-def send_file_via_email(filepath, recipient=""):
+def get_email_client():
+    """Gibt das konfigurierte Standard-E-Mail-Programm zurück (thunderbird, gmail, outlook, default)"""
+    cfg = load_config()
+    client = cfg.get("email_client")
+    if not client:
+        # Prüfen ob Thunderbird installiert ist
+        tb_paths = [
+            r"C:\Program Files\Mozilla Thunderbird\thunderbird.exe",
+            r"C:\Program Files (x86)\Mozilla Thunderbird\thunderbird.exe"
+        ]
+        if any(os.path.exists(p) for p in tb_paths):
+            client = "thunderbird"
+        else:
+            client = "default"
+    return client
+
+def set_email_client(client):
+    """Speichert das bevorzugte E-Mail-Programm in config.json"""
+    cfg = load_config()
+    cfg["email_client"] = client
+    save_config(cfg)
+    return {"success": True, "email_client": client}
+
+def send_file_via_email(filepath, recipient="", client=None):
     """
-    Erstellt Outlook E-Mail Entwurf mit Anhang falls Outlook verfügbar,
-    ansonsten mailto Fallback und Kopie in Zwischenablage.
+    Erstellt E-Mail Entwurf mit Anhang für das gewählte E-Mail-Programm:
+    - thunderbird: Mozilla Thunderbird mit -compose und echtem Anhang
+    - gmail: Google Mail Web-Compose im Browser + Datei in Zwischenablage
+    - outlook: Microsoft Outlook COM Automation mit echtem Anhang
+    - default: Windows Standard mailto: + Datei in Zwischenablage
     """
     if not os.path.exists(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
-    abs_p = os.path.abspath(filepath).replace("'", "''")
-    filename = os.path.basename(filepath).replace("'", "''")
     
-    # Try Outlook COM
-    try:
-        ps_cmd = (
-            f"$ol = New-Object -ComObject Outlook.Application; "
-            f"$mail = $ol.CreateItem(0); "
-            f"$mail.Subject = 'Datei: {filename}'; "
-            f"$mail.Body = 'Hallo,`n`nim Anhang erhalten Sie die Datei {filename}.`n`nViele Grüße'; "
-            f"if ('{recipient}') {{ $mail.To = '{recipient}' }}; "
-            f"$mail.Attachments.Add('{abs_p}'); "
-            f"$mail.Display()"
-        )
-        subprocess.run(["powershell", "-STA", "-NoProfile", "-Command", ps_cmd], check=True, timeout=8)
-        return {"success": True, "method": "outlook", "message": "Outlook E-Mail mit Anhang wurde geöffnet!"}
-    except Exception:
-        # Fallback: kopiere Datei in Zwischenablage und öffne mailto
-        copy_file_for_teams(filepath)
-        import urllib.parse
-        subject = urllib.parse.quote(f"Datei: {os.path.basename(filepath)}")
-        body = urllib.parse.quote(f"Hallo,\n\nanbei die Datei {os.path.basename(filepath)} (bereits in der Zwischenablage, einfach Strg+V drücken).\n\nPfad: {filepath}")
-        mailto_url = f"mailto:{recipient}?subject={subject}&body={body}"
+    if not client:
+        client = get_email_client()
+        
+    abs_p = os.path.abspath(filepath)
+    filename = os.path.basename(filepath)
+
+    # 1. MOZILLA THUNDERBIRD
+    if client == "thunderbird":
+        tb_paths = [
+            r"C:\Program Files\Mozilla Thunderbird\thunderbird.exe",
+            r"C:\Program Files (x86)\Mozilla Thunderbird\thunderbird.exe"
+        ]
+        tb_exe = next((p for p in tb_paths if os.path.exists(p)), None)
+        if not tb_exe:
+            import shutil
+            tb_exe = shutil.which("thunderbird.exe") or shutil.which("thunderbird")
+            
+        if tb_exe:
+            try:
+                import pathlib
+                file_uri = pathlib.Path(abs_p).as_uri()
+                compose_parts = [f"subject='Datei: {filename}'", f"attachment='{file_uri}'"]
+                if recipient:
+                    compose_parts.insert(0, f"to='{recipient}'")
+                compose_arg = ",".join(compose_parts)
+                
+                subprocess.Popen([tb_exe, "-compose", compose_arg])
+                copy_file_for_teams(filepath)
+                return {
+                    "success": True,
+                    "method": "thunderbird",
+                    "message": f"Mozilla Thunderbird mit angehängter Datei '{filename}' geöffnet!"
+                }
+            except Exception as e:
+                pass # Weiter zu mailto Fallback
+
+    # 2. GOOGLE MAIL (GMAIL)
+    elif client == "gmail":
         try:
-            os.startfile(mailto_url)
+            import urllib.parse
+            import webbrowser
+            copy_file_for_teams(filepath)
+            subject = urllib.parse.quote(f"Datei: {filename}")
+            body = urllib.parse.quote(f"Hallo,\n\nanbei die Datei {filename}.\n\nPfad: {filepath}\n\n(Die Datei wurde automatisch in die Zwischenablage kopiert - im GMail-Fenster einfach [Strg + V] drücken!)")
+            gmail_url = f"https://mail.google.com/mail/?view=cm&fs=1&to={urllib.parse.quote(recipient)}&su={subject}&body={body}"
+            webbrowser.open(gmail_url)
+            return {
+                "success": True,
+                "method": "gmail",
+                "message": f"Google Mail im Browser geöffnet & '{filename}' in Zwischenablage kopiert! Im GMail-Fenster einfach [Strg + V] drücken."
+            }
+        except Exception as e:
+            return {"success": False, "error": f"Fehler beim Öffnen von Google Mail: {str(e)}"}
+
+    # 3. MICROSOFT OUTLOOK
+    elif client == "outlook":
+        try:
+            ps_cmd = (
+                f"$ol = New-Object -ComObject Outlook.Application; "
+                f"$mail = $ol.CreateItem(0); "
+                f"$mail.Subject = 'Datei: {filename}'; "
+                f"$mail.Body = 'Hallo,`n`nim Anhang erhalten Sie die Datei {filename}.`n`nViele Grüße'; "
+                f"if ('{recipient}') {{ $mail.To = '{recipient}' }}; "
+                f"$mail.Attachments.Add('{abs_p.replace(chr(39), chr(39)+chr(39))}'); "
+                f"$mail.Display()"
+            )
+            subprocess.run(["powershell", "-STA", "-NoProfile", "-Command", ps_cmd], check=True, timeout=8)
+            return {"success": True, "method": "outlook", "message": f"Outlook E-Mail mit Anhang '{filename}' geöffnet!"}
         except Exception:
-            pass
-        return {
-            "success": True,
-            "method": "clipboard_mailto",
-            "message": "E-Mail-Programm geöffnet & Datei in Zwischenablage kopiert (in E-Mail einfach [Strg + V] drücken)!"
-        }
+            pass # Weiter zu mailto Fallback
+
+    # 4. WINDOWS STANDARD (MAILTO:) FALLBACK
+    copy_file_for_teams(filepath)
+    import urllib.parse
+    subject = urllib.parse.quote(f"Datei: {filename}")
+    body = urllib.parse.quote(f"Hallo,\n\nanbei die Datei {filename} (in Zwischenablage, einfach Strg+V drücken).\n\nPfad: {filepath}")
+    mailto_url = f"mailto:{recipient}?subject={subject}&body={body}"
+    try:
+        os.startfile(mailto_url)
+    except Exception:
+        pass
+    return {
+        "success": True,
+        "method": "clipboard_mailto",
+        "message": f"E-Mail-Programm geöffnet & '{filename}' in Zwischenablage kopiert (in E-Mail einfach [Strg + V] drücken)!"
+    }
