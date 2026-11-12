@@ -1166,6 +1166,14 @@ function updateSelectedCounter() {
     renameBadge.textContent = count;
     renameBadge.classList.toggle('hidden', count === 0);
   }
+  const deleteBtn = document.getElementById('btn-delete-selected');
+  const deleteCountEl = document.getElementById('delete-selected-count');
+  if (deleteBtn) {
+    if (deleteCountEl) {
+      deleteCountEl.textContent = count;
+    }
+    deleteBtn.classList.toggle('hidden', count === 0);
+  }
 }
 
 function sortResults(column) {
@@ -1541,11 +1549,83 @@ async function deleteSingleFile(path) {
     if (d.success && d.success.length > 0) {
       showToast('Datei in Papierkorb verschoben.', 'info');
       state.currentFiles = state.currentFiles.filter(f => f.path !== path);
+      if (state.allRawFiles) {
+        state.allRawFiles = state.allRawFiles.filter(f => f.path !== path);
+      }
       state.selectedFilePaths.delete(path);
       updateSelectedCounter();
+      const statCount = document.getElementById('stat-count');
+      if (statCount) statCount.textContent = state.currentFiles.length;
+      const statSize = document.getElementById('stat-size');
+      if (statSize) {
+        const totalBytes = state.currentFiles.reduce((acc, cur) => acc + (cur.size || 0), 0);
+        statSize.textContent = formatBytes(totalBytes);
+      }
       renderResults();
     } else {
       showToast('Löschfehler aufgetreten', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+// Massen-Löschen: Alle ausgewählten Dateien in den Windows-Papierkorb verschieben
+async function deleteSelectedFiles() {
+  const count = state.selectedFilePaths.size;
+  if (count === 0) {
+    showToast('Keine Dateien ausgewählt.', 'warning');
+    return;
+  }
+  const pathsToDelete = Array.from(state.selectedFilePaths);
+  const confirmed = await showConfirmDialog({
+    title: `${count} Datei${count > 1 ? 'en' : ''} in den Papierkorb verschieben`,
+    message: `Sollen wirklich alle ${count} ausgewählten Dateien sicher in den Windows-Papierkorb verschoben werden?`,
+    detail: `Betroffene Dateien: ${count}\n\nDateien können jederzeit aus dem Windows-Papierkorb wiederhergestellt werden.`,
+    confirmText: `${count} Datei${count > 1 ? 'en' : ''} löschen`,
+    cancelText: 'Abbrechen',
+    type: 'danger'
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch('/api/delete-files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths: pathsToDelete })
+    });
+    const d = await res.json();
+    if (d.success && d.success.length > 0) {
+      const deletedCount = d.success.length;
+      const deletedSet = new Set(d.success);
+      state.currentFiles = state.currentFiles.filter(f => !deletedSet.has(f.path));
+      if (state.allRawFiles) {
+        state.allRawFiles = state.allRawFiles.filter(f => !deletedSet.has(f.path));
+      }
+      state.selectedFilePaths.clear();
+      updateSelectedCounter();
+
+      const statCount = document.getElementById('stat-count');
+      if (statCount) statCount.textContent = state.currentFiles.length;
+      const statSize = document.getElementById('stat-size');
+      if (statSize) {
+        const totalBytes = state.currentFiles.reduce((acc, cur) => acc + (cur.size || 0), 0);
+        statSize.textContent = formatBytes(totalBytes);
+      }
+
+      const masterCb = document.getElementById('select-all-checkbox');
+      if (masterCb) masterCb.checked = false;
+
+      applySorting();
+      renderResults();
+
+      if (d.errors && d.errors.length > 0) {
+        showToast(`${deletedCount} Datei(en) in den Papierkorb verschoben (${d.errors.length} Fehler).`, 'warning');
+      } else {
+        showToast(`🗑️ ${deletedCount} Datei(en) sicher in den Papierkorb verschoben!`, 'success');
+      }
+    } else {
+      showToast(d.error || 'Fehler beim Löschen der ausgewählten Dateien.', 'error');
     }
   } catch (err) {
     showToast(`Fehler: ${err.message}`, 'error');

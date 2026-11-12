@@ -858,3 +858,21 @@ html.light #empty-state p {
   color: #475569 !important;
   font-weight: 500 !important;
 }
+
+/* Massen-Loeschen Button im Hellen Design */
+html.light #btn-delete-selected {
+  background-color: #fff1f2 !important;
+  border: 1px solid #fecdd3 !important;
+  color: #be123c !important;
+  font-weight: 700 !important;
+}
+
+html.light #btn-delete-selected:hover {
+  background-color: #ffe4e6 !important;
+  border-color: #f43f5e !important;
+  color: #9f1239 !important;
+}
+
+html.light #btn-delete-selected i {
+  color: #e11d48 !important;
+}

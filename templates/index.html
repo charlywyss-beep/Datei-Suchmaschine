@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.7.0' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.7.1' }}</span>
       </button>
 
       <!-- Theme Switcher (Dunkel / Hell) -->
@@ -404,6 +404,12 @@
 
         <!-- Massen-Aktionen Buttons -->
         <div class="flex flex-wrap items-center gap-2">
+          <!-- Massen-Aktion: Ausgewählte Dateien in den Papierkorb löschen -->
+          <button id="btn-delete-selected" onclick="deleteSelectedFiles()" class="hidden px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95" title="Alle ausgewählten Dateien sicher in den Windows-Papierkorb verschieben">
+            <i class="fa-solid fa-trash-can text-rose-400"></i>
+            <span>Ausgewählte löschen (<span id="delete-selected-count">0</span>)</span>
+          </button>
+
           <!-- Massen-Aktion: Umbenennen -->
           <button onclick="openBatchRenameWithSelected()" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition flex items-center gap-1.5">
             <i class="fa-solid fa-pen-to-square"></i>
@@ -957,7 +963,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.0' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.1' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1245,7 +1251,7 @@
         <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
           <div>
             <span class="font-semibold text-slate-200 block">Datei-Suchmaschine Pro</span>
-            <span class="text-[11px] text-slate-400">Version v1.7.0 • GitHub Auto-Update</span>
+            <span class="text-[11px] text-slate-400">Version v1.7.1 • GitHub Auto-Update</span>
           </div>
           <button onclick="closeSettingsModal(); openGitUpdateModal();" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shadow-sm">
             Updates prüfen
@@ -1289,6 +1295,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.7.0' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.7.1' }}"></script>
 </body>
 </html>
