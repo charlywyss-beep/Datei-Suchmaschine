@@ -463,7 +463,8 @@ if __name__ == "__main__":
     print(f"  - Lokal:        http://localhost:{port}")
     print(f"  - iPad / iPhone: http://{local_ip}:{port}")
     try:
-        webbrowser.open(f"http://localhost:{port}")
+        if "--no-browser" not in sys.argv:
+            webbrowser.open(f"http://localhost:{port}")
     except Exception:
         pass
     # Auf 0.0.0.0 lauschen für Zugriff von iPad, iPhone & Heim/Geschäftsnetzwerk
