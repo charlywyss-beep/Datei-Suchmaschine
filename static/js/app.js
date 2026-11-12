@@ -1423,7 +1423,12 @@ async function sendEmail(path) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: path, client: state.emailClient })
     });
-    const d = await res.json();
+    let d;
+    try {
+      d = await res.json();
+    } catch (parseErr) {
+      d = { success: false, error: 'Server-Antwort konnte nicht verarbeitet werden.' };
+    }
     if (d.success) {
       if (d.web_url) {
         window.open(d.web_url, '_blank');

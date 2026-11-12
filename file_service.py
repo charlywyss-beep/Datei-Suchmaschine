@@ -6,11 +6,14 @@ import socket
 import hashlib
 import subprocess
 import mimetypes
+import threading
+import logging
 from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.7.6"
+logger = logging.getLogger("file_service")
+APP_VERSION = "v1.7.7"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -1440,9 +1443,6 @@ def set_email_client(client):
 
 import ctypes
 from ctypes import wintypes
-from pathlib import Path
-
-APP_VERSION = "v1.7.7"
 
 class MapiFileDesc(ctypes.Structure):
     _fields_ = [

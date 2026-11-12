@@ -394,14 +394,17 @@ def set_email_client_route():
 
 @app.route("/api/send-email", methods=["POST"])
 def send_email_route():
-    data = request.get_json() or {}
-    path = data.get("path")
-    recipient = data.get("recipient", "")
-    client = data.get("client")
-    if not path:
-        return jsonify({"error": "Pfad fehlt"}), 400
-    res = file_service.send_file_via_email(path, recipient, client=client)
-    return jsonify(res)
+    try:
+        data = request.get_json() or {}
+        path = data.get("path")
+        recipient = data.get("recipient", "")
+        client = data.get("client")
+        if not path:
+            return jsonify({"success": False, "error": "Pfad fehlt"}), 400
+        res = file_service.send_file_via_email(path, recipient, client=client)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Interner Fehler beim E-Mail-Versand: {str(e)}"}), 500
 
 @app.route("/api/download", methods=["GET"])
 def download_file_route():
