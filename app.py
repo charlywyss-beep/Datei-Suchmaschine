@@ -143,6 +143,16 @@ def git_info_route():
 @app.route("/api/git-update", methods=["POST"])
 def git_update_route():
     res = file_service.git_pull_update()
+    if res.get("success"):
+        import threading
+        def _restart():
+            import time
+            time.sleep(1.2)
+            python_exe = sys.executable
+            app_script = os.path.abspath(__file__)
+            subprocess.Popen([python_exe, app_script], cwd=os.path.dirname(app_script))
+            os._exit(0)
+        threading.Thread(target=_restart, daemon=True).start()
     return jsonify(res)
 
 @app.route("/api/git-push", methods=["POST"])
