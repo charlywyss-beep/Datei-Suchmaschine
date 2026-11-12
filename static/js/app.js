@@ -1,4 +1,4 @@
-﻿// ==========================================
+// ==========================================
 // DATEI-SUCHMASCHINE PRO - FRONTEND ENGINE
 // ==========================================
 
@@ -2404,6 +2404,19 @@ function openMobileSyncModal() {
 
 function closeMobileSyncModal() {
   document.getElementById('modal-mobile-sync').classList.add('hidden');
+}
+
+// ==========================================
+// TRANSFER-HUB & SYNC ANLEITUNG MODAL
+// ==========================================
+function openTransferGuideModal() {
+  const m = document.getElementById('modal-transfer-guide');
+  if (m) m.classList.remove('hidden');
+}
+
+function closeTransferGuideModal() {
+  const m = document.getElementById('modal-transfer-guide');
+  if (m) m.classList.add('hidden');
 }
 
 async function uploadMobileFile() {

@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import time
@@ -13,7 +13,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.12"
+APP_VERSION = "v1.7.13"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -72,8 +72,12 @@ def detect_onedrive_paths():
         business_path = os.path.join(user_home, "OneDrive - Geschaeft")
 
     # 3. Transfer-Hub Ordner (für einfachen Austausch mit iPad/iPhone & Geschäft/Zuhause)
-    base_cloud = personal_path if os.path.exists(personal_path) else (business_path if os.path.exists(business_path) else user_home)
-    transfer_path = os.path.join(base_cloud, "Transfer_Zuhause_Geschaeft_iPad")
+    custom_transfer = cfg.get("transfer_hub")
+    if custom_transfer and os.path.exists(os.path.dirname(custom_transfer)):
+        transfer_path = custom_transfer
+    else:
+        base_cloud = personal_path if os.path.exists(personal_path) else (business_path if os.path.exists(business_path) else user_home)
+        transfer_path = os.path.join(base_cloud, "Transfer_Zuhause_Geschaeft_iPad")
     if not os.path.exists(transfer_path):
         try:
             os.makedirs(transfer_path, exist_ok=True)

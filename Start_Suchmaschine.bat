@@ -1,9 +1,9 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
 title Datei-Suchmaschine Pro
 cls
 echo ========================================================
-echo    🚀 Datei-Suchmaschine Pro (v1.7.12)
+echo    🚀 Datei-Suchmaschine Pro (v1.7.13)
 echo ========================================================
 echo.
 cd /d "%~dp0"

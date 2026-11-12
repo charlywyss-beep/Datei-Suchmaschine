@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de" class="dark">
 <head>
   <meta charset="UTF-8">
@@ -85,10 +85,16 @@
         <span>iPad &amp; iPhone</span>
       </button>
 
+      <!-- Transfer-Hub & Abgleich Anleitung Button -->
+      <button onclick="openTransferGuideModal()" class="px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Anleitung: Transfer-Hub, USB-Stick &amp; Abgleich kniffliger Fälle">
+        <i class="fa-solid fa-book-open"></i>
+        <span>Transfer-Hub &amp; Sync Anleitung</span>
+      </button>
+
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.7.12' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.7.13' }}</span>
       </button>
 
       <!-- Theme Switcher (Dunkel / Hell) -->
@@ -997,7 +1003,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.12' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.13' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1005,6 +1011,40 @@
         <button onclick="closeGitUpdateModal()" class="text-slate-400 hover:text-white transition">
           <i class="fa-solid fa-xmark"></i>
         </button>
+      </div>
+
+      <!-- Speziell für USB-Stick & Geschäfts-PC (.exe Update) -->
+      <div class="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl text-xs space-y-3 text-slate-300">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-emerald-300 flex items-center gap-2 text-sm">
+            <i class="fa-solid fa-floppy-disk text-base"></i>
+            <span>USB-Stick &amp; Geschäfts-PC (.exe Update)</span>
+          </span>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/40">Kein Python &bull; Kein Git nötig</span>
+        </div>
+        <p class="text-[11px] text-slate-300 leading-relaxed">
+          Sie nutzen die Datei-Suchmaschine auf einem USB-Stick oder Firmen-PC? So aktualisieren Sie ohne Installation in 3 Schritten:
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+          <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+            <span class="font-bold text-emerald-400 block mb-0.5">1. Herunterladen</span>
+            <span class="text-slate-400">Klicken Sie unten auf den grünen Download-Knopf.</span>
+          </div>
+          <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+            <span class="font-bold text-emerald-400 block mb-0.5">2. Ersetzen</span>
+            <span class="text-slate-400">Neue <code class="text-slate-200">Datei-Suchmaschine-Pro.exe</code> auf den USB-Stick kopieren &amp; überschreiben.</span>
+          </div>
+          <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+            <span class="font-bold text-emerald-400 block mb-0.5">3. Fertig!</span>
+            <span class="text-slate-400">Ihre Einstellungen &amp; Favoriten (<code class="text-indigo-300 font-mono">config.json</code>) bleiben 100% erhalten!</span>
+          </div>
+        </div>
+        <div class="pt-1">
+          <a href="https://github.com/charlywyss-beep/Datei-Suchmaschine/raw/main/Datei-Suchmaschine-Pro.exe" download="Datei-Suchmaschine-Pro.exe" target="_blank" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-600/30">
+            <i class="fa-solid fa-download text-sm"></i>
+            <span>Neueste Datei-Suchmaschine-Pro.exe herunterladen (12.7 MB Direkt-Download)</span>
+          </a>
+        </div>
       </div>
 
       <!-- Git Repo Status Info -->
@@ -1131,11 +1171,195 @@
         <p class="text-[10px] text-slate-500">Dateien landen automatisch im Ordner: <code class="font-mono text-emerald-400">Transfer_Zuhause_Geschaeft_iPad</code></p>
       </div>
 
-      <div class="flex justify-end pt-2">
+      <div class="flex items-center justify-between pt-2">
+        <button onclick="closeMobileSyncModal(); openTransferGuideModal();" class="px-3.5 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-xs font-semibold transition flex items-center gap-1.5">
+          <i class="fa-solid fa-book-open"></i>
+          <span>📖 Ausführliche Anleitung &amp; Knifflige Fälle</span>
+        </button>
         <button onclick="closeMobileSyncModal()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition">
           Fertig
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: TRANSFER-HUB & SYNC ANLEITUNG       -->
+  <!-- ========================================== -->
+  <div id="modal-transfer-guide" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Header -->
+      <div class="p-6 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/70">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-xl border border-sky-500/30 shrink-0">
+            <i class="fa-solid fa-book-open"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              Transfer-Hub, USB-Stick &amp; Daten-Abgleich Anleitung
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">Profi-Tipps</span>
+            </h3>
+            <p class="text-xs text-slate-400">Lösungen &amp; Best Practices für Zuhause ⇄ Geschäft ⇄ iPad &amp; knifflige Situationen</p>
+          </div>
+        </div>
+        <button onclick="closeTransferGuideModal()" class="text-slate-400 hover:text-white transition p-2">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Scrollbarer Inhalt -->
+      <div class="p-6 overflow-y-auto space-y-5 text-xs text-slate-300 leading-relaxed">
+
+        <!-- 1. GRUNDPRINZIP: WAS IST DER TRANSFER-HUB? -->
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-mono">1</span>
+            <span>Was ist der Transfer-Hub und wie funktioniert er?</span>
+          </h4>
+          <p class="text-slate-400">
+            Der Transfer-Hub ist ein spezieller Sammelordner (<code class="text-emerald-400 font-mono">Transfer_Zuhause_Geschaeft_iPad</code>), der als zentraler Bahnhof für all Ihre Dokumente dient:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80">
+              <span class="font-bold text-indigo-300 block mb-1 flex items-center gap-1.5"><i class="fa-solid fa-house text-xs"></i> PC Zuhause</span>
+              <span class="text-slate-400 text-[11px]">Dateien hineinlegen – sie stehen sofort im Netzwerk, in OneDrive oder auf dem USB-Stick bereit.</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80">
+              <span class="font-bold text-purple-300 block mb-1 flex items-center gap-1.5"><i class="fa-solid fa-briefcase text-xs"></i> PC Geschäft</span>
+              <span class="text-slate-400 text-[11px]">Direkt vom USB-Stick oder via OneDrive darauf zugreifen, bearbeiten und zurückspeichern.</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80">
+              <span class="font-bold text-emerald-300 block mb-1 flex items-center gap-1.5"><i class="fa-solid fa-tablet-screen-button text-xs"></i> iPad &amp; iPhone</span>
+              <span class="text-slate-400 text-[11px]">Fotos, Scans und PDFs per Web-Upload im Browser ohne Kabel direkt in den Hub beamen.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. DATEIEN ABGLEICHEN: WIE GEHT DER VERSIONSABGLEICH? -->
+        <div class="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-2.5">
+          <h4 class="text-sm font-bold text-amber-300 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-mono">2</span>
+            <span>Kann man Dateien abgleichen? Ja: Der Versions- &amp; Duplikate-Abgleich!</span>
+          </h4>
+          <p class="text-slate-300">
+            Haben Sie eine Datei zuhause begonnen und im Geschäft weiterbearbeitet? So gleichen Sie blitzschnell ab:
+          </p>
+          <div class="space-y-2 text-[11px]">
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-check text-amber-400 mt-0.5"></i>
+              <div>
+                <strong>Bitgenauer Hash-Abgleich (SHA-256):</strong> Klicken Sie im Menü auf <strong>„Doppel-Eliminierung“</strong>. Die Suchmaschine analysiert den echten Dateiinhalt – nicht nur den Namen. Sie sehen sofort, ob zwei Dateien identisch sind.
+              </div>
+            </div>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-amber-400 mt-0.5"></i>
+              <div>
+                <strong>Zeitstempel &amp; Versionsprüfung:</strong> Zu jeder Datei wird das genaue Änderungsdatum auf die Sekunde angezeigt.
+              </div>
+            </div>
+            <div class="flex items-start gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mt-0.5"></i>
+              <div>
+                <strong>1-Klick-Auswahl „Neueste behalten“:</strong> Mit dem Knopf <code class="bg-slate-900 px-1.5 py-0.5 rounded text-amber-300 border border-slate-700">Neueste behalten (Ältere löschen)</code> markiert das System automatisch die veralteten Kopien und behält Ihren aktuellsten Bearbeitungsstand!
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. KNIFFLIGER FALL 1: GESCHÄFTS-PC OHNE CLOUD / ONEDRIVE GESPERRT -->
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-xs font-mono">3</span>
+            <span>Kniffliger Fall 1: Firmen-PC verbietet Cloud &amp; kein Python erlaubt</span>
+          </h4>
+          <div class="bg-rose-950/20 p-2.5 rounded-lg border border-rose-500/20 text-[11px] text-rose-200">
+            <strong>Das Problem:</strong> Viele Firmen sperren privates OneDrive, Dropbox oder Google Drive in der Firmenfirewall. Zudem hat man oft keine Administratorrechte und Python ist nicht installiert.
+          </div>
+          <p class="text-slate-400 text-[11px]">
+            <strong>Die Lösung: Der USB-Stick als autarke Zentrale:</strong>
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-300 pl-1">
+            <li>Kopieren Sie die fertige <code class="text-emerald-400 font-mono">Datei-Suchmaschine-Pro.exe</code> auf Ihren USB-Stick.</li>
+            <li>Legen Sie auf dem Stick einen Ordner an, z.B. <code class="text-indigo-300 font-mono">E:\Transfer-Hub</code>.</li>
+            <li>Stecken Sie den Stick im Geschäft ein und doppelklicken Sie die <code class="text-slate-200">.exe</code>. <em>Sie benötigt weder Installation, noch Python, noch Admin-Rechte!</em></li>
+            <li>Speichern Sie Ihre geschäftlichen Arbeitsdateien einfach in den Ordner auf dem USB-Stick.</li>
+            <li>Zu Hause stecken Sie den USB-Stick ein und gleichen die Dateien über die Doppel-Eliminierung mit Ihrem Heim-PC oder OneDrive ab.</li>
+          </ol>
+        </div>
+
+        <!-- 4. KNIFFLIGER FALL 2: UNTERSCHIEDLICHE BENUTZERNAMEN & PFADE -->
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs font-mono">4</span>
+            <span>Kniffliger Fall 2: Unterschiedliche Benutzernamen (C:\Users\01 vs. Firmenlogin)</span>
+          </h4>
+          <p class="text-slate-400 text-[11px]">
+            Zuhause heißt Ihr Windows-Konto <code class="text-indigo-300 font-mono">01</code>, im Geschäft jedoch z.B. <code class="text-indigo-300 font-mono">m.muster</code> oder Sie arbeiten auf Netzlaufwerken (<code class="text-indigo-300 font-mono">H:\</code>, <code class="text-indigo-300 font-mono">Z:\</code>):
+          </p>
+          <div class="space-y-1.5 text-[11px] text-slate-300">
+            <div class="p-2 rounded bg-slate-900 border border-slate-800">
+              <strong class="text-sky-300">Intelligente Pfadauflösung:</strong> Die Suchmaschine passt sich automatisch an den jeweiligen PC an. Auf dem USB-Stick werden Pfade relativ behandelt.
+            </div>
+            <div class="p-2 rounded bg-slate-900 border border-slate-800">
+              <strong class="text-sky-300">Beliebige Firmen-Laufwerke einbinden:</strong> Klicken Sie einfach in das Pfad-Feld oben und geben Sie Ihr Firmen-Laufwerk ein (z.B. <code class="text-slate-200 font-mono">H:\Projekte</code>) oder klicken Sie auf <strong>„Netzwerkpfad hinzufügen“</strong>.
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. KNIFFLIGER FALL 3: GROSSE DATEIEN OHNE E-MAIL-LIMIT (> 25 MB) -->
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2.5">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-mono">5</span>
+            <span>Kniffliger Fall 3: Riesige Dateien ohne E-Mail-Größenbeschränkung</span>
+          </h4>
+          <p class="text-slate-400 text-[11px]">
+            Geschäftliches Outlook oder Firmen-Mailserver verweigern oft Anhänge ab ca. 20 bis 25 MB (z.B. große ZIP-Dateien, CAD-Pläne, Videos, Festplatten-Images):
+          </p>
+          <div class="p-2.5 rounded-lg bg-emerald-950/20 border border-emerald-500/20 text-[11px] text-emerald-300 space-y-1">
+            <p><strong>Unbegrenzte Dateigröße:</strong> Über den USB-Stick oder den lokalen Transfer-Hub gibt es keinerlei Größenlimit. Sie können Dateien mit 5 GB, 20 GB oder mehr ohne Cloud-Beschränkung, ohne Wartezeiten und ohne Qualitätsverlust transportieren.</p>
+          </div>
+        </div>
+
+        <!-- 6. WIE FUNKTIONIERT DAS UPDATE DER .EXE AUF DEM USB-STICK? -->
+        <div class="p-4 rounded-xl bg-indigo-950/20 border border-indigo-500/30 space-y-2.5">
+          <h4 class="text-sm font-bold text-indigo-300 flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs font-mono">6</span>
+            <span>Wie ist es mit Updates beim USB-Stick (.exe)?</span>
+          </h4>
+          <p class="text-slate-300 text-[11px]">
+            Das Aktualisieren auf einem USB-Stick ist kinderleicht und funktioniert völlig ohne Git, ohne Python und ohne Installations-Assistent:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <span class="font-bold text-indigo-300 block mb-1">Schritt 1: Download</span>
+              <span class="text-slate-400">Im GitHub-Fenster auf „Neueste .exe herunterladen“ klicken oder direkt von GitHub laden.</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <span class="font-bold text-indigo-300 block mb-1">Schritt 2: Ersetzen</span>
+              <span class="text-slate-400">Die neue <code class="text-slate-200">Datei-Suchmaschine-Pro.exe</code> auf den USB-Stick kopieren und die alte Datei überschreiben.</span>
+            </div>
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <span class="font-bold text-indigo-300 block mb-1">Schritt 3: Fertig!</span>
+              <span class="text-slate-400">Ihre Einstellungen (<code class="text-emerald-400 font-mono">config.json</code>) bleiben voll erhalten!</span>
+            </div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400">
+            <i class="fa-solid fa-shield-halved text-emerald-400 mr-1.5"></i>
+            <strong>Sicherheits-Garantie:</strong> Alle gespeicherten Favoriten, Suchbegriffe und Mail-Einstellungen liegen in der Datei <code class="text-indigo-300 font-mono">config.json</code> neben der .exe. Da Sie nur die .exe austauschen, geht absolut nichts verloren.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Action -->
+      <div class="p-4 border-t border-slate-800 bg-slate-950/70 flex items-center justify-between">
+        <span class="text-[11px] text-slate-500">Diese Anleitung ist jederzeit über den Button „Transfer-Hub &amp; Sync Anleitung“ im Kopfbereich aufrufbar.</span>
+        <button onclick="closeTransferGuideModal()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow-md shadow-indigo-600/30">
+          Verstanden &amp; Schließen
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -1317,7 +1541,7 @@
         <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
           <div>
             <span class="font-semibold text-slate-200 block">Datei-Suchmaschine Pro</span>
-            <span class="text-[11px] text-slate-400">Version v1.7.12 • GitHub Auto-Update</span>
+            <span class="text-[11px] text-slate-400">Version v1.7.13 • GitHub Auto-Update</span>
           </div>
           <button onclick="closeSettingsModal(); openGitUpdateModal();" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shadow-sm">
             Updates prüfen
@@ -1361,6 +1585,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.7.12' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.7.13' }}"></script>
 </body>
 </html>
