@@ -663,7 +663,7 @@ function getCategoryBadgeLabel(cat) {
     audio: 'Audio',
     email: 'E-Mail',
     archive: 'Archiv',
-    setup: 'Setup',
+    setup: 'Program',
     code: 'Text'
   };
   return map[cat] || '';
@@ -1034,7 +1034,7 @@ function getAppLabelForExt(ext) {
   if (['xlsx', 'xls', 'csv', 'ods', 'xlsm', 'xlsb'].includes(e)) return 'Microsoft Excel';
   if (['pptx', 'ppt', 'ppsx', 'odp'].includes(e)) return 'PowerPoint';
   if (['msg', 'eml', 'pst', 'ost', 'vcf', 'ics'].includes(e)) return 'Outlook / Mail';
-  if (['exe', 'msi', 'iso', 'cmd', 'appx', 'msix'].includes(e)) return 'Setup / Installation';
+  if (['exe', 'msi', 'iso', 'cmd', 'appx', 'msix'].includes(e)) return 'Programm / Anwendung';
   if (['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg', 'wma'].includes(e)) return 'Audio-Player';
   if (['mp4', 'mkv', 'avi', 'mov', 'wmv', 'webm', 'flv', 'm4v'].includes(e)) return 'Video-Player';
   if (['srt', 'vtt', 'sub'].includes(e)) return 'Windows-Editor (Untertitel)';
