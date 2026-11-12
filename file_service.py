@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import json
 import time
@@ -13,7 +13,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.8"
+APP_VERSION = "v1.7.9"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -1641,12 +1641,6 @@ def send_file_via_email(filepath, recipient="", client=None):
         # Verwaiste Locks aufräumen
         _cleanup_stale_thunderbird_locks()
         
-        # Ordner öffnen als Backup
-        try:
-            subprocess.Popen(['explorer.exe', f'/select,{abs_p_win}'])
-        except Exception:
-            pass
-
         tb_paths = [
             r"C:\Program Files\Mozilla Thunderbird\thunderbird.exe",
             r"C:\Program Files (x86)\Mozilla Thunderbird\thunderbird.exe"
