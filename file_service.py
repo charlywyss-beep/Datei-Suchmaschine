@@ -1513,6 +1513,22 @@ def send_via_mapi_threaded(filepath, subject="", body="", recipient=""):
     t.start()
     return True
 
+def get_thunderbird_profile_dir():
+    """Findet den aktiven Thunderbird-Profilordner (%APPDATA%\\Thunderbird\\Profiles\\*.default*)"""
+    appdata = os.environ.get("APPDATA", "")
+    profiles_dir = os.path.join(appdata, "Thunderbird", "Profiles")
+    if os.path.exists(profiles_dir):
+        candidates = [os.path.join(profiles_dir, d) for d in os.listdir(profiles_dir) if os.path.isdir(os.path.join(profiles_dir, d))]
+        rel = [c for c in candidates if "default-release" in os.path.basename(c).lower()]
+        if rel:
+            return rel[0]
+        def_p = [c for c in candidates if "default" in os.path.basename(c).lower()]
+        if def_p:
+            return def_p[0]
+        if candidates:
+            return candidates[0]
+    return None
+
 def _cleanup_stale_thunderbird_locks():
     """Löscht verwaiste parent.lock und .startup-incomplete Dateien, falls kein Thunderbird-Prozess läuft"""
     try:
@@ -1642,11 +1658,16 @@ def send_file_via_email(filepath, recipient="", client=None):
 
         if tb_exe:
             try:
+                prof_dir = get_thunderbird_profile_dir()
                 file_uri = Path(abs_p).as_uri()
                 compose_arg = f"attachment='{file_uri}',subject='Datei: {clean_filename}'"
                 if recipient:
                     compose_arg = f"to='{recipient}'," + compose_arg
-                subprocess.Popen([tb_exe, "-compose", compose_arg])
+                cmd = [tb_exe]
+                if prof_dir and os.path.exists(prof_dir):
+                    cmd.extend(["-profile", prof_dir])
+                cmd.extend(["-compose", compose_arg])
+                subprocess.Popen(cmd)
                 return {
                     "success": True,
                     "method": "thunderbird",
@@ -1671,6 +1692,34 @@ def send_file_via_email(filepath, recipient="", client=None):
 
     # 4. MICROSOFT OUTLOOK
     elif client == "outlook":
+        outlook_paths = [
+            r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",
+            r"C:\Program Files (x86)\Microsoft Office\root\Office16\OUTLOOK.EXE",
+            r"C:\Program Files\Microsoft Office\Office16\OUTLOOK.EXE",
+            r"C:\Program Files (x86)\Microsoft Office\Office16\OUTLOOK.EXE",
+            r"C:\Program Files\Microsoft Office\Office15\OUTLOOK.EXE",
+        ]
+        ol_exe = next((p for p in outlook_paths if os.path.exists(p)), None)
+        if not ol_exe:
+            import shutil
+            ol_exe = shutil.which("OUTLOOK.EXE") or shutil.which("outlook.exe")
+
+        if ol_exe:
+            try:
+                # Direkter nativer Microsoft Outlook Befehl: OUTLOOK.EXE /c ipm.note /a "Pfad"
+                cmd = [ol_exe, "/c", "ipm.note", "/a", abs_p_win]
+                if recipient:
+                    cmd.extend(["/m", recipient])
+                subprocess.Popen(cmd)
+                return {
+                    "success": True,
+                    "method": "outlook",
+                    "message": f"Microsoft Outlook mit Anhang '{filename}' geöffnet!"
+                }
+            except Exception as e_ol:
+                logger.warning(f"Direct Outlook command failed: {e_ol}")
+
+        # Fallback auf COM Automation
         try:
             ps_cmd = (
                 f"$ol = New-Object -ComObject Outlook.Application; "
