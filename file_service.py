@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.5.4"
+APP_VERSION = "v1.5.5"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -104,13 +104,14 @@ CATEGORY_EXTENSIONS = {
     "pdf": {".pdf"},
     "word": {".docx", ".doc", ".rtf", ".odt", ".dot", ".dotx"},
     "excel": {".xlsx", ".xls", ".csv", ".ods", ".xlsm", ".xlsb"},
+    "access": {".accdb", ".mdb", ".accde", ".accdr"},
     "powerpoint": {".pptx", ".ppt", ".pps", ".ppsx", ".odp"},
-    "office": {".pdf", ".docx", ".doc", ".rtf", ".odt", ".xlsx", ".xls", ".csv", ".ods", ".pptx", ".ppt"},
+    "office": {".pdf", ".docx", ".doc", ".rtf", ".odt", ".xlsx", ".xls", ".csv", ".ods", ".accdb", ".mdb", ".accde", ".accdr", ".pptx", ".ppt"},
     "image": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".ico", ".tiff", ".tif", ".heic", ".raw"},
     "audio": {".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".wma"},
     "video": {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"},
     "archive": {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".iso"},
-    "code": {".txt", ".log", ".py", ".js", ".ts", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sql", ".sh", ".bat", ".ps1", ".md"},
+    "code": {".txt", ".srt", ".vtt", ".sub", ".nfo", ".cfg", ".ini", ".conf", ".env", ".toml", ".log", ".py", ".js", ".ts", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sql", ".sh", ".bat", ".ps1", ".md"},
 }
 
 def format_size(size_bytes):
@@ -458,8 +459,18 @@ def fast_search(
     p_personal = os.path.normcase(os.path.abspath(od_info["personal"]["path"])) if od_info["personal"]["exists"] else None
     p_business = os.path.normcase(os.path.abspath(od_info["business"]["path"])) if od_info["business"]["exists"] else None
 
-    # Skip heavy system / cache directories if searching C:\
-    skip_dirs = {"$recycle.bin", "system volume information", "windows", "appdata\\local\\temp", "node_modules", ".git"}
+    # Skip heavy system / program / cache directories unless user explicitly searches inside them
+    skip_dirs = {"$recycle.bin", "system volume information", "windows", "appdata", "node_modules", ".git", "__pycache__"}
+    start_dirs_lower = [sd.lower() for sd in start_dirs]
+    system_prefixes = (
+        "c:\\windows",
+        "c:\\program files",
+        "c:\\program files (x86)",
+        "c:\\programdata",
+        "c:\\python",
+        "c:\\recovery",
+        "c:\\msocache",
+    )
 
     count = 0
     stack = list(start_dirs)
@@ -485,9 +496,12 @@ def fast_search(
                         # Skip hidden/system directories
                         if dirname_lower.startswith('$') or dirname_lower in skip_dirs:
                             continue
-                        # If scanning C:\ avoid recursing into C:\Windows
                         full_entry_path = entry.path.lower()
-                        if "c:\\windows" in full_entry_path or "c:\\programdata\\microsoft" in full_entry_path:
+                        # Skip internal Windows/Program installation folders unless user explicitly searched inside them
+                        matched_sp = next((sp for sp in system_prefixes if full_entry_path.startswith(sp)), None)
+                        if matched_sp and not any(sd.startswith(matched_sp) for sd in start_dirs_lower):
+                            continue
+                        if "\\.gemini\\antigravity-" in full_entry_path:
                             continue
                         stack.append(entry.path)
                     else:
@@ -500,9 +514,9 @@ def fast_search(
                             if not all(qp in filename_lower for qp in query_parts):
                                 continue
 
-                        # Extension match (interne .lnk Verknüpfungen ignorieren)
+                        # Extension match (interne .lnk Verknüpfungen und Office-Sperrdateien .laccdb / ~$ ignorieren)
                         _, ext = os.path.splitext(filename_lower)
-                        if ext == ".lnk":
+                        if ext in (".lnk", ".laccdb", ".ldb") or filename_lower.startswith("~$"):
                             continue
                         if allowed_exts is not None and ext not in allowed_exts:
                             continue
@@ -550,7 +564,7 @@ def fast_search(
                             "name": filename,
                             "path": entry.path,
                             "folder": to_german_display_path(os.path.dirname(entry.path)),
-                            "ext": ext.replace(".", "").upper(),
+                            "ext": ext.replace(".", "").upper() or "DATEI",
                             "category": cat,
                             "size": size,
                             "size_formatted": format_size(size),
@@ -851,22 +865,76 @@ def _is_isolated_desktop():
     except Exception:
         return False
 
+def _find_msaccess_exe():
+    candidates = [
+        r"C:\Program Files\Microsoft Office\root\Office16\MSACCESS.EXE",
+        r"C:\Program Files (x86)\Microsoft Office\root\Office16\MSACCESS.EXE",
+        r"C:\Program Files\Microsoft Office\Office16\MSACCESS.EXE",
+        r"C:\Program Files (x86)\Microsoft Office\Office16\MSACCESS.EXE",
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return None
+
+def _is_likely_text_file(filepath):
+    """Prüft anhand der ersten 4 KB, ob eine Datei (z.B. ohne Dateiendung oder .srt) lesbarer Text ist."""
+    try:
+        with open(filepath, "rb") as f:
+            chunk = f.read(4096)
+        if not chunk:
+            return True
+        if b"\x00" in chunk:
+            return False
+        try:
+            chunk.decode("utf-8")
+            return True
+        except UnicodeDecodeError:
+            pass
+        non_printable = sum(1 for b in chunk if b < 32 and b not in (9, 10, 13))
+        return (non_printable / len(chunk)) < 0.05
+    except Exception:
+        return False
+
+def _has_windows_association(ext):
+    if not ext:
+        return False
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, ext) as k:
+            val, _ = winreg.QueryValueEx(k, "")
+            return bool(val and str(val).strip())
+    except Exception:
+        return False
+
 def open_file_in_system(filepath):
-    """Öffnet Datei direkt in PDF X (für PDFs) oder der jeweiligen Standard-App (Word, Excel, etc.)."""
+    """Öffnet Datei direkt in PDF X (für PDFs), Microsoft Access (.accdb/.mdb), Word, Excel,
+    oder im Windows-Editor (für .srt, Konfigurations- und Textdateien ohne Endung)."""
     filepath = resolve_german_alias_path(filepath)
     if not filepath or not os.path.exists(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
     
     abs_p = os.path.abspath(filepath)
     ext = os.path.splitext(abs_p)[1].lower().strip()
+    notepad_exts = {".srt", ".vtt", ".sub", ".nfo", ".cfg", ".ini", ".conf", ".log", ".env", ".yml", ".yaml", ".toml", ".sql", ".md", ".txt"}
+
     if ext == ".pdf":
         app_name = "PDF X"
+    elif ext in [".accdb", ".mdb", ".accde", ".accdr"]:
+        app_name = "Microsoft Access"
     elif ext in [".docx", ".doc", ".rtf", ".odt"]:
         app_name = "Microsoft Word"
     elif ext in [".xlsx", ".xls", ".csv", ".ods"]:
         app_name = "Microsoft Excel"
     elif ext in [".pptx", ".ppt"]:
         app_name = "PowerPoint"
+    elif ext in notepad_exts:
+        app_name = "Windows-Editor (Untertitel / Text)" if ext in {".srt", ".vtt", ".sub"} else "Windows-Editor"
+    elif not ext or not _has_windows_association(ext):
+        if _is_likely_text_file(abs_p):
+            app_name = "Windows-Editor (Textdatei)"
+        else:
+            app_name = "Windows 'Öffnen mit…'-Auswahl"
     else:
         app_name = "Standard-App"
 
@@ -886,7 +954,7 @@ def open_file_in_system(filepath):
 
     # Direktes App-Protokoll konstruieren:
     # - Für PDFs: pdflab-service-editor://open/?fpath=... (umgeht den Windows 11 '.pdf -> Nur einmal' Dialog)
-    # - Für alle anderen Dateien (Word, Excel, Bilder etc.): suchmaschine://run/<ticket_id> (startet os.startfile auf dem echten Desktop)
+    # - Für alle anderen Dateien (Access, Word, Excel, .srt, endungslose Dateien etc.): suchmaschine://run/<ticket_id>
     import urllib.parse
     if ext == ".pdf":
         encoded_path = urllib.parse.quote(target_open_path, safe="")
@@ -913,6 +981,29 @@ def open_file_in_system(filepath):
             res = subprocess.run(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", cmd], capture_output=True, text=True, timeout=5)
             if res.returncode == 0:
                 return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
+        except Exception:
+            pass
+
+    if ext in [".accdb", ".mdb", ".accde", ".accdr"]:
+        msaccess = _find_msaccess_exe()
+        if msaccess:
+            try:
+                subprocess.Popen([msaccess, target_open_path])
+                return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
+            except Exception:
+                pass
+
+    if ext in notepad_exts or ((not ext or not _has_windows_association(ext)) and _is_likely_text_file(target_open_path)):
+        try:
+            subprocess.Popen(["notepad.exe", target_open_path])
+            return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
+        except Exception:
+            pass
+
+    if not ext or not _has_windows_association(ext):
+        try:
+            subprocess.Popen(["rundll32.exe", "shell32.dll,OpenAs_RunDLL", target_open_path])
+            return {"success": True, "open_path": target_open_path, "message": "Unbekannter Dateityp – Windows 'Öffnen mit…' geöffnet."}
         except Exception:
             pass
 

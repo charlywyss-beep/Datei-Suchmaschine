@@ -432,14 +432,16 @@ function applyClientCategoryFilter() {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'word' || ['DOCX', 'DOC', 'ODT', 'RTF'].includes(f.ext));
   } else if (cat === 'excel') {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'excel' || ['XLSX', 'XLS', 'CSV', 'ODS', 'XLSM'].includes(f.ext));
+  } else if (cat === 'access') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'access' || ['ACCDB', 'MDB', 'ACCDE', 'ACCDR'].includes(f.ext));
   } else if (cat === 'office') {
-    state.currentFiles = state.allRawFiles.filter(f => ['pdf', 'word', 'excel', 'powerpoint'].includes(f.category) || ['PDF', 'DOCX', 'DOC', 'XLSX', 'XLS', 'CSV', 'PPTX', 'PPT', 'ODT', 'ODS'].includes(f.ext));
+    state.currentFiles = state.allRawFiles.filter(f => ['pdf', 'word', 'excel', 'access', 'powerpoint'].includes(f.category) || ['PDF', 'DOCX', 'DOC', 'XLSX', 'XLS', 'CSV', 'ACCDB', 'MDB', 'ACCDE', 'ACCDR', 'PPTX', 'PPT', 'ODT', 'ODS'].includes(f.ext));
   } else if (cat === 'image') {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'image' || ['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes(f.ext));
   } else if (cat === 'archive') {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'archive' || ['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(f.ext));
   } else if (cat === 'code') {
-    state.currentFiles = state.allRawFiles.filter(f => f.category === 'code' || ['TXT', 'MD', 'PY', 'JS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1'].includes(f.ext));
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'code' || ['TXT', 'SRT', 'VTT', 'SUB', 'NFO', 'CFG', 'INI', 'CONF', 'LOG', 'MD', 'PY', 'JS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1', 'SQL', 'YML', 'YAML'].includes(f.ext));
   } else {
     state.currentFiles = state.allRawFiles.filter(f => f.category === cat);
   }
@@ -624,6 +626,7 @@ function getCategoryBadgeLabel(cat) {
     pdf: 'PDF',
     word: 'Word',
     excel: 'Excel',
+    access: 'Access',
     office: 'Office',
     image: 'Bilder',
     archive: 'Archiv',
@@ -885,8 +888,11 @@ function renderResults() {
         <td class="py-2.5 px-4 text-center" onclick="event.stopPropagation()">
           <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
         </td>
-        <td class="py-2.5 px-4 text-center">
-          ${fileIcon}
+        <td class="py-2.5 px-4 text-left whitespace-nowrap">
+          <div class="inline-flex items-center gap-1.5" title="Dateityp: ${file.ext || 'DATEI'} (${getAppLabelForExt(file.ext)})">
+            ${fileIcon}
+            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${file.ext || 'DATEI'}</span>
+          </div>
         </td>
         <td class="py-2.5 px-4 font-medium text-slate-100 max-w-xs md:max-w-md truncate" onclick="openFile('${escapeJs(file.path)}')">
           <span class="hover:text-indigo-400 transition underline-offset-2 hover:underline cursor-pointer" title="In ${getAppLabelForExt(file.ext)} öffnen: ${file.name}">
@@ -972,43 +978,70 @@ function getCategoryForExt(ext) {
   const e = (ext || '').replace(/^\./, '').toUpperCase().trim();
   if (['PDF'].includes(e)) return 'pdf';
   if (['DOCX', 'DOC', 'ODT', 'RTF'].includes(e)) return 'word';
-  if (['XLSX', 'XLS', 'CSV', 'ODS', 'XLSM'].includes(e)) return 'excel';
-  if (['PPTX', 'PPT', 'ODP'].includes(e)) return 'word';
-  if (['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes(e)) return 'image';
-  if (['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(e)) return 'archive';
-  if (['TXT', 'MD', 'PY', 'JS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1'].includes(e)) return 'code';
+  if (['XLSX', 'XLS', 'CSV', 'ODS', 'XLSM', 'XLSB'].includes(e)) return 'excel';
+  if (['ACCDB', 'MDB', 'ACCDE', 'ACCDR'].includes(e)) return 'access';
+  if (['PPTX', 'PPT', 'ODP', 'PPSX'].includes(e)) return 'powerpoint';
+  if (['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG', 'ICO', 'HEIC', 'TIFF', 'TIF'].includes(e)) return 'image';
+  if (['MP4', 'MKV', 'AVI', 'MOV', 'WMV', 'WEBM', 'M4V'].includes(e)) return 'video';
+  if (['MP3', 'WAV', 'FLAC', 'M4A', 'AAC', 'OGG', 'WMA'].includes(e)) return 'audio';
+  if (['ZIP', 'RAR', '7Z', 'TAR', 'GZ', 'ISO'].includes(e)) return 'archive';
+  if (['TXT', 'SRT', 'VTT', 'SUB', 'NFO', 'CFG', 'INI', 'CONF', 'LOG', 'MD', 'PY', 'JS', 'TS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1', 'SQL', 'YML', 'YAML', 'ENV', 'TOML'].includes(e)) return 'code';
   return 'other';
 }
 
 // App-Bezeichnung ermitteln je nach Dateiendung
 function getAppLabelForExt(ext) {
-  const e = (ext || '').toLowerCase().trim();
-  if (e === '.pdf') return 'PDF X';
-  if (['.docx', '.doc'].includes(e)) return 'Microsoft Word';
-  if (['.xlsx', '.xls', '.csv'].includes(e)) return 'Microsoft Excel';
-  if (['.pptx', '.ppt'].includes(e)) return 'PowerPoint';
-  if (['.txt', '.log', '.json', '.xml', '.md'].includes(e)) return 'Editor';
+  const e = (ext || '').replace(/^\./, '').toLowerCase().trim();
+  if (e === 'pdf') return 'PDF X';
+  if (['accdb', 'mdb', 'accde', 'accdr'].includes(e)) return 'Microsoft Access';
+  if (['docx', 'doc', 'rtf', 'odt'].includes(e)) return 'Microsoft Word';
+  if (['xlsx', 'xls', 'csv', 'ods', 'xlsm', 'xlsb'].includes(e)) return 'Microsoft Excel';
+  if (['pptx', 'ppt', 'ppsx', 'odp'].includes(e)) return 'PowerPoint';
+  if (['srt', 'vtt', 'sub'].includes(e)) return 'Windows-Editor (Untertitel)';
+  if (['txt', 'log', 'json', 'xml', 'md', 'ini', 'cfg', 'conf', 'nfo', 'yml', 'yaml', 'sql', 'bat', 'ps1', 'py', 'js', 'ts', 'html', 'css', 'env', 'toml'].includes(e)) return 'Windows-Editor';
+  if (!e || e === 'datei') return 'Editor / Öffnen mit…';
   return 'Standard-App';
 }
 
-// Icon Helfer je nach Kategorie
+// Icon Helfer je nach Kategorie & Dateiendung
 function getCategoryIconHtml(category, ext, large = false) {
   const sizeClass = large ? 'text-3xl' : 'text-base';
+  const e = (ext || '').replace(/^\./, '').toUpperCase().trim();
+
+  if (category === 'access' || ['ACCDB', 'MDB', 'ACCDE', 'ACCDR'].includes(e)) {
+    return `<i class="fa-solid fa-database text-rose-500 ${sizeClass}" title="Microsoft Access Datenbank (.${e.toLowerCase()})"></i>`;
+  }
+  if (['SRT', 'VTT', 'SUB'].includes(e)) {
+    return `<i class="fa-solid fa-closed-captioning text-amber-400 ${sizeClass}" title="Untertitel-Textdatei (.${e.toLowerCase()})"></i>`;
+  }
+  if (category === 'powerpoint' || ['PPTX', 'PPT', 'PPSX', 'ODP'].includes(e)) {
+    return `<i class="fa-solid fa-file-powerpoint text-orange-500 ${sizeClass}" title="PowerPoint (.${e.toLowerCase()})"></i>`;
+  }
+  if (category === 'video' || ['MP4', 'MKV', 'AVI', 'MOV', 'WMV', 'WEBM'].includes(e)) {
+    return `<i class="fa-solid fa-file-video text-pink-400 ${sizeClass}" title="Video (.${e.toLowerCase()})"></i>`;
+  }
+  if (category === 'audio' || ['MP3', 'WAV', 'FLAC', 'M4A', 'AAC', 'OGG'].includes(e)) {
+    return `<i class="fa-solid fa-file-audio text-teal-400 ${sizeClass}" title="Audio (.${e.toLowerCase()})"></i>`;
+  }
+
   switch (category) {
     case 'pdf':
-      return `<i class="fa-solid fa-file-pdf text-red-500 ${sizeClass}" title="PDF"></i>`;
+      return `<i class="fa-solid fa-file-pdf text-red-500 ${sizeClass}" title="PDF-Dokument"></i>`;
     case 'word':
-      return `<i class="fa-solid fa-file-word text-blue-500 ${sizeClass}" title="Word"></i>`;
+      return `<i class="fa-solid fa-file-word text-blue-500 ${sizeClass}" title="Microsoft Word"></i>`;
     case 'excel':
-      return `<i class="fa-solid fa-file-excel text-emerald-500 ${sizeClass}" title="Excel"></i>`;
+      return `<i class="fa-solid fa-file-excel text-emerald-500 ${sizeClass}" title="Microsoft Excel"></i>`;
     case 'image':
-      return `<i class="fa-solid fa-file-image text-purple-400 ${sizeClass}" title="Bild"></i>`;
+      return `<i class="fa-solid fa-file-image text-purple-400 ${sizeClass}" title="Bild (${e})"></i>`;
     case 'archive':
-      return `<i class="fa-solid fa-file-zipper text-yellow-500 ${sizeClass}" title="Archiv"></i>`;
+      return `<i class="fa-solid fa-file-zipper text-yellow-500 ${sizeClass}" title="Archiv (${e})"></i>`;
     case 'code':
-      return `<i class="fa-solid fa-file-code text-cyan-400 ${sizeClass}" title="Code / Text"></i>`;
+      return `<i class="fa-solid fa-file-lines text-cyan-400 ${sizeClass}" title="Text / Skript (${e})"></i>`;
     default:
-      return `<i class="fa-solid fa-file text-slate-400 ${sizeClass}" title="${ext}"></i>`;
+      if (!e || e === 'DATEI') {
+        return `<i class="fa-solid fa-file-circle-question text-slate-400 ${sizeClass}" title="Datei ohne Endung (wird bei Text im Editor geöffnet)"></i>`;
+      }
+      return `<i class="fa-solid fa-file text-slate-400 ${sizeClass}" title="Dateityp: .${e.toLowerCase()}"></i>`;
   }
 }
 
@@ -1057,10 +1090,31 @@ function sortResults(column) {
   }
   applySorting();
   renderResults();
+
+  const colNames = {
+    ext: 'Dateityp',
+    name: 'Dateiname',
+    folder: 'Ordner-Pfad',
+    size: 'Größe',
+    modified: 'Änderungsdatum'
+  };
+  const dirLabel = state.sortAsc ? 'aufsteigend ▲' : 'absteigend ▼';
+  showToast(`Sortiert nach ${colNames[column] || column} (${dirLabel})`, 'info');
 }
 
 function applySorting() {
   state.currentFiles.sort((a, b) => {
+    if (state.sortCol === 'ext') {
+      const extA = ((a.ext && a.ext !== 'DATEI') ? a.ext : 'ZZZ_DATEI').toLowerCase();
+      const extB = ((b.ext && b.ext !== 'DATEI') ? b.ext : 'ZZZ_DATEI').toLowerCase();
+      if (extA < extB) return state.sortAsc ? -1 : 1;
+      if (extA > extB) return state.sortAsc ? 1 : -1;
+      // Sekundäre Sortierung nach Dateiname innerhalb desselben Dateityps
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB, 'de');
+    }
+
     let valA = a[state.sortCol];
     let valB = b[state.sortCol];
     if (typeof valA === 'string') valA = valA.toLowerCase();

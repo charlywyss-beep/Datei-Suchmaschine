@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.5.4' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.5.5' }}</span>
       </button>
 
       <!-- Theme Switcher -->
@@ -211,10 +211,15 @@
               <span class="font-semibold">Excel</span>
               <span class="text-[10px] text-slate-500">.xlsx, .csv</span>
             </button>
+            <button type="button" onclick="setCategoryFilter('access', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-rose-400 hover:bg-rose-500/10 border-slate-700/80">
+              <i class="fa-solid fa-database text-rose-500 text-sm"></i>
+              <span class="font-semibold">Access</span>
+              <span class="text-[10px] text-slate-500">.accdb, .mdb</span>
+            </button>
             <button type="button" onclick="setCategoryFilter('office', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-amber-400 hover:bg-amber-500/10 border-slate-700/80">
               <i class="fa-solid fa-briefcase text-amber-500 text-sm"></i>
               <span class="font-semibold">Alle Office</span>
-              <span class="text-[10px] text-slate-500">PDF, Word, Excel, PPT</span>
+              <span class="text-[10px] text-slate-500">PDF, Word, Excel, Access, PPT</span>
             </button>
             <button type="button" onclick="setCategoryFilter('image', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-purple-400 hover:bg-purple-500/10 border-slate-700/80">
               <i class="fa-solid fa-file-image text-purple-500 text-sm"></i>
@@ -431,7 +436,9 @@
                   <th class="py-3 px-4 w-10 text-center">
                     <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
                   </th>
-                  <th class="py-3 px-4 w-12 text-center">Typ</th>
+                  <th class="py-3 px-4 w-28 text-left cursor-pointer hover:text-slate-200 transition" onclick="sortResults('ext')" title="Nach Dateityp sortieren">
+                    Typ <i class="fa-solid fa-sort ml-1"></i>
+                  </th>
                   <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('name')">
                     Dateiname <i class="fa-solid fa-sort ml-1"></i>
                   </th>
@@ -940,7 +947,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.5.4' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.5.5' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1120,6 +1127,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.5.4' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.5.5' }}"></script>
 </body>
 </html>

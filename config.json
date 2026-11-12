@@ -5,7 +5,40 @@
       "name": "Dokumente (D:)",
       "path": "D:\\01\\Documents\\",
       "icon": "folder"
+    },
+    {
+      "id": "fav_2699e43e",
+      "name": "Serien (D:)",
+      "path": "D:\\Plex\\Serien",
+      "icon": "star",
+      "exists": true
     }
   ],
-  "network_paths": []
+  "network_paths": [],
+  "search_history": [
+    {
+      "id": "hist_20f485a2",
+      "query": "Chicago",
+      "category": "all",
+      "timestamp": "12.11. 08:18"
+    },
+    {
+      "id": "hist_dc8d604f",
+      "query": "Buch",
+      "category": "all",
+      "timestamp": "12.11. 08:14"
+    },
+    {
+      "id": "hist_3c90dd21",
+      "query": "Buch",
+      "category": "code",
+      "timestamp": "12.11. 08:12"
+    },
+    {
+      "id": "hist_bb3000e1",
+      "query": "Buch",
+      "category": "pdf",
+      "timestamp": "12.11. 08:11"
+    }
+  ]
 }
