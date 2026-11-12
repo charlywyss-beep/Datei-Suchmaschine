@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.5.7' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.5.8' }}</span>
       </button>
 
       <!-- Theme Switcher -->
@@ -191,60 +191,50 @@
           <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5 block">
             <i class="fa-solid fa-filter mr-1 text-indigo-400"></i> Dateityp-Schnellfilter:
           </label>
-          <div class="flex flex-wrap gap-2" id="category-filter-group">
-            <button type="button" onclick="setCategoryFilter('all', this)" class="cat-pill active flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition">
+          <div class="flex flex-wrap gap-1.5" id="category-filter-group">
+            <button type="button" onclick="setCategoryFilter('all', this)" class="cat-pill active flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition" title="Alle Dateitypen durchsuchen">
               <i class="fa-solid fa-layer-group"></i>
-              <span>Alle Typen</span>
+              <span>Alle</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('folder', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-amber-300 hover:bg-amber-500/10 border-slate-700/80">
-              <i class="fa-solid fa-folder text-amber-400 text-sm"></i>
-              <span class="font-semibold">Ordner</span>
-              <span class="text-[10px] text-slate-500">Verzeichnisse</span>
+            <button type="button" onclick="setCategoryFilter('folder', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-amber-300 hover:bg-amber-500/10 border-slate-700/80" title="Nur Ordner / Verzeichnisse durchsuchen">
+              <i class="fa-solid fa-folder text-amber-400"></i>
+              <span>Ordner</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('pdf', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-red-400 hover:bg-red-500/10 border-slate-700/80">
-              <i class="fa-solid fa-file-pdf text-red-500 text-sm"></i>
-              <span class="font-semibold">PDF-Dokumente</span>
-              <span class="text-[10px] text-slate-500">.pdf</span>
+            <button type="button" onclick="setCategoryFilter('pdf', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-red-400 hover:bg-red-500/10 border-slate-700/80" title="PDF-Dokumente (.pdf)">
+              <i class="fa-solid fa-file-pdf text-red-500"></i>
+              <span>PDF</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('word', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-blue-400 hover:bg-blue-500/10 border-slate-700/80">
-              <i class="fa-solid fa-file-word text-blue-500 text-sm"></i>
-              <span class="font-semibold">Word</span>
-              <span class="text-[10px] text-slate-500">.docx, .doc</span>
+            <button type="button" onclick="setCategoryFilter('word', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-blue-400 hover:bg-blue-500/10 border-slate-700/80" title="Word-Dokumente (.docx, .doc, .rtf, .odt)">
+              <i class="fa-solid fa-file-word text-blue-500"></i>
+              <span>Word</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('excel', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-emerald-400 hover:bg-emerald-500/10 border-slate-700/80">
-              <i class="fa-solid fa-file-excel text-emerald-500 text-sm"></i>
-              <span class="font-semibold">Excel</span>
-              <span class="text-[10px] text-slate-500">.xlsx, .csv</span>
+            <button type="button" onclick="setCategoryFilter('excel', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-emerald-400 hover:bg-emerald-500/10 border-slate-700/80" title="Excel-Tabellen (.xlsx, .xls, .csv, .ods)">
+              <i class="fa-solid fa-file-excel text-emerald-500"></i>
+              <span>Excel</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('access', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-rose-400 hover:bg-rose-500/10 border-slate-700/80">
-              <i class="fa-solid fa-database text-rose-500 text-sm"></i>
-              <span class="font-semibold">Access</span>
-              <span class="text-[10px] text-slate-500">.accdb, .mdb</span>
+            <button type="button" onclick="setCategoryFilter('access', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-rose-400 hover:bg-rose-500/10 border-slate-700/80" title="Access-Datenbanken (.accdb, .mdb)">
+              <i class="fa-solid fa-database text-rose-500"></i>
+              <span>Access</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('office', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-amber-400 hover:bg-amber-500/10 border-slate-700/80">
-              <i class="fa-solid fa-briefcase text-amber-500 text-sm"></i>
-              <span class="font-semibold">Alle Office</span>
-              <span class="text-[10px] text-slate-500">PDF, Word, Excel, Access, PPT</span>
+            <button type="button" onclick="setCategoryFilter('office', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-amber-400 hover:bg-amber-500/10 border-slate-700/80" title="Alle Office-Dokumente (PDF, Word, Excel, Access, PPT)">
+              <i class="fa-solid fa-briefcase text-amber-500"></i>
+              <span>Office</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('image', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-purple-400 hover:bg-purple-500/10 border-slate-700/80">
-              <i class="fa-solid fa-file-image text-purple-500 text-sm"></i>
-              <span class="font-semibold">Bilder & Fotos</span>
-              <span class="text-[10px] text-slate-500">.jpg, .png, .webp...</span>
+            <button type="button" onclick="setCategoryFilter('image', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-purple-400 hover:bg-purple-500/10 border-slate-700/80" title="Bilder &amp; Fotos (.jpg, .png, .webp, .svg...)">
+              <i class="fa-solid fa-file-image text-purple-500"></i>
+              <span>Bilder</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('video', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-pink-400 hover:bg-pink-500/10 border-slate-700/80">
-              <i class="fa-solid fa-film text-pink-500 text-sm"></i>
-              <span class="font-semibold">Video</span>
-              <span class="text-[10px] text-slate-500">.mp4, .mkv, .avi...</span>
+            <button type="button" onclick="setCategoryFilter('video', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-pink-400 hover:bg-pink-500/10 border-slate-700/80" title="Videos (.mp4, .mkv, .avi, .mov...)">
+              <i class="fa-solid fa-film text-pink-500"></i>
+              <span>Video</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('archive', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-yellow-400 hover:bg-yellow-500/10 border-slate-700/80">
-              <i class="fa-solid fa-file-zipper text-yellow-500 text-sm"></i>
-              <span class="font-semibold">Archive</span>
-              <span class="text-[10px] text-slate-500">.zip, .rar, .7z</span>
+            <button type="button" onclick="setCategoryFilter('archive', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-yellow-400 hover:bg-yellow-500/10 border-slate-700/80" title="Archive (.zip, .rar, .7z, .tar...)">
+              <i class="fa-solid fa-file-zipper text-yellow-500"></i>
+              <span>Archive</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('code', this)" class="cat-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition text-cyan-400 hover:bg-cyan-500/10 border-slate-700/80">
-              <i class="fa-solid fa-file-code text-cyan-500 text-sm"></i>
-              <span class="font-semibold">Text &amp; Skripte</span>
-              <span class="text-[10px] text-slate-500">.txt, .md, .py...</span>
+            <button type="button" onclick="setCategoryFilter('code', this)" class="cat-pill flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition text-cyan-400 hover:bg-cyan-500/10 border-slate-700/80" title="Textdateien &amp; Skripte (.txt, .md, .py, .srt...)">
+              <i class="fa-solid fa-file-code text-cyan-500"></i>
+              <span>Text</span>
             </button>
           </div>
         </div>
@@ -946,7 +936,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.5.7' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.5.8' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1153,6 +1143,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.5.7' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.5.8' }}"></script>
 </body>
 </html>
