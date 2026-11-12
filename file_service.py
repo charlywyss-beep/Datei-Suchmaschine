@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.5.3"
+APP_VERSION = "v1.5.4"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -264,6 +264,88 @@ def remove_saved_path(path_id):
     cfg["saved_paths"] = new_paths
     save_config(cfg)
     return {"success": True, "saved_paths": new_paths}
+
+# ==========================================
+# SUCH-VERLAUF (HISTORY) & GESPEICHERTE SUCHEN
+# ==========================================
+def get_search_history():
+    """Gibt die letzten Suchanfragen zurück"""
+    cfg = load_config()
+    return cfg.get("search_history", [])
+
+def add_search_history(query, category="all"):
+    """Speichert eine ausgeführte Suche automatisch im Verlauf (max. 15 Einträge)"""
+    q = (query or "").strip()
+    if not q:
+        return get_search_history()
+    cfg = load_config()
+    history = cfg.get("search_history", [])
+    cat = (category or "all").strip().lower()
+    # Vorhandenen identischen Eintrag entfernen (damit er nach vorne rückt)
+    history = [h for h in history if not (h.get("query", "").lower() == q.lower() and h.get("category", "all") == cat)]
+    import uuid
+    new_entry = {
+        "id": f"hist_{uuid.uuid4().hex[:8]}",
+        "query": q,
+        "category": cat,
+        "timestamp": datetime.now().strftime("%d.%m. %H:%M")
+    }
+    history.insert(0, new_entry)
+    history = history[:15]
+    cfg["search_history"] = history
+    save_config(cfg)
+    return history
+
+def remove_search_history(item_id=None, clear_all=False):
+    """Löscht einen einzelnen Verlaufseintrag oder leert den gesamten Such-Verlauf"""
+    cfg = load_config()
+    if clear_all:
+        cfg["search_history"] = []
+    else:
+        history = cfg.get("search_history", [])
+        cfg["search_history"] = [h for h in history if h.get("id") != item_id and h.get("query") != item_id]
+    save_config(cfg)
+    return {"success": True, "search_history": cfg.get("search_history", [])}
+
+def get_saved_searches():
+    """Gibt dauerhaft gespeicherte Suchanfragen (Favoriten-Suchen) zurück"""
+    cfg = load_config()
+    return cfg.get("saved_searches", [])
+
+def add_saved_search(query, category="all", name=""):
+    """Speichert eine wiederkehrende Dateisuche dauerhaft ab"""
+    q = (query or "").strip()
+    if not q:
+        return {"success": False, "error": "Bitte zuerst einen Suchbegriff eingeben"}
+    cfg = load_config()
+    saved = cfg.get("saved_searches", [])
+    cat = (category or "all").strip().lower()
+    for s in saved:
+        if s.get("query", "").lower() == q.lower() and s.get("category", "all") == cat:
+            if name.strip():
+                s["name"] = name.strip()
+                save_config(cfg)
+            return {"success": True, "saved_searches": saved, "updated": True}
+    import uuid
+    new_item = {
+        "id": f"ssearch_{uuid.uuid4().hex[:8]}",
+        "name": name.strip() or q,
+        "query": q,
+        "category": cat
+    }
+    saved.append(new_item)
+    cfg["saved_searches"] = saved
+    save_config(cfg)
+    return {"success": True, "saved_searches": saved, "item": new_item}
+
+def remove_saved_search(search_id):
+    """Entfernt eine gespeicherte Suche"""
+    cfg = load_config()
+    saved = cfg.get("saved_searches", [])
+    new_saved = [s for s in saved if s.get("id") != search_id and s.get("query") != search_id]
+    cfg["saved_searches"] = new_saved
+    save_config(cfg)
+    return {"success": True, "saved_searches": new_saved}
 
 def get_system_locations():
     user_home = os.path.expanduser("~")
@@ -703,6 +785,58 @@ def execute_batch_rename(preview_items):
             results["errors"].append({"path": old_path, "error": res["error"]})
     return results
 
+QUEUE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "open_queue.json")
+
+def ensure_protocol_registered():
+    """Registriert das lokale 'suchmaschine://' URL-Protokoll in HKCU\\Software\\Classes,
+    damit der Browser auf dem echten Benutzer-Desktop den Windows Explorer und Standard-Apps
+    (Word, Excel, Bilder etc.) direkt mit Vordergrund-Fokus öffnen kann."""
+    try:
+        import winreg
+        pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+        if not os.path.exists(pythonw):
+            pythonw = sys.executable
+        launcher_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "launcher.pyw")
+        cmd_str = f'"{pythonw}" "{launcher_script}" "%1"'
+
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\suchmaschine") as key:
+            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "URL:Datei-Suchmaschine Desktop-Starter")
+            winreg.SetValueEx(key, "URL Protocol", 0, winreg.REG_SZ, "")
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\suchmaschine\shell\open\command") as cmd_key:
+            winreg.SetValueEx(cmd_key, "", 0, winreg.REG_SZ, cmd_str)
+        return True
+    except Exception:
+        return False
+
+ensure_protocol_registered()
+
+def _create_launcher_ticket(action, filepath):
+    """Erstellt ein einmaliges Start-Ticket für launcher.pyw über das suchmaschine:// Protokoll."""
+    ensure_protocol_registered()
+    import uuid
+    ticket_id = uuid.uuid4().hex[:12]
+    now = time.time()
+    queue = {}
+    if os.path.exists(QUEUE_FILE):
+        try:
+            with open(QUEUE_FILE, "r", encoding="utf-8") as f:
+                raw_q = json.load(f)
+                # Alte Tickets (> 5 Minuten) bereinigen
+                queue = {k: v for k, v in raw_q.items() if isinstance(v, dict) and now - v.get("ts", 0) < 300}
+        except Exception:
+            queue = {}
+    queue[ticket_id] = {
+        "action": action,
+        "path": os.path.abspath(filepath),
+        "ts": now
+    }
+    try:
+        with open(QUEUE_FILE, "w", encoding="utf-8") as f:
+            json.dump(queue, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+    return f"suchmaschine://run/{ticket_id}"
+
 def _is_isolated_desktop():
     """Prüft, ob der Server-Prozess in einem isolierten Sandbox-Desktop (z.B. exebox) statt auf dem Hauptmonitor ('Default') läuft."""
     try:
@@ -718,7 +852,7 @@ def _is_isolated_desktop():
         return False
 
 def open_file_in_system(filepath):
-    """Öffnet Datei direkt in PDF X (über pdflab-service-editor:// Protokoll bzw. PowerShell-Skript) oder der jeweiligen Standard-App."""
+    """Öffnet Datei direkt in PDF X (für PDFs) oder der jeweiligen Standard-App (Word, Excel, etc.)."""
     filepath = resolve_german_alias_path(filepath)
     if not filepath or not os.path.exists(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
@@ -750,23 +884,19 @@ def open_file_in_system(filepath):
         except Exception:
             pass
 
-    # Direktes App-Protokoll konstruieren (umgeht den Windows 11 '.pdf -> Nur einmal' Auswahldialog komplett!)
+    # Direktes App-Protokoll konstruieren:
+    # - Für PDFs: pdflab-service-editor://open/?fpath=... (umgeht den Windows 11 '.pdf -> Nur einmal' Dialog)
+    # - Für alle anderen Dateien (Word, Excel, Bilder etc.): suchmaschine://run/<ticket_id> (startet os.startfile auf dem echten Desktop)
     import urllib.parse
-    protocol_url = None
     if ext == ".pdf":
         encoded_path = urllib.parse.quote(target_open_path, safe="")
         protocol_url = f"pdflab-service-editor://open/?fpath={encoded_path}"
-    elif ext in [".docx", ".doc", ".rtf"]:
-        protocol_url = f"ms-word:ofe|u|{Path(target_open_path).as_uri()}"
-    elif ext in [".xlsx", ".xls", ".csv"]:
-        protocol_url = f"ms-excel:ofe|u|{Path(target_open_path).as_uri()}"
-    elif ext in [".pptx", ".ppt"]:
-        protocol_url = f"ms-powerpoint:ofe|u|{Path(target_open_path).as_uri()}"
+    else:
+        protocol_url = _create_launcher_ticket("open", target_open_path)
 
     # Wenn der Python-Server aus einer isolierten Terminal-Sandbox (exebox) gestartet wurde,
-    # würden vom Server gestartete Fenster auf dem unsichtbaren Sandbox-Desktop landen.
-    # Daher übergibt der Server die Protokoll-URL direkt an den Browser auf dem echten Desktop:
-    if _is_isolated_desktop() and protocol_url:
+    # übergibt der Server die Protokoll-URL direkt an den Browser auf dem echten Desktop:
+    if _is_isolated_desktop():
         return {
             "success": True,
             "use_browser_protocol": True,
@@ -776,8 +906,7 @@ def open_file_in_system(filepath):
         }
 
     # Wenn der Server regulär auf dem Benutzer-Desktop ('Default') läuft:
-    # 1. Für PDFs direkt das PDF-X-Protokoll per PowerShell Start-Process aufrufen (umgeht den 'Nur einmal'-Dialog)
-    if ext == ".pdf" and protocol_url:
+    if ext == ".pdf":
         try:
             escaped_uri = protocol_url.replace("'", "''")
             cmd = f"Start-Process '{escaped_uri}'"
@@ -787,17 +916,12 @@ def open_file_in_system(filepath):
         except Exception:
             pass
 
-    # 2. PowerShell Start-Process auf den Dateipfad
     try:
-        escaped_p = target_open_path.replace("'", "''")
-        cmd = f"Start-Process -FilePath '{escaped_p}'"
-        res = subprocess.run(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", cmd], capture_output=True, text=True, timeout=5)
-        if res.returncode == 0:
-            return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
+        os.startfile(target_open_path)
+        return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
     except Exception:
         pass
 
-    # 3. cmd /c start "" "<Pfad>"
     try:
         subprocess.Popen(["cmd.exe", "/c", "start", "", target_open_path])
         return {"success": True, "open_path": target_open_path, "message": f"In {app_name} geöffnet."}
@@ -805,13 +929,23 @@ def open_file_in_system(filepath):
         return {"success": False, "error": str(e)}
 
 def open_folder_and_select(filepath):
-    """Öffnet Explorer und wählt die Datei aus"""
+    """Öffnet Windows Explorer auf dem Benutzer-Desktop und markiert die Datei."""
     filepath = resolve_german_alias_path(filepath)
     if not filepath or not os.path.exists(filepath):
         return {"success": False, "error": "Pfad nicht gefunden"}
     abs_p = os.path.abspath(filepath)
+
+    if _is_isolated_desktop():
+        protocol_url = _create_launcher_ticket("select", abs_p)
+        return {
+            "success": True,
+            "use_browser_protocol": True,
+            "protocol_url": protocol_url,
+            "message": "Im Windows Explorer geöffnet."
+        }
+
     try:
-        subprocess.Popen(["explorer.exe", f"/select,{abs_p}"])
+        subprocess.Popen(f'explorer.exe /select,"{abs_p}"')
         return {"success": True, "message": "Im Windows Explorer geöffnet."}
     except Exception as e:
         return {"success": False, "error": str(e)}

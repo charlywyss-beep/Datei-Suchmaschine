@@ -29,6 +29,8 @@ def system_info():
     saved_paths = file_service.get_saved_paths()
     all_drives = file_service.get_all_local_drives()
     network_paths = file_service.get_network_paths()
+    search_history = file_service.get_search_history()
+    saved_searches = file_service.get_saved_searches()
     
     return jsonify({
         "app_version": file_service.APP_VERSION,
@@ -39,7 +41,9 @@ def system_info():
         "saved_paths": saved_paths,
         "all_drives": all_drives,
         "network_paths": network_paths,
-        "locations": locations
+        "locations": locations,
+        "search_history": search_history,
+        "saved_searches": saved_searches
     })
 
 @app.route("/api/network-paths", methods=["GET"])
@@ -86,6 +90,39 @@ def delete_saved_path_route():
     if not path_id:
         return jsonify({"error": "ID fehlt"}), 400
     res = file_service.remove_saved_path(path_id)
+    return jsonify(res)
+
+@app.route("/api/search-history", methods=["GET"])
+def get_search_history_route():
+    return jsonify({
+        "search_history": file_service.get_search_history(),
+        "saved_searches": file_service.get_saved_searches()
+    })
+
+@app.route("/api/delete-search-history", methods=["POST"])
+def delete_search_history_route():
+    data = request.get_json() or {}
+    item_id = data.get("id")
+    clear_all = bool(data.get("clear_all", False))
+    res = file_service.remove_search_history(item_id=item_id, clear_all=clear_all)
+    return jsonify(res)
+
+@app.route("/api/save-search", methods=["POST"])
+def save_search_route():
+    data = request.get_json() or {}
+    query = data.get("query", "")
+    category = data.get("category", "all")
+    name = data.get("name", "")
+    res = file_service.add_saved_search(query=query, category=category, name=name)
+    return jsonify(res)
+
+@app.route("/api/delete-saved-search", methods=["POST"])
+def delete_saved_search_route():
+    data = request.get_json() or {}
+    search_id = data.get("id") or data.get("query")
+    if not search_id:
+        return jsonify({"error": "ID fehlt"}), 400
+    res = file_service.remove_saved_search(search_id)
     return jsonify(res)
 
 @app.route("/api/save-onedrive-paths", methods=["POST"])
@@ -185,13 +222,19 @@ def search():
     elapsed = round(time.time() - start_t, 3)
 
     total_bytes = sum(f["size"] for f in results)
+    if query and query.strip():
+        search_history = file_service.add_search_history(query.strip(), category)
+    else:
+        search_history = file_service.get_search_history()
 
     return jsonify({
         "count": len(results),
         "total_bytes": total_bytes,
         "total_size_formatted": file_service.format_size(total_bytes),
         "elapsed_seconds": elapsed,
-        "results": results
+        "results": results,
+        "search_history": search_history,
+        "saved_searches": file_service.get_saved_searches()
     })
 
 @app.route("/api/find-duplicates", methods=["POST"])

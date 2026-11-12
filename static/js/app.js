@@ -25,7 +25,9 @@ let state = {
   duplicateSelectedPaths: new Set(),
   renameFiles: [],
   currentRenameRule: 'replace',
-  renamePreview: []
+  renamePreview: [],
+  searchHistory: [],
+  savedSearches: []
 };
 
 // Initialisierung bei DOM-Ready
@@ -75,6 +77,8 @@ async function initSystemInfo() {
     state.gitInfo = data.git_info || {};
     state.networkUrl = data.network_url || '';
     state.localIp = data.local_ip || '';
+    state.searchHistory = data.search_history || [];
+    state.savedSearches = data.saved_searches || [];
 
     // Version im Header aktualisieren
     const vTag = document.getElementById('header-version-tag');
@@ -87,6 +91,7 @@ async function initSystemInfo() {
     }
 
     renderLocationShortcuts();
+    renderSearchHistoryAndSaved();
 
     // Standard-Suchverzeichnis: DIESER PC (Alle Laufwerke C:, D: etc.)
     setSearchScope('pc');
@@ -570,6 +575,10 @@ async function executeSearch() {
     });
 
     const data = await response.json();
+    if (data.search_history) state.searchHistory = data.search_history;
+    if (data.saved_searches) state.savedSearches = data.saved_searches;
+    renderSearchHistoryAndSaved();
+
     state.allRawFiles = data.results || [];
     if (state.currentCategory && state.currentCategory !== 'all') {
       applyClientCategoryFilter();
@@ -594,6 +603,238 @@ async function executeSearch() {
     document.getElementById('empty-state').classList.remove('hidden');
   } finally {
     document.getElementById('search-spinner').classList.add('hidden');
+  }
+}
+
+// ==========================================
+// SUCH-HISTORY & GESPEICHERTE SUCHEN
+// ==========================================
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getCategoryBadgeLabel(cat) {
+  const map = {
+    pdf: 'PDF',
+    word: 'Word',
+    excel: 'Excel',
+    office: 'Office',
+    image: 'Bilder',
+    archive: 'Archiv',
+    code: 'Text'
+  };
+  return map[cat] || '';
+}
+
+function renderSearchHistoryAndSaved() {
+  const panel = document.getElementById('search-history-panel');
+  const savedRow = document.getElementById('saved-searches-row');
+  const savedList = document.getElementById('saved-searches-list');
+  const recentRow = document.getElementById('recent-searches-row');
+  const recentList = document.getElementById('recent-searches-list');
+  if (!panel || !savedRow || !savedList || !recentRow || !recentList) return;
+
+  const saved = state.savedSearches || [];
+  const history = state.searchHistory || [];
+
+  if (saved.length === 0 && history.length === 0) {
+    panel.classList.add('hidden');
+    return;
+  }
+  panel.classList.remove('hidden');
+
+  // 1. Gespeicherte Suchen (Favoriten)
+  savedList.innerHTML = '';
+  if (saved.length > 0) {
+    savedRow.classList.remove('hidden');
+    saved.forEach(item => {
+      const catLabel = getCategoryBadgeLabel(item.category);
+      const chip = document.createElement('div');
+      chip.className = 'inline-flex items-center rounded-lg border border-amber-500/40 bg-amber-950/40 hover:bg-amber-900/50 transition overflow-hidden';
+
+      const btnRun = document.createElement('button');
+      btnRun.type = 'button';
+      btnRun.className = 'flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-amber-200 hover:text-white transition';
+      btnRun.title = `Gespeicherte Suche ausführen: "${item.query}"`;
+      btnRun.innerHTML = `<i class="fa-solid fa-star text-amber-400 text-[10px]"></i><span>${escapeHtml(item.name || item.query)}</span>` +
+        (catLabel ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold">${catLabel}</span>` : '');
+      btnRun.onclick = () => applySavedOrHistorySearch(item.query, item.category || 'all');
+
+      const btnDel = document.createElement('button');
+      btnDel.type = 'button';
+      btnDel.className = 'px-1.5 py-1 text-[10px] text-amber-400/70 hover:text-red-400 hover:bg-red-950/50 border-l border-amber-500/20 transition';
+      btnDel.title = 'Gespeicherte Suche entfernen';
+      btnDel.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      btnDel.onclick = (e) => {
+        e.stopPropagation();
+        deleteSavedSearch(item.id);
+      };
+
+      chip.appendChild(btnRun);
+      chip.appendChild(btnDel);
+      savedList.appendChild(chip);
+    });
+  } else {
+    savedRow.classList.add('hidden');
+  }
+
+  // 2. Letzte Suchen (Such-History)
+  recentList.innerHTML = '';
+  if (history.length > 0) {
+    recentRow.classList.remove('hidden');
+    history.slice(0, 12).forEach(item => {
+      const catLabel = getCategoryBadgeLabel(item.category);
+      const isAlreadySaved = saved.some(s =>
+        (s.query || '').toLowerCase() === (item.query || '').toLowerCase() &&
+        (s.category || 'all') === (item.category || 'all')
+      );
+
+      const chip = document.createElement('div');
+      chip.className = 'inline-flex items-center rounded-lg border border-slate-700/80 bg-slate-900/90 hover:bg-slate-800 transition overflow-hidden';
+
+      const btnRun = document.createElement('button');
+      btnRun.type = 'button';
+      btnRun.className = 'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-300 hover:text-white transition';
+      btnRun.title = `Erneut suchen: "${item.query}"`;
+      btnRun.innerHTML = `<i class="fa-solid fa-magnifying-glass text-slate-500 text-[10px]"></i><span>${escapeHtml(item.query)}</span>` +
+        (catLabel ? `<span class="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-semibold">${catLabel}</span>` : '');
+      btnRun.onclick = () => applySavedOrHistorySearch(item.query, item.category || 'all');
+      chip.appendChild(btnRun);
+
+      if (!isAlreadySaved) {
+        const btnPin = document.createElement('button');
+        btnPin.type = 'button';
+        btnPin.className = 'px-1.5 py-1 text-[10px] text-slate-500 hover:text-amber-400 hover:bg-amber-950/40 border-l border-slate-800 transition';
+        btnPin.title = 'Für wiederkehrende Suche dauerhaft speichern';
+        btnPin.innerHTML = '<i class="fa-regular fa-star"></i>';
+        btnPin.onclick = (e) => {
+          e.stopPropagation();
+          pinHistorySearch(item.query, item.category || 'all');
+        };
+        chip.appendChild(btnPin);
+      }
+
+      const btnDel = document.createElement('button');
+      btnDel.type = 'button';
+      btnDel.className = 'px-1.5 py-1 text-[10px] text-slate-500 hover:text-red-400 hover:bg-red-950/40 border-l border-slate-800 transition';
+      btnDel.title = 'Aus Such-History entfernen';
+      btnDel.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      btnDel.onclick = (e) => {
+        e.stopPropagation();
+        deleteSearchHistoryItem(item.id);
+      };
+      chip.appendChild(btnDel);
+
+      recentList.appendChild(chip);
+    });
+  } else {
+    recentRow.classList.add('hidden');
+  }
+}
+
+function applySavedOrHistorySearch(query, category) {
+  const input = document.getElementById('search-query');
+  if (input) input.value = query || '';
+
+  const targetCat = category || 'all';
+  state.currentCategory = targetCat;
+  document.querySelectorAll('#category-filter-group .cat-pill').forEach(btn => {
+    btn.classList.remove('active');
+    const onclickAttr = btn.getAttribute('onclick') || '';
+    if (onclickAttr.includes(`'${targetCat}'`)) {
+      btn.classList.add('active');
+    }
+  });
+
+  executeSearch();
+}
+
+async function saveCurrentSearch() {
+  const query = document.getElementById('search-query')?.value.trim() || '';
+  if (!query) {
+    showToast('Bitte zuerst einen Suchbegriff eingeben, um ihn zu speichern!', 'error');
+    document.getElementById('search-query')?.focus();
+    return;
+  }
+  await pinHistorySearch(query, state.currentCategory || 'all');
+}
+
+async function pinHistorySearch(query, category) {
+  try {
+    const res = await fetch('/api/save-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query, category: category || 'all' })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.savedSearches = d.saved_searches || [];
+      renderSearchHistoryAndSaved();
+      showToast(`⭐ Suche "${query}" dauerhaft gespeichert!`, 'success');
+    } else {
+      showToast(d.error || 'Suche konnte nicht gespeichert werden', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+async function deleteSavedSearch(id) {
+  try {
+    const res = await fetch('/api/delete-saved-search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.savedSearches = d.saved_searches || [];
+      renderSearchHistoryAndSaved();
+      showToast('Gespeicherte Suche entfernt.', 'info');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+async function deleteSearchHistoryItem(id) {
+  try {
+    const res = await fetch('/api/delete-search-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: id })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.searchHistory = d.search_history || [];
+      renderSearchHistoryAndSaved();
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+async function clearSearchHistory() {
+  try {
+    const res = await fetch('/api/delete-search-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clear_all: true })
+    });
+    const d = await res.json();
+    if (d.success) {
+      state.searchHistory = [];
+      renderSearchHistoryAndSaved();
+      showToast('Such-History geleert.', 'info');
+    }
+  } catch (err) {
+    showToast(`Fehler: ${err.message}`, 'error');
   }
 }
 
@@ -924,12 +1165,20 @@ async function saveFileContent(path, content) {
 
 async function openFolder(path) {
   try {
-    await fetch('/api/open-folder', {
+    const res = await fetch('/api/open-folder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: path })
     });
-    showToast('Im Windows Explorer geöffnet', 'info');
+    const d = await res.json();
+    if (d.success) {
+      if (d.use_browser_protocol && d.protocol_url) {
+        triggerDesktopProtocol(d.protocol_url);
+      }
+      showToast(d.message || 'Im Windows Explorer geöffnet', 'info');
+    } else {
+      showToast(d.error || 'Pfad konnte nicht geöffnet werden', 'error');
+    }
   } catch (err) {
     showToast(`Fehler: ${err.message}`, 'error');
   }
