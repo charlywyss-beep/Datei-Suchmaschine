@@ -446,16 +446,24 @@ function applyClientCategoryFilter() {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'excel' || ['XLSX', 'XLS', 'CSV', 'ODS', 'XLSM'].includes(f.ext));
   } else if (cat === 'access') {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'access' || ['ACCDB', 'MDB', 'ACCDE', 'ACCDR'].includes(f.ext));
+  } else if (cat === 'powerpoint') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'powerpoint' || ['PPTX', 'PPT', 'PPSX', 'PPS', 'ODP'].includes(f.ext));
   } else if (cat === 'office') {
     state.currentFiles = state.allRawFiles.filter(f => ['pdf', 'word', 'excel', 'access', 'powerpoint'].includes(f.category) || ['PDF', 'DOCX', 'DOC', 'XLSX', 'XLS', 'CSV', 'ACCDB', 'MDB', 'ACCDE', 'ACCDR', 'PPTX', 'PPT', 'ODT', 'ODS'].includes(f.ext));
   } else if (cat === 'image') {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'image' || ['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG', 'HEIC', 'TIFF', 'TIF'].includes(f.ext));
   } else if (cat === 'video') {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'video' || ['MP4', 'MKV', 'AVI', 'MOV', 'WMV', 'FLV', 'WEBM', 'M4V', 'MPG', 'MPEG', 'TS', 'M2TS', '3GP', 'VOB'].includes(f.ext));
+  } else if (cat === 'audio') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'audio' || ['MP3', 'WAV', 'FLAC', 'M4A', 'AAC', 'OGG', 'WMA'].includes(f.ext));
+  } else if (cat === 'email') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'email' || ['MSG', 'EML', 'PST', 'OST', 'VCF', 'ICS'].includes(f.ext));
   } else if (cat === 'archive') {
-    state.currentFiles = state.allRawFiles.filter(f => f.category === 'archive' || ['ZIP', 'RAR', '7Z', 'TAR', 'GZ', 'ISO'].includes(f.ext));
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'archive' || ['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(f.ext));
+  } else if (cat === 'setup') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'setup' || ['EXE', 'MSI', 'ISO', 'BAT', 'CMD', 'APPX', 'MSIX'].includes(f.ext));
   } else if (cat === 'code') {
-    state.currentFiles = state.allRawFiles.filter(f => f.category === 'code' || ['TXT', 'SRT', 'VTT', 'SUB', 'NFO', 'CFG', 'INI', 'CONF', 'LOG', 'MD', 'PY', 'JS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1', 'SQL', 'YML', 'YAML'].includes(f.ext));
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'code' || ['TXT', 'SRT', 'VTT', 'SUB', 'NFO', 'CFG', 'INI', 'CONF', 'LOG', 'MD', 'PY', 'JS', 'JSON', 'HTML', 'CSS', 'XML', 'PS1', 'SQL', 'YML', 'YAML'].includes(f.ext));
   } else {
     state.currentFiles = state.allRawFiles.filter(f => f.category === cat);
   }
@@ -646,10 +654,14 @@ function getCategoryBadgeLabel(cat) {
     word: 'Word',
     excel: 'Excel',
     access: 'Access',
+    powerpoint: 'PowerPoint',
     office: 'Office',
     image: 'Bilder',
     video: 'Video',
+    audio: 'Audio',
+    email: 'E-Mail',
     archive: 'Archiv',
+    setup: 'Setup',
     code: 'Text'
   };
   return map[cat] || '';
@@ -1004,8 +1016,10 @@ function getCategoryForExt(ext) {
   if (['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG', 'ICO', 'HEIC', 'TIFF', 'TIF'].includes(e)) return 'image';
   if (['MP4', 'MKV', 'AVI', 'MOV', 'WMV', 'WEBM', 'M4V'].includes(e)) return 'video';
   if (['MP3', 'WAV', 'FLAC', 'M4A', 'AAC', 'OGG', 'WMA'].includes(e)) return 'audio';
-  if (['ZIP', 'RAR', '7Z', 'TAR', 'GZ', 'ISO'].includes(e)) return 'archive';
-  if (['TXT', 'SRT', 'VTT', 'SUB', 'NFO', 'CFG', 'INI', 'CONF', 'LOG', 'MD', 'PY', 'JS', 'TS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1', 'SQL', 'YML', 'YAML', 'ENV', 'TOML'].includes(e)) return 'code';
+  if (['MSG', 'EML', 'PST', 'OST', 'VCF', 'ICS'].includes(e)) return 'email';
+  if (['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(e)) return 'archive';
+  if (['EXE', 'MSI', 'ISO', 'BAT', 'CMD', 'APPX', 'MSIX'].includes(e)) return 'setup';
+  if (['TXT', 'SRT', 'VTT', 'SUB', 'NFO', 'CFG', 'INI', 'CONF', 'LOG', 'MD', 'PY', 'JS', 'TS', 'JSON', 'HTML', 'CSS', 'XML', 'PS1', 'SQL', 'YML', 'YAML', 'ENV', 'TOML'].includes(e)) return 'code';
   return 'other';
 }
 
@@ -1017,6 +1031,10 @@ function getAppLabelForExt(ext) {
   if (['docx', 'doc', 'rtf', 'odt'].includes(e)) return 'Microsoft Word';
   if (['xlsx', 'xls', 'csv', 'ods', 'xlsm', 'xlsb'].includes(e)) return 'Microsoft Excel';
   if (['pptx', 'ppt', 'ppsx', 'odp'].includes(e)) return 'PowerPoint';
+  if (['msg', 'eml', 'pst', 'ost', 'vcf', 'ics'].includes(e)) return 'Outlook / Mail';
+  if (['exe', 'msi', 'iso', 'cmd', 'appx', 'msix'].includes(e)) return 'Setup / Installation';
+  if (['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg', 'wma'].includes(e)) return 'Audio-Player';
+  if (['mp4', 'mkv', 'avi', 'mov', 'wmv', 'webm', 'flv', 'm4v'].includes(e)) return 'Video-Player';
   if (['srt', 'vtt', 'sub'].includes(e)) return 'Windows-Editor (Untertitel)';
   if (['txt', 'log', 'json', 'xml', 'md', 'ini', 'cfg', 'conf', 'nfo', 'yml', 'yaml', 'sql', 'bat', 'ps1', 'py', 'js', 'ts', 'html', 'css', 'env', 'toml'].includes(e)) return 'Windows-Editor';
   if (!e || e === 'datei') return 'Editor / Öffnen mit…';
@@ -1040,8 +1058,14 @@ function getCategoryIconHtml(category, ext, large = false) {
   if (category === 'video' || ['MP4', 'MKV', 'AVI', 'MOV', 'WMV', 'WEBM'].includes(e)) {
     return `<i class="fa-solid fa-file-video text-pink-400 ${sizeClass}" title="Video (.${e.toLowerCase()})"></i>`;
   }
-  if (category === 'audio' || ['MP3', 'WAV', 'FLAC', 'M4A', 'AAC', 'OGG'].includes(e)) {
+  if (category === 'audio' || ['MP3', 'WAV', 'FLAC', 'M4A', 'AAC', 'OGG', 'WMA'].includes(e)) {
     return `<i class="fa-solid fa-file-audio text-teal-400 ${sizeClass}" title="Audio (.${e.toLowerCase()})"></i>`;
+  }
+  if (category === 'email' || ['MSG', 'EML', 'PST', 'OST', 'VCF', 'ICS'].includes(e)) {
+    return `<i class="fa-solid fa-envelope text-sky-400 ${sizeClass}" title="E-Mail / Kontakt (.${e.toLowerCase()})"></i>`;
+  }
+  if (category === 'setup' || ['EXE', 'MSI', 'ISO', 'BAT', 'CMD', 'APPX', 'MSIX'].includes(e)) {
+    return `<i class="fa-solid fa-box text-emerald-400 ${sizeClass}" title="Programme / Setup (.${e.toLowerCase()})"></i>`;
   }
 
   switch (category) {

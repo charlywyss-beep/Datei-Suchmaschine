@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.5.8"
+APP_VERSION = "v1.5.9"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -104,14 +104,16 @@ CATEGORY_EXTENSIONS = {
     "pdf": {".pdf"},
     "word": {".docx", ".doc", ".rtf", ".odt", ".dot", ".dotx"},
     "excel": {".xlsx", ".xls", ".csv", ".ods", ".xlsm", ".xlsb"},
-    "access": {".accdb", ".mdb", ".accde", ".accdr"},
     "powerpoint": {".pptx", ".ppt", ".pps", ".ppsx", ".odp"},
+    "access": {".accdb", ".mdb", ".accde", ".accdr"},
     "office": {".pdf", ".docx", ".doc", ".rtf", ".odt", ".xlsx", ".xls", ".csv", ".ods", ".accdb", ".mdb", ".accde", ".accdr", ".pptx", ".ppt"},
     "image": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".ico", ".tiff", ".tif", ".heic", ".raw"},
-    "audio": {".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".wma"},
     "video": {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpg", ".mpeg", ".ts", ".m2ts", ".3gp", ".vob"},
-    "archive": {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".iso"},
-    "code": {".txt", ".srt", ".vtt", ".sub", ".nfo", ".cfg", ".ini", ".conf", ".env", ".toml", ".log", ".py", ".js", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sql", ".sh", ".bat", ".ps1", ".md"},
+    "audio": {".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".wma"},
+    "email": {".msg", ".eml", ".pst", ".ost", ".vcf", ".ics"},
+    "archive": {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2"},
+    "setup": {".exe", ".msi", ".iso", ".bat", ".cmd", ".appx", ".msix"},
+    "code": {".txt", ".srt", ".vtt", ".sub", ".nfo", ".cfg", ".ini", ".conf", ".env", ".toml", ".log", ".py", ".js", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sql", ".sh", ".ps1", ".md"},
 }
 
 def format_size(size_bytes):
