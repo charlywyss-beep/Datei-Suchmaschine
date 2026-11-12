@@ -1438,11 +1438,86 @@ def set_email_client(client):
     save_config(cfg)
     return {"success": True, "email_client": client}
 
+import ctypes
+from ctypes import wintypes
+from pathlib import Path
+
+APP_VERSION = "v1.7.7"
+
+class MapiFileDesc(ctypes.Structure):
+    _fields_ = [
+        ("ulReserved", wintypes.ULONG),
+        ("ulFlags", wintypes.ULONG),
+        ("nPosition", wintypes.ULONG),
+        ("lpszPathName", wintypes.LPSTR),
+        ("lpszFileName", wintypes.LPSTR),
+        ("lpFileType", ctypes.c_void_p),
+    ]
+
+class MapiRecipDesc(ctypes.Structure):
+    _fields_ = [
+        ("ulReserved", wintypes.ULONG),
+        ("ulRecipClass", wintypes.ULONG),
+        ("lpszName", wintypes.LPSTR),
+        ("lpszAddress", wintypes.LPSTR),
+        ("ulEIDSize", wintypes.ULONG),
+        ("lpEntryID", ctypes.c_void_p),
+    ]
+
+class MapiMessage(ctypes.Structure):
+    _fields_ = [
+        ("ulReserved", wintypes.ULONG),
+        ("lpszSubject", wintypes.LPSTR),
+        ("lpszNoteText", wintypes.LPSTR),
+        ("lpszMessageType", wintypes.LPSTR),
+        ("lpszDateReceived", wintypes.LPSTR),
+        ("lpszConversationID", wintypes.LPSTR),
+        ("flFlags", wintypes.ULONG),
+        ("lpOriginator", ctypes.c_void_p),
+        ("nRecipCount", wintypes.ULONG),
+        ("lpRecips", ctypes.POINTER(MapiRecipDesc)),
+        ("nFileCount", wintypes.ULONG),
+        ("lpFiles", ctypes.POINTER(MapiFileDesc)),
+    ]
+
+def send_via_mapi_threaded(filepath, subject="", body="", recipient=""):
+    """
+    Sendet Datei über Windows Simple MAPI (direkt an Thunderbird / registrierten MAPI-Client).
+    Läuft in einem separaten Thread, damit MAPISendMail den Server nicht blockiert.
+    """
+    def _worker():
+        try:
+            file_desc = MapiFileDesc(
+                0, 0, 0xFFFFFFFF,
+                filepath.encode('mbcs'),
+                os.path.basename(filepath).encode('mbcs'),
+                None
+            )
+            msg = MapiMessage()
+            msg.ulReserved = 0
+            msg.lpszSubject = subject.encode('mbcs')
+            msg.lpszNoteText = body.encode('mbcs')
+            msg.nFileCount = 1
+            msg.lpFiles = ctypes.pointer(file_desc)
+            if recipient:
+                recip = MapiRecipDesc(0, 1, recipient.encode('mbcs'), f"SMTP:{recipient}".encode('mbcs'), 0, None)
+                msg.nRecipCount = 1
+                msg.lpRecips = ctypes.pointer(recip)
+            MAPI_DIALOG = 0x00000008
+            MAPI_LOGON_UI = 0x00000001
+            ctypes.windll.mapi32.MAPISendMail(0, 0, ctypes.pointer(msg), MAPI_DIALOG | MAPI_LOGON_UI, 0)
+        except Exception as e:
+            logger.warning(f"MAPI worker error: {e}")
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    return True
+
 def send_file_via_email(filepath, recipient="", client=None):
     """
     Erstellt E-Mail Entwurf mit Anhang für das gewählte E-Mail-Programm:
-    - thunderbird: Mozilla Thunderbird mit -compose und echtem Anhang
-    - gmail: Google Mail Web-Compose im Browser + Datei in Zwischenablage
+    - thunderbird: Mozilla Thunderbird via Windows MAPI / -compose (echter Dateianhang)
+    - gmail: Google Mail Web-Compose im Browser + Explorer-Ordner zum Drag & Drop
     - outlook: Microsoft Outlook COM Automation mit echtem Anhang
     - default: Windows Standard mailto: + Datei in Zwischenablage
     """
@@ -1456,41 +1531,50 @@ def send_file_via_email(filepath, recipient="", client=None):
     abs_p_win = abs_p.replace("/", "\\")
     filename = os.path.basename(filepath)
     clean_filename = filename.replace("'", "")
-    clean_path = abs_p_win.replace("'", "")
 
     # 1. MOZILLA THUNDERBIRD
     if client == "thunderbird":
-        tb_paths = [
-            r"C:\Program Files\Mozilla Thunderbird\thunderbird.exe",
-            r"C:\Program Files (x86)\Mozilla Thunderbird\thunderbird.exe"
-        ]
-        tb_exe = next((p for p in tb_paths if os.path.exists(p)), None)
-        if not tb_exe:
-            import shutil
-            tb_exe = shutil.which("thunderbird.exe") or shutil.which("thunderbird")
+        try:
+            # 1. In Zwischenablage kopieren (Backup)
+            copy_file_for_teams(filepath)
             
-        if tb_exe:
-            try:
-                # 1. Datei für zusätzliche Sicherheit in Windows-Zwischenablage legen
-                copy_file_for_teams(filepath)
-                
-                # 2. Thunderbird mit -compose starten (Nativer Windows-Pfad ohne file:///)
-                # Format: thunderbird.exe -compose "attachment='C:\path\to\file',subject='...'"
-                compose_arg = f"attachment='{clean_path}',subject='Datei: {clean_filename}'"
-                if recipient:
-                    compose_arg = f"to='{recipient}'," + compose_arg
-                
-                # Direkt über cmd /c start aufrufen, damit Windows das Thunderbird-Verfassen-Fenster sofort in den Vordergrund holt
-                cmd_line = f'start "" "{tb_exe}" -compose "{compose_arg}"'
-                subprocess.Popen(f'cmd.exe /c {cmd_line}', shell=True)
-                
-                return {
-                    "success": True,
-                    "method": "thunderbird",
-                    "message": f"Mozilla Thunderbird mit angehängter Datei '{filename}' geöffnet!"
-                }
-            except Exception as e:
-                pass # Weiter zu mailto Fallback
+            # 2. Primär: Windows Simple MAPI verwenden (sicherste Methode ohne Profil-Konflikte)
+            send_via_mapi_threaded(
+                abs_p_win,
+                subject=f"Datei: {filename}",
+                body=f"Hallo,\n\nim Anhang erhalten Sie die Datei: {filename}\n\nPfad: {abs_p_win}\n\nViele Grüße",
+                recipient=recipient
+            )
+            return {
+                "success": True,
+                "method": "thunderbird",
+                "message": f"Mozilla Thunderbird mit angehängter Datei '{filename}' geöffnet!"
+            }
+        except Exception as e_mapi:
+            logger.warning(f"MAPI failed, trying direct thunderbird CLI: {e_mapi}")
+            # Fallback auf CLI mit korrekter file:/// URI
+            tb_paths = [
+                r"C:\Program Files\Mozilla Thunderbird\thunderbird.exe",
+                r"C:\Program Files (x86)\Mozilla Thunderbird\thunderbird.exe"
+            ]
+            tb_exe = next((p for p in tb_paths if os.path.exists(p)), None)
+            if not tb_exe:
+                import shutil
+                tb_exe = shutil.which("thunderbird.exe") or shutil.which("thunderbird")
+            if tb_exe:
+                try:
+                    file_uri = Path(abs_p).as_uri()
+                    compose_arg = f"attachment='{file_uri}',subject='Datei: {clean_filename}'"
+                    if recipient:
+                        compose_arg = f"to='{recipient}'," + compose_arg
+                    subprocess.Popen([tb_exe, "-compose", compose_arg])
+                    return {
+                        "success": True,
+                        "method": "thunderbird",
+                        "message": f"Mozilla Thunderbird mit angehängter Datei '{filename}' geöffnet!"
+                    }
+                except Exception:
+                    pass
 
     # 2. GOOGLE MAIL (GMAIL)
     elif client == "gmail":
@@ -1498,9 +1582,21 @@ def send_file_via_email(filepath, recipient="", client=None):
             import urllib.parse
             import webbrowser
             copy_file_for_teams(filepath)
+            
+            # Windows Explorer mit markierter Datei im Hintergrund öffnen für sofortiges Drag & Drop
+            try:
+                subprocess.Popen(['explorer.exe', f'/select,{abs_p_win}'])
+            except Exception:
+                pass
+                
+            # Text bewusst ohne Reizwort 'anbei' formulieren, damit Gmail keinen 'Dateianhang vergessen?' Dialog anzeigt
             subject = urllib.parse.quote(f"Datei: {filename}")
-            body = urllib.parse.quote(f"Hallo,\n\nanbei die Datei {filename}.\n\nPfad: {filepath}\n\n(Die Datei befindet sich bereits in der Windows-Zwischenablage - im GMail-Fenster einfach [Strg + V] drücken!)")
-            # Google Mail direkte Verfassen-URL auf Account 0
+            body = urllib.parse.quote(
+                f"Hier ist die Datei: {filename}\n\n"
+                f"Lokaler Pfad: {abs_p_win}\n\n"
+                f"💡 HINWEIS: Der Windows-Ordner mit dieser Datei wurde für dich geöffnet!\n"
+                f"Ziehe die Datei einfach per Drag & Drop aus dem Ordner in dieses Gmail-Fenster."
+            )
             gmail_url = f"https://mail.google.com/mail/u/0/?view=cm&fs=1&to={urllib.parse.quote(recipient)}&su={subject}&body={body}"
             
             try:
@@ -1512,7 +1608,7 @@ def send_file_via_email(filepath, recipient="", client=None):
                 "success": True,
                 "method": "gmail",
                 "web_url": gmail_url,
-                "message": f"Google Mail im Browser geöffnet & '{filename}' in Zwischenablage kopiert! Im GMail-Fenster einfach [Strg + V] drücken."
+                "message": f"Google Mail geöffnet! 📂 Der Ordner mit '{filename}' wurde für dich geöffnet – ziehe die Datei einfach per Drag & Drop in dein Gmail-Fenster!"
             }
         except Exception as e:
             return {"success": False, "error": f"Fehler beim Öffnen von Google Mail: {str(e)}"}
@@ -1538,7 +1634,7 @@ def send_file_via_email(filepath, recipient="", client=None):
     copy_file_for_teams(filepath)
     import urllib.parse
     subject = urllib.parse.quote(f"Datei: {filename}")
-    body = urllib.parse.quote(f"Hallo,\n\nanbei die Datei {filename} (in Zwischenablage, einfach Strg+V drücken).\n\nPfad: {filepath}")
+    body = urllib.parse.quote(f"Hier ist die Datei: {filename}\n\nPfad: {filepath}\n(Datei in Zwischenablage, einfach Strg+V drücken)")
     mailto_url = f"mailto:{recipient}?subject={subject}&body={body}"
     try:
         os.startfile(mailto_url)

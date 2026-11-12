@@ -1485,9 +1485,9 @@ function updateEmailClientUI() {
   const descEl = document.getElementById('share-email-desc');
   if (descEl) {
     if (client === 'thunderbird') {
-      descEl.textContent = 'Öffnet Mozilla Thunderbird mit angehängter Datei';
+      descEl.textContent = 'Öffnet Mozilla Thunderbird mit direkt angehängter Datei';
     } else if (client === 'gmail') {
-      descEl.textContent = 'Öffnet Google Mail im Browser & kopiert Datei für Strg+V';
+      descEl.textContent = 'Öffnet Google Mail im Browser & öffnet Ordner zum Drag & Drop';
     } else if (client === 'outlook') {
       descEl.textContent = 'Öffnet Microsoft Outlook mit angehängter Datei';
     } else {
