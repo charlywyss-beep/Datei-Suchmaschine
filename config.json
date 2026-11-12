@@ -15,24 +15,5 @@
     }
   ],
   "network_paths": [],
-  "search_history": [
-    {
-      "id": "hist_df84b9b5",
-      "query": "PVS",
-      "category": "folder",
-      "timestamp": "12.11. 08:55"
-    },
-    {
-      "id": "hist_2dcbba80",
-      "query": "mut",
-      "category": "all",
-      "timestamp": "12.11. 08:53"
-    },
-    {
-      "id": "hist_031464d6",
-      "query": "Arbeitszeitrechner_2",
-      "category": "all",
-      "timestamp": "12.11. 08:29"
-    }
-  ]
+  "search_history": []
 }
