@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.5.5"
+APP_VERSION = "v1.5.6"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -109,9 +109,9 @@ CATEGORY_EXTENSIONS = {
     "office": {".pdf", ".docx", ".doc", ".rtf", ".odt", ".xlsx", ".xls", ".csv", ".ods", ".accdb", ".mdb", ".accde", ".accdr", ".pptx", ".ppt"},
     "image": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".ico", ".tiff", ".tif", ".heic", ".raw"},
     "audio": {".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".wma"},
-    "video": {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"},
+    "video": {".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpg", ".mpeg", ".ts", ".m2ts", ".3gp", ".vob"},
     "archive": {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".iso"},
-    "code": {".txt", ".srt", ".vtt", ".sub", ".nfo", ".cfg", ".ini", ".conf", ".env", ".toml", ".log", ".py", ".js", ".ts", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sql", ".sh", ".bat", ".ps1", ".md"},
+    "code": {".txt", ".srt", ".vtt", ".sub", ".nfo", ".cfg", ".ini", ".conf", ".env", ".toml", ".log", ".py", ".js", ".html", ".css", ".json", ".xml", ".yaml", ".yml", ".sql", ".sh", ".bat", ".ps1", ".md"},
 }
 
 def format_size(size_bytes):
@@ -492,7 +492,8 @@ def fast_search(
                         continue
 
                     if is_dir:
-                        dirname_lower = entry.name.lower()
+                        dirname = entry.name
+                        dirname_lower = dirname.lower()
                         # Skip hidden/system directories
                         if dirname_lower.startswith('$') or dirname_lower in skip_dirs:
                             continue
@@ -504,7 +505,66 @@ def fast_search(
                         if "\\.gemini\\antigravity-" in full_entry_path:
                             continue
                         stack.append(entry.path)
+
+                        # Ordner als Suchtreffer aufnehmen:
+                        # - Wenn Kategorie 'folder' gewählt ist
+                        # - Oder wenn Kategorie 'all' (ohne custom_extensions) gewählt ist und entweder nach Namen gesucht wird
+                        #   oder ein einzelner spezifischer Ordner durchsucht wird (direkte Unterordner)
+                        include_folder = False
+                        if category == "folder":
+                            include_folder = (not query_parts) or all(qp in dirname_lower for qp in query_parts)
+                        elif (not category or category == "all") and not custom_extensions and min_size_bytes is None and max_size_bytes is None:
+                            if query_parts:
+                                include_folder = all(qp in dirname_lower for qp in query_parts)
+                            elif len(start_dirs) == 1 and os.path.normcase(current_dir) == os.path.normcase(start_dirs[0]) and len( current_dir ) > 3:
+                                include_folder = True
+
+                        if include_folder:
+                            try:
+                                stat_res = entry.stat(follow_symlinks=False)
+                                mtime = stat_res.st_mtime
+                            except (PermissionError, OSError):
+                                continue
+
+                            if modified_after_ts is not None and mtime < modified_after_ts:
+                                continue
+                            if modified_before_ts is not None and mtime > modified_before_ts:
+                                continue
+
+                            norm_entry = os.path.normcase(os.path.abspath(entry.path))
+                            is_onedrive_type = None
+                            if p_personal and norm_entry.startswith(p_personal):
+                                is_onedrive_type = "personal"
+                            elif p_business and norm_entry.startswith(p_business):
+                                is_onedrive_type = "business"
+
+                            if only_onedrive:
+                                if only_onedrive == "business" and is_onedrive_type != "business":
+                                    continue
+                                elif only_onedrive == "personal" and is_onedrive_type != "personal":
+                                    continue
+                                elif only_onedrive in (True, "any") and not is_onedrive_type:
+                                    continue
+
+                            mtime_dt = datetime.fromtimestamp(mtime)
+                            results.append({
+                                "name": dirname,
+                                "path": entry.path,
+                                "folder": to_german_display_path(os.path.dirname(entry.path)),
+                                "ext": "ORDNER",
+                                "category": "folder",
+                                "is_dir": True,
+                                "size": 0,
+                                "size_formatted": "Ordner",
+                                "modified": mtime_dt.isoformat(),
+                                "modified_formatted": mtime_dt.strftime("%d.%m.%y %H:%M"),
+                                "is_onedrive": bool(is_onedrive_type),
+                                "onedrive_type": is_onedrive_type
+                            })
+                            count += 1
                     else:
+                        if category == "folder":
+                            continue
                         # File matching
                         filename = entry.name
                         filename_lower = filename.lower()
@@ -915,6 +975,24 @@ def open_file_in_system(filepath):
         return {"success": False, "error": "Datei nicht gefunden"}
     
     abs_p = os.path.abspath(filepath)
+
+    # Falls es ein Ordner ist -> Direkt im Windows Explorer öffnen
+    if os.path.isdir(abs_p):
+        if _is_isolated_desktop():
+            protocol_url = _create_launcher_ticket("open", abs_p)
+            return {
+                "success": True,
+                "use_browser_protocol": True,
+                "protocol_url": protocol_url,
+                "open_path": abs_p,
+                "message": "Ordner wird im Windows Explorer geöffnet..."
+            }
+        try:
+            subprocess.Popen(f'explorer.exe "{abs_p}"')
+            return {"success": True, "open_path": abs_p, "message": "Ordner im Windows Explorer geöffnet."}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     ext = os.path.splitext(abs_p)[1].lower().strip()
     notepad_exts = {".srt", ".vtt", ".sub", ".nfo", ".cfg", ".ini", ".conf", ".log", ".env", ".yml", ".yaml", ".toml", ".sql", ".md", ".txt"}
 

@@ -65,6 +65,11 @@ def _has_windows_association(ext):
         return False
 
 def smart_open_on_desktop(abs_p):
+    # 0. Ordner -> Direkt im Windows Explorer öffnen
+    if os.path.isdir(abs_p):
+        subprocess.Popen(f'explorer.exe "{abs_p}"')
+        return
+
     ext = os.path.splitext(abs_p)[1].lower().strip()
 
     # 1. PDF (oder Datei ohne Endung mit %PDF Header) -> Direkt in PDF X

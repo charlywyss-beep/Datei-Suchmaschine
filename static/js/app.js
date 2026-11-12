@@ -426,6 +426,8 @@ function applyClientCategoryFilter() {
   const cat = state.currentCategory;
   if (!cat || cat === 'all') {
     state.currentFiles = [...state.allRawFiles];
+  } else if (cat === 'folder') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'folder' || f.ext === 'ORDNER' || f.is_dir);
   } else if (cat === 'pdf') {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'pdf' || f.ext === 'PDF');
   } else if (cat === 'word') {
@@ -437,9 +439,11 @@ function applyClientCategoryFilter() {
   } else if (cat === 'office') {
     state.currentFiles = state.allRawFiles.filter(f => ['pdf', 'word', 'excel', 'access', 'powerpoint'].includes(f.category) || ['PDF', 'DOCX', 'DOC', 'XLSX', 'XLS', 'CSV', 'ACCDB', 'MDB', 'ACCDE', 'ACCDR', 'PPTX', 'PPT', 'ODT', 'ODS'].includes(f.ext));
   } else if (cat === 'image') {
-    state.currentFiles = state.allRawFiles.filter(f => f.category === 'image' || ['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG'].includes(f.ext));
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'image' || ['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF', 'BMP', 'SVG', 'HEIC', 'TIFF', 'TIF'].includes(f.ext));
+  } else if (cat === 'video') {
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'video' || ['MP4', 'MKV', 'AVI', 'MOV', 'WMV', 'FLV', 'WEBM', 'M4V', 'MPG', 'MPEG', 'TS', 'M2TS', '3GP', 'VOB'].includes(f.ext));
   } else if (cat === 'archive') {
-    state.currentFiles = state.allRawFiles.filter(f => f.category === 'archive' || ['ZIP', 'RAR', '7Z', 'TAR', 'GZ'].includes(f.ext));
+    state.currentFiles = state.allRawFiles.filter(f => f.category === 'archive' || ['ZIP', 'RAR', '7Z', 'TAR', 'GZ', 'ISO'].includes(f.ext));
   } else if (cat === 'code') {
     state.currentFiles = state.allRawFiles.filter(f => f.category === 'code' || ['TXT', 'SRT', 'VTT', 'SUB', 'NFO', 'CFG', 'INI', 'CONF', 'LOG', 'MD', 'PY', 'JS', 'JSON', 'HTML', 'CSS', 'XML', 'BAT', 'PS1', 'SQL', 'YML', 'YAML'].includes(f.ext));
   } else {
@@ -474,6 +478,7 @@ function applyClientCategoryFilter() {
 }
 
 function setCategoryFilter(category, btnElement) {
+  const prevSearchedCat = state.lastSearchedCategory || 'all';
   state.currentCategory = category;
 
   document.querySelectorAll('#category-filter-group .cat-pill').forEach(btn => {
@@ -483,14 +488,16 @@ function setCategoryFilter(category, btnElement) {
     btnElement.classList.add('active');
   }
 
-  // Falls bereits Suchergebnisse vorliegen: SOFORT im Speicher filtern (OHNE Neusuche!)
-  if (state.allRawFiles && state.allRawFiles.length > 0) {
+  // Wenn vorherige Suche bereits alle Typen ('all') geladen hat und nicht speziell nach Ordnern gesucht wird,
+  // zuerst im Speicher filtern; falls vorher ein spezifischer Filter aktiv war oder 'folder' gewählt wurde -> neu suchen
+  if (state.allRawFiles && state.allRawFiles.length > 0 && prevSearchedCat === 'all' && category !== 'folder') {
     applyClientCategoryFilter();
-    showToast(`Filter aktiv: ${category.toUpperCase()} (${state.currentFiles.length} von ${state.allRawFiles.length} Treffern)`, 'info');
-  } else {
-    // Noch keine Ergebnisse: Neue Suche ausführen
-    executeSearch();
+    if (state.currentFiles.length > 0 || category === 'all') {
+      showToast(`Filter aktiv: ${category.toUpperCase()} (${state.currentFiles.length} von ${state.allRawFiles.length} Treffern)`, 'info');
+      return;
+    }
   }
+  executeSearch();
 }
 
 function setLocation(path, isOneDrive) {
@@ -577,6 +584,7 @@ async function executeSearch() {
     });
 
     const data = await response.json();
+    state.lastSearchedCategory = state.currentCategory || 'all';
     if (data.search_history) state.searchHistory = data.search_history;
     if (data.saved_searches) state.savedSearches = data.saved_searches;
     renderSearchHistoryAndSaved();
@@ -623,12 +631,14 @@ function escapeHtml(str) {
 
 function getCategoryBadgeLabel(cat) {
   const map = {
+    folder: 'Ordner',
     pdf: 'PDF',
     word: 'Word',
     excel: 'Excel',
     access: 'Access',
     office: 'Office',
     image: 'Bilder',
+    video: 'Video',
     archive: 'Archiv',
     code: 'Text'
   };
