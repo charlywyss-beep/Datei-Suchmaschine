@@ -13,7 +13,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.9"
+APP_VERSION = "v1.7.10"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -1684,7 +1684,25 @@ def send_file_via_email(filepath, recipient="", client=None):
             "message": f"E-Mail-Programm aufgerufen & '{filename}' in Zwischenablage kopiert (einfach [Strg + V] drücken)!"
         }
 
-    # 4. MICROSOFT OUTLOOK
+    # 4a. NEUES OUTLOOK (Store-App) - kennt keine Anhang-Schalter, daher Strg+V
+    elif client == "outlook_new":
+        import urllib.parse
+        subject = urllib.parse.quote(f"Datei: {filename}")
+        body = urllib.parse.quote(f"Hier ist die Datei: {filename}\n(Datei in Zwischenablage, einfach Strg+V drücken)")
+        try:
+            # Direkt die Store-App ansprechen (nicht das Standard-Mailprogramm)
+            subprocess.Popen(["explorer.exe", "shell:AppsFolder\\Microsoft.OutlookForWindows_8wekyb3d8bbwe!Microsoft.OutlookforWindows"])
+            time.sleep(1.5)
+            os.startfile(f"mailto:{recipient}?subject={subject}&body={body}")
+        except Exception as e_new:
+            logger.warning(f"Neues Outlook start failed: {e_new}")
+        return {
+            "success": True,
+            "method": "outlook_new",
+            "message": f"Neues Outlook geöffnet & '{filename}' in Zwischenablage kopiert – im Nachrichtenfenster einfach [Strg + V] drücken!"
+        }
+
+    # 4b. MICROSOFT OUTLOOK (klassisch)
     elif client == "outlook":
         outlook_paths = [
             r"C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE",

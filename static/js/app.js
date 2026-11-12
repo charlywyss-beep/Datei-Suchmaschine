@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // DATEI-SUCHMASCHINE PRO - FRONTEND ENGINE
 // ==========================================
 
@@ -1450,7 +1450,8 @@ function getEmailClientLabel(client) {
     case 'icloud': return 'Apple iCloud Mail';
     case 'gmail': return 'Google Mail (GMail)';
     case 'thunderbird': return 'Thunderbird';
-    case 'outlook': return 'Outlook';
+    case 'outlook': return 'Outlook (klassisch)';
+    case 'outlook_new': return 'Outlook (neu)';
     default: return 'Windows-Standard';
   }
 }
@@ -1462,7 +1463,7 @@ function updateEmailClientUI() {
   const currentTextEl = document.getElementById('settings-email-current');
   if (currentTextEl) currentTextEl.textContent = getEmailClientLabel(client);
 
-  const clients = ['gmail', 'icloud', 'thunderbird', 'outlook', 'default'];
+  const clients = ['gmail', 'icloud', 'thunderbird', 'outlook', 'outlook_new', 'default'];
   clients.forEach(c => {
     const btn = document.getElementById(`btn-email-${c}`);
     if (btn) {
@@ -1496,8 +1497,10 @@ function updateEmailClientUI() {
       descEl.textContent = 'Öffnet Google Mail im Browser & kopiert Datei für [Strg + V]';
     } else if (client === 'thunderbird') {
       descEl.textContent = 'Öffnet Thunderbird & kopiert Datei für [Strg + V]';
+    } else if (client === 'outlook_new') {
+      descEl.textContent = 'Öffnet neues Outlook & kopiert Datei für [Strg + V]';
     } else if (client === 'outlook') {
-      descEl.textContent = 'Öffnet Microsoft Outlook mit angehängter Datei';
+      descEl.textContent = 'Öffnet klassisches Outlook mit angehängter Datei';
     } else {
       descEl.textContent = 'Öffnet Standard-Mail-App & kopiert Datei für [Strg + V]';
     }
@@ -1514,6 +1517,9 @@ function updateEmailClientUI() {
       iconBox.className = 'w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center text-lg';
     } else if (client === 'thunderbird') {
       iconEl.className = 'fa-solid fa-dove text-sky-400';
+      iconBox.className = 'w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg';
+    } else if (client === 'outlook_new') {
+      iconEl.className = 'fa-solid fa-envelope-open-text text-sky-400';
       iconBox.className = 'w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center text-lg';
     } else if (client === 'outlook') {
       iconEl.className = 'fa-solid fa-envelope-open-text text-blue-400';
