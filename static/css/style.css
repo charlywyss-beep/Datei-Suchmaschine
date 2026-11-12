@@ -876,3 +876,68 @@ html.light #btn-delete-selected:hover {
 html.light #btn-delete-selected i {
   color: #e11d48 !important;
 }
+
+/* =========================================================
+   STICKY DOCKING: Ergebnisse-Toolbar & Tabellen-Header (Bild 2)
+   hier anlaufen unter dem Hauptheader
+   ========================================================= */
+:root {
+  --header-height: 68px;
+  --sticky-table-top: 126px;
+}
+
+#results-toolbar {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: 68px;
+  z-index: 30 !important;
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.45) !important;
+}
+
+#view-table-wrapper {
+  overflow: visible !important;
+}
+
+#view-table-wrapper table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+#view-table-wrapper table thead,
+#view-table-wrapper table thead tr {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: var(--sticky-table-top, 126px) !important;
+  z-index: 20 !important;
+}
+
+#view-table-wrapper table thead th {
+  position: -webkit-sticky !important;
+  position: sticky !important;
+  top: var(--sticky-table-top, 126px) !important;
+  z-index: 20 !important;
+  background-color: #0b1120 !important;
+  border-bottom: 2px solid #1e293b !important;
+}
+
+#view-table-wrapper table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 1rem;
+}
+#view-table-wrapper table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 1rem;
+}
+
+/* Light Mode Stile fuer angedockte Header */
+html.light #results-toolbar {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light #view-table-wrapper table thead th {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}

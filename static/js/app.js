@@ -34,6 +34,7 @@ let state = {
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initSystemInfo();
+  updateStickyHeaderPositions();
   // Lucide icons init if available
   if (window.lucide) {
     lucide.createIcons();
@@ -66,6 +67,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// ==========================================
+// STICKY HEADER DOCKING ("hier anlaufen")
+// ==========================================
+function updateStickyHeaderPositions() {
+  const header = document.querySelector('header');
+  const toolbar = document.getElementById('results-toolbar');
+  if (!header) return;
+  const headerHeight = header.offsetHeight || 68;
+  if (toolbar) {
+    toolbar.style.top = `${headerHeight}px`;
+    const isVisible = !toolbar.classList.contains('hidden') && toolbar.offsetHeight > 0;
+    const toolbarHeight = isVisible ? toolbar.offsetHeight : 0;
+    // Wenn Toolbar sichtbar ist, dockt der Tabellen-Header direkt unter der Toolbar an ("hier anlaufen")
+    const tableTop = isVisible ? (headerHeight + toolbarHeight) : headerHeight;
+    document.documentElement.style.setProperty('--sticky-table-top', `${tableTop}px`);
+  } else {
+    document.documentElement.style.setProperty('--sticky-table-top', `${headerHeight}px`);
+  }
+}
+
+window.addEventListener('resize', updateStickyHeaderPositions);
+window.addEventListener('scroll', updateStickyHeaderPositions, { passive: true });
 
 // Systeminformationen (OneDrive etc.) laden
 async function initSystemInfo() {
@@ -662,6 +686,7 @@ async function executeSearch() {
       document.getElementById('empty-state').classList.remove('hidden');
     } else {
       document.getElementById('results-toolbar').classList.remove('hidden');
+      updateStickyHeaderPositions();
       applySorting();
       renderResults();
     }
@@ -1046,6 +1071,7 @@ function renderResults() {
       gridWrapper.appendChild(card);
     });
   }
+  updateStickyHeaderPositions();
 }
 
 // Kategorie anhand der Dateiendung ermitteln
@@ -1174,6 +1200,7 @@ function updateSelectedCounter() {
     }
     deleteBtn.classList.toggle('hidden', count === 0);
   }
+  updateStickyHeaderPositions();
 }
 
 function sortResults(column) {

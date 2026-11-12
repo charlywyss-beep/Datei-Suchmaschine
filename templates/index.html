@@ -88,7 +88,7 @@
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
       <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
-        <span id="header-version-tag">{{ version or 'v1.7.1' }}</span>
+        <span id="header-version-tag">{{ version or 'v1.7.2' }}</span>
       </button>
 
       <!-- Theme Switcher (Dunkel / Hell) -->
@@ -386,8 +386,8 @@
         </div>
       </div>
 
-      <!-- Ergebnis-Toolbar & Massen-Aktionen -->
-      <div id="results-toolbar" class="hidden flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-md px-5 py-3.5 rounded-2xl border border-slate-800 shadow-md">
+      <!-- Ergebnis-Toolbar & Massen-Aktionen (Sticky angedockt unter dem Haupt-Header: Bild 2) -->
+      <div id="results-toolbar" class="hidden sticky top-[68px] z-30 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/95 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-800 shadow-xl transition-all">
         <!-- Result Stats -->
         <div class="flex items-center space-x-3 text-xs text-slate-300">
           <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
@@ -444,30 +444,30 @@
       <!-- Ergebnis-Tabelle / Grid Container -->
       <div id="results-container" class="space-y-4">
         <!-- Tabelle (Default) -->
-        <div id="view-table-wrapper" class="hidden glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl bg-slate-900/50">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr class="border-b border-slate-800 bg-slate-950/60 text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
-                  <th class="py-3 px-4 w-10 text-center">
+        <div id="view-table-wrapper" class="hidden glass-card rounded-2xl border border-slate-800/80 shadow-xl bg-slate-900/50">
+          <div class="overflow-visible">
+            <table class="w-full text-left text-xs" style="border-collapse: separate; border-spacing: 0;">
+              <thead class="sticky z-20" style="top: var(--sticky-table-top, 126px)">
+                <tr class="border-b border-slate-800 bg-slate-950/95 backdrop-blur-md text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
+                  <th class="py-3 px-4 w-10 text-center sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">
                     <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
                   </th>
-                  <th class="py-3 px-4 w-28 text-left cursor-pointer hover:text-slate-200 transition" onclick="sortResults('ext')" title="Nach Dateityp sortieren">
+                  <th class="py-3 px-4 w-28 text-left cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('ext')" title="Nach Dateityp sortieren">
                     Typ <i class="fa-solid fa-sort ml-1"></i>
                   </th>
-                  <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('name')">
+                  <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('name')">
                     Dateiname <i class="fa-solid fa-sort ml-1"></i>
                   </th>
-                  <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('folder')">
+                  <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('folder')">
                     Ordner-Pfad <i class="fa-solid fa-sort ml-1"></i>
                   </th>
-                  <th class="py-3 px-4 w-28 text-right cursor-pointer hover:text-slate-200 transition" onclick="sortResults('size')">
+                  <th class="py-3 px-4 w-28 text-right cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('size')">
                     Größe <i class="fa-solid fa-sort ml-1"></i>
                   </th>
-                  <th class="py-3 px-4 w-36 cursor-pointer hover:text-slate-200 transition" onclick="sortResults('modified')">
+                  <th class="py-3 px-4 w-36 cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('modified')">
                     Geändert am <i class="fa-solid fa-sort ml-1"></i>
                   </th>
-                  <th class="py-3 px-4 w-60 text-right">Aktionen</th>
+                  <th class="py-3 px-4 w-60 text-right sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">Aktionen</th>
                 </tr>
               </thead>
               <tbody id="results-tbody" class="divide-y divide-slate-800/60 text-slate-300">
@@ -963,7 +963,7 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.1' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.2' }}</span>
             </h3>
             <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
           </div>
@@ -1251,7 +1251,7 @@
         <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
           <div>
             <span class="font-semibold text-slate-200 block">Datei-Suchmaschine Pro</span>
-            <span class="text-[11px] text-slate-400">Version v1.7.1 • GitHub Auto-Update</span>
+            <span class="text-[11px] text-slate-400">Version v1.7.2 • GitHub Auto-Update</span>
           </div>
           <button onclick="closeSettingsModal(); openGitUpdateModal();" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shadow-sm">
             Updates prüfen
@@ -1295,6 +1295,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.7.1' }}"></script>
+  <script src="/static/js/app.js?v={{ version or 'v1.7.2' }}"></script>
 </body>
 </html>
