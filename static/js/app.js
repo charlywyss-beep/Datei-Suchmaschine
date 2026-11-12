@@ -1425,6 +1425,9 @@ async function sendEmail(path) {
     });
     const d = await res.json();
     if (d.success) {
+      if (d.web_url) {
+        window.open(d.web_url, '_blank');
+      }
       showToast(d.message || 'E-Mail geöffnet!', 'success', 6000);
     } else {
       showToast(d.error || 'Mail-Fehler', 'error');

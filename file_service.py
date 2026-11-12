@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from send2trash import send2trash
 
-APP_VERSION = "v1.7.5"
+APP_VERSION = "v1.7.6"
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 def load_config():
@@ -1453,7 +1453,10 @@ def send_file_via_email(filepath, recipient="", client=None):
         client = get_email_client()
         
     abs_p = os.path.abspath(filepath)
+    abs_p_win = abs_p.replace("/", "\\")
     filename = os.path.basename(filepath)
+    clean_filename = filename.replace("'", "")
+    clean_path = abs_p_win.replace("'", "")
 
     # 1. MOZILLA THUNDERBIRD
     if client == "thunderbird":
@@ -1468,15 +1471,19 @@ def send_file_via_email(filepath, recipient="", client=None):
             
         if tb_exe:
             try:
-                import pathlib
-                file_uri = pathlib.Path(abs_p).as_uri()
-                compose_parts = [f"subject='Datei: {filename}'", f"attachment='{file_uri}'"]
-                if recipient:
-                    compose_parts.insert(0, f"to='{recipient}'")
-                compose_arg = ",".join(compose_parts)
-                
-                subprocess.Popen([tb_exe, "-compose", compose_arg])
+                # 1. Datei für zusätzliche Sicherheit in Windows-Zwischenablage legen
                 copy_file_for_teams(filepath)
+                
+                # 2. Thunderbird mit -compose starten (Nativer Windows-Pfad ohne file:///)
+                # Format: thunderbird.exe -compose "attachment='C:\path\to\file',subject='...'"
+                compose_arg = f"attachment='{clean_path}',subject='Datei: {clean_filename}'"
+                if recipient:
+                    compose_arg = f"to='{recipient}'," + compose_arg
+                
+                # Direkt über cmd /c start aufrufen, damit Windows das Thunderbird-Verfassen-Fenster sofort in den Vordergrund holt
+                cmd_line = f'start "" "{tb_exe}" -compose "{compose_arg}"'
+                subprocess.Popen(f'cmd.exe /c {cmd_line}', shell=True)
+                
                 return {
                     "success": True,
                     "method": "thunderbird",
@@ -1492,12 +1499,19 @@ def send_file_via_email(filepath, recipient="", client=None):
             import webbrowser
             copy_file_for_teams(filepath)
             subject = urllib.parse.quote(f"Datei: {filename}")
-            body = urllib.parse.quote(f"Hallo,\n\nanbei die Datei {filename}.\n\nPfad: {filepath}\n\n(Die Datei wurde automatisch in die Zwischenablage kopiert - im GMail-Fenster einfach [Strg + V] drücken!)")
-            gmail_url = f"https://mail.google.com/mail/?view=cm&fs=1&to={urllib.parse.quote(recipient)}&su={subject}&body={body}"
-            webbrowser.open(gmail_url)
+            body = urllib.parse.quote(f"Hallo,\n\nanbei die Datei {filename}.\n\nPfad: {filepath}\n\n(Die Datei befindet sich bereits in der Windows-Zwischenablage - im GMail-Fenster einfach [Strg + V] drücken!)")
+            # Google Mail direkte Verfassen-URL auf Account 0
+            gmail_url = f"https://mail.google.com/mail/u/0/?view=cm&fs=1&to={urllib.parse.quote(recipient)}&su={subject}&body={body}"
+            
+            try:
+                webbrowser.open(gmail_url)
+            except Exception:
+                pass
+                
             return {
                 "success": True,
                 "method": "gmail",
+                "web_url": gmail_url,
                 "message": f"Google Mail im Browser geöffnet & '{filename}' in Zwischenablage kopiert! Im GMail-Fenster einfach [Strg + V] drücken."
             }
         except Exception as e:
