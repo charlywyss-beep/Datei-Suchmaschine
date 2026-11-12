@@ -297,9 +297,14 @@ async function submitAddNetworkPath() {
 
 async function deleteNetworkPath(pathId, name, event) {
   if (event) event.stopPropagation();
-  if (!confirm(`Soll der Netzwerkpfad "${name}" entfernt werden?`)) {
-    return;
-  }
+  const confirmed = await showConfirmDialog({
+    title: 'Netzwerkpfad entfernen',
+    message: `Soll der Netzwerkpfad "${name}" wirklich aus den Favoriten entfernt werden?`,
+    confirmText: 'Entfernen',
+    cancelText: 'Abbrechen',
+    type: 'warning'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch('/api/delete-network-path', {
@@ -375,9 +380,14 @@ async function submitSaveCustomPath() {
 
 async function deleteCustomPath(pathId, name, event) {
   if (event) event.stopPropagation();
-  if (!confirm(`Soll der gespeicherte Suchpfad "${name}" entfernt werden?`)) {
-    return;
-  }
+  const confirmed = await showConfirmDialog({
+    title: 'Suchpfad-Favorit entfernen',
+    message: `Soll der gespeicherte Suchpfad "${name}" aus den Schnell-Buttons entfernt werden?`,
+    confirmText: 'Entfernen',
+    cancelText: 'Abbrechen',
+    type: 'warning'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch('/api/delete-saved-path', {
@@ -1444,9 +1454,16 @@ async function submitSingleRename() {
 
 // In Windows Papierkorb werfen
 async function deleteSingleFile(path) {
-  if (!confirm(`Soll diese Datei wirklich in den Windows-Papierkorb verschoben werden?\n\n${path}`)) {
-    return;
-  }
+  const filename = path.split('\\').pop().split('/').pop();
+  const confirmed = await showConfirmDialog({
+    title: 'Datei in den Papierkorb verschieben',
+    message: `Soll "${filename}" sicher in den Windows-Papierkorb verschoben werden?`,
+    detail: `Pfad: ${toGermanDisplayPath(path)}\n\nDie Datei kann jederzeit aus dem Windows-Papierkorb wiederhergestellt werden.`,
+    confirmText: 'In den Papierkorb',
+    cancelText: 'Abbrechen',
+    type: 'danger'
+  });
+  if (!confirmed) return;
   try {
     const res = await fetch('/api/delete-files', {
       method: 'POST',
@@ -1659,9 +1676,16 @@ async function deleteSelectedDuplicates() {
   const count = state.duplicateSelectedPaths.size;
   if (count === 0) return;
 
-  if (!confirm(`Sollen wirklich ${count} ausgewählte Duplikate sicher in den Windows-Papierkorb verschoben werden?\n(Dateien können aus dem Papierkorb wiederhergestellt werden)`)) {
-    return;
-  }
+  const countText = count === 1 ? '1 ausgewähltes Duplikat' : `${count} ausgewählte Duplikate`;
+  const confirmed = await showConfirmDialog({
+    title: 'Duplikate in den Papierkorb verschieben',
+    message: `Möchten Sie ${countText} sicher in den Windows-Papierkorb verschieben?`,
+    detail: 'Hinweis: Die Dateien werden nicht sofort gelöscht, sondern können bei Bedarf jederzeit aus dem Windows-Papierkorb wiederhergestellt werden.',
+    confirmText: 'In den Papierkorb verschieben',
+    cancelText: 'Abbrechen',
+    type: 'danger'
+  });
+  if (!confirmed) return;
 
   try {
     const pathsToDelete = Array.from(state.duplicateSelectedPaths);
@@ -1794,9 +1818,19 @@ async function executeBatchRename() {
   if (!state.renamePreview || state.renamePreview.length === 0) return;
 
   const changedItems = state.renamePreview.filter(i => i.changed);
-  if (!confirm(`Sollen wirklich ${changedItems.length} Dateien umbenannt werden?`)) {
+  if (changedItems.length === 0) {
+    showToast('Keine Änderungen vorzunehmen.', 'info');
     return;
   }
+  const confirmed = await showConfirmDialog({
+    title: 'Massen-Umbenennung anwenden',
+    message: `Möchten Sie wirklich ${changedItems.length} Dateien umbenennen?`,
+    detail: 'Die neuen Dateinamen werden direkt auf der Festplatte angewendet.',
+    confirmText: 'Jetzt umbenennen',
+    cancelText: 'Abbrechen',
+    type: 'warning'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch('/api/batch-rename-execute', {
@@ -2079,4 +2113,78 @@ async function saveOneDriveSettings() {
   } catch (err) {
     showToast(`Fehler: ${err.message}`, 'error');
   }
+}
+
+
+// ==========================================
+// BESTÄTIGUNGS-MODAL (ZENTRIERT & MODERN)
+// ==========================================
+function showConfirmDialog({
+  title = 'Bestätigung erforderlich',
+  message = '',
+  detail = '',
+  confirmText = 'Bestätigen',
+  cancelText = 'Abbrechen',
+  type = 'danger' // 'danger', 'warning', 'info'
+}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('modal-confirm-dialog');
+    const titleEl = document.getElementById('confirm-modal-title');
+    const msgEl = document.getElementById('confirm-modal-message');
+    const detailEl = document.getElementById('confirm-modal-detail');
+    const iconContainer = document.getElementById('confirm-modal-icon-container');
+    const iconEl = document.getElementById('confirm-modal-icon');
+    const btnConfirm = document.getElementById('confirm-modal-btn-confirm');
+    const btnCancel = document.getElementById('confirm-modal-btn-cancel');
+
+    if (!modal) {
+      resolve(window.confirm(`${title}\n\n${message}`));
+      return;
+    }
+
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    if (detail) {
+      detailEl.textContent = detail;
+      detailEl.classList.remove('hidden');
+    } else {
+      detailEl.classList.add('hidden');
+    }
+    btnConfirm.innerHTML = `<i class="fa-solid fa-check"></i><span>${confirmText}</span>`;
+    btnCancel.textContent = cancelText;
+
+    if (type === 'danger') {
+      iconContainer.className = 'w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center text-xl shrink-0';
+      iconEl.className = 'fa-solid fa-trash-can';
+      btnConfirm.className = 'px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-xs font-bold transition shadow-lg shadow-rose-600/30 flex items-center gap-2 active:scale-95';
+    } else {
+      iconContainer.className = 'w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-xl shrink-0';
+      iconEl.className = 'fa-solid fa-triangle-exclamation';
+      btnConfirm.className = 'px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-xs font-bold transition shadow-lg shadow-amber-600/30 flex items-center gap-2 active:scale-95';
+    }
+
+    const cleanup = (result) => {
+      modal.classList.add('hidden');
+      btnConfirm.onclick = null;
+      btnCancel.onclick = null;
+      document.removeEventListener('keydown', handleKey);
+      resolve(result);
+    };
+
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup(false);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        cleanup(true);
+      }
+    };
+
+    btnConfirm.onclick = () => cleanup(true);
+    btnCancel.onclick = () => cleanup(false);
+    document.addEventListener('keydown', handleKey);
+
+    modal.classList.remove('hidden');
+  });
 }
