@@ -984,11 +984,6 @@ function renderResults() {
         onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-2" title="OneDrive"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>`;
       }
 
-      const isFolder = file.category === 'folder' || (file.ext && file.ext.toUpperCase() === 'ORDNER') || file.is_dir;
-      const typeBadgeClass = isFolder
-        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-        : 'bg-slate-800/90 text-slate-300 border-slate-700/70';
-
       row.innerHTML = `
         <td class="py-2.5 px-4 text-center" onclick="event.stopPropagation()">
           <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
@@ -996,7 +991,7 @@ function renderResults() {
         <td class="py-2.5 px-4 text-left whitespace-nowrap">
           <div class="inline-flex items-center gap-1.5" title="Dateityp: ${file.ext || 'DATEI'} (${getAppLabelForExt(file.ext)})">
             ${fileIcon}
-            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${typeBadgeClass}">${file.ext || 'DATEI'}</span>
+            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${file.ext || 'DATEI'}</span>
           </div>
         </td>
         <td class="py-2.5 px-4 font-medium text-slate-100 max-w-xs md:max-w-md truncate" onclick="openFile('${escapeJs(file.path)}')">
