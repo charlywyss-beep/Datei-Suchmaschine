@@ -13,13 +13,21 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.11"
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+APP_VERSION = "v1.7.12"
+
+def _get_base_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+CONFIG_FILE = os.path.join(_get_base_dir(), "config.json")
+QUEUE_FILE = os.path.join(_get_base_dir(), "open_queue.json")
 
 def load_config():
-    if os.path.exists(CONFIG_FILE):
+    cfg_file = os.path.join(_get_base_dir(), "config.json")
+    if os.path.exists(cfg_file):
         try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            with open(cfg_file, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             pass
@@ -27,7 +35,8 @@ def load_config():
 
 def save_config(cfg):
     try:
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        cfg_file = os.path.join(_get_base_dir(), "config.json")
+        with open(cfg_file, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2, ensure_ascii=False)
         return True
     except Exception:
@@ -934,11 +943,15 @@ def ensure_protocol_registered():
     (Word, Excel, Bilder etc.) direkt mit Vordergrund-Fokus öffnen kann."""
     try:
         import winreg
-        pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
-        if not os.path.exists(pythonw):
-            pythonw = sys.executable
-        launcher_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "launcher.pyw")
-        cmd_str = f'"{pythonw}" "{launcher_script}" "%1"'
+        if getattr(sys, 'frozen', False):
+            # Standalone .exe: Die .exe selbst verarbeitet das Protokoll direkt
+            cmd_str = f'"{sys.executable}" "%1"'
+        else:
+            pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+            if not os.path.exists(pythonw):
+                pythonw = sys.executable
+            launcher_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "launcher.pyw")
+            cmd_str = f'"{pythonw}" "{launcher_script}" "%1"'
 
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\suchmaschine") as key:
             winreg.SetValueEx(key, "", 0, winreg.REG_SZ, "URL:Datei-Suchmaschine Desktop-Starter")

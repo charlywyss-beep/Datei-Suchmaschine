@@ -110,16 +110,17 @@ def smart_open_on_desktop(abs_p):
     else:
         subprocess.Popen(["rundll32.exe", "shell32.dll,OpenAs_RunDLL", abs_p])
 
-def main():
-    if len(sys.argv) < 2:
+def handle_uri(raw_uri):
+    if not raw_uri:
         return
-    raw_uri = sys.argv[1].strip()
-    # Format: suchmaschine://run/<ticket_id>
-    ticket_id = raw_uri.rstrip("/").split("/")[-1]
-    if not os.path.exists(QUEUE_FILE):
+    ticket_id = raw_uri.strip().rstrip("/").split("/")[-1]
+    queue_file = QUEUE_FILE
+    if getattr(sys, 'frozen', False):
+        queue_file = os.path.join(os.path.dirname(sys.executable), "open_queue.json")
+    if not os.path.exists(queue_file):
         return
     try:
-        with open(QUEUE_FILE, "r", encoding="utf-8") as f:
+        with open(queue_file, "r", encoding="utf-8") as f:
             queue = json.load(f)
     except Exception:
         return
@@ -129,7 +130,7 @@ def main():
         return
 
     try:
-        with open(QUEUE_FILE, "w", encoding="utf-8") as f:
+        with open(queue_file, "w", encoding="utf-8") as f:
             json.dump(queue, f, indent=2, ensure_ascii=False)
     except Exception:
         pass
@@ -146,6 +147,11 @@ def main():
         smart_open_on_desktop(abs_p)
     elif action == "open_with":
         subprocess.Popen(["rundll32.exe", "shell32.dll,OpenAs_RunDLL", abs_p])
+
+def main():
+    if len(sys.argv) < 2:
+        return
+    handle_uri(sys.argv[1])
 
 if __name__ == "__main__":
     main()

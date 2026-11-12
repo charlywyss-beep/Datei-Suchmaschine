@@ -3,9 +3,16 @@ import sys
 import mimetypes
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, abort
 
-import file_service
+# Wenn von PyInstaller kompiliert: Vorlagen und Static aus dem Bundle laden
+if getattr(sys, 'frozen', False):
+    base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    template_folder = os.path.join(base_dir, 'templates')
+    static_folder = os.path.join(base_dir, 'static')
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+else:
+    app = Flask(__name__)
 
-app = Flask(__name__)
+import file_service
 # Max upload/request size
 app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
 
@@ -162,9 +169,12 @@ def git_update_route():
         def _restart():
             import time
             time.sleep(1.2)
-            python_exe = sys.executable
-            app_script = os.path.abspath(__file__)
-            subprocess.Popen([python_exe, app_script], cwd=os.path.dirname(app_script))
+            if getattr(sys, 'frozen', False):
+                subprocess.Popen([sys.executable], cwd=os.path.dirname(sys.executable))
+            else:
+                python_exe = sys.executable
+                app_script = os.path.abspath(__file__)
+                subprocess.Popen([python_exe, app_script], cwd=os.path.dirname(app_script))
             os._exit(0)
         threading.Thread(target=_restart, daemon=True).start()
     return jsonify(res)
@@ -452,12 +462,41 @@ def file_preview():
     })
 
 if __name__ == "__main__":
+    # 1. Behandle 'suchmaschine://' Protokoll-Aufrufe (für Standalone-EXE ohne Python)
+    if len(sys.argv) > 1 and sys.argv[1].startswith("suchmaschine://"):
+        try:
+            import launcher
+            launcher.handle_uri(sys.argv[1])
+        except Exception:
+            pass
+        sys.exit(0)
+
     import webbrowser
+    import socket
     try:
         sys.stdout.reconfigure(encoding='utf-8')
     except Exception:
         pass
     port = 5005
+
+    # 2. Prüfen, ob bereits eine Instanz auf Port 5005 läuft
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_already_running = False
+    try:
+        s.bind(("127.0.0.1", port))
+        s.close()
+    except OSError:
+        server_already_running = True
+
+    if server_already_running:
+        # Server läuft bereits: Nur Browser öffnen und sauber beenden
+        if "--no-browser" not in sys.argv:
+            try:
+                webbrowser.open(f"http://localhost:{port}")
+            except Exception:
+                pass
+        sys.exit(0)
+
     local_ip = file_service.get_local_ip()
     print(f"Datei-Suchmaschine laeuft auf:")
     print(f"  - Lokal:        http://localhost:{port}")
