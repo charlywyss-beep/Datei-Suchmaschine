@@ -592,8 +592,87 @@ def _find_msedge_exe() -> str:
     return ""
 
 
+def _resolve_app_icon() -> str:
+    """Findet das Embedded-/Projekt-Icon (.ico) fuer das Desktop-Fenster."""
+    bases = []
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", "")
+        if meipass:
+            bases.append(meipass)
+        bases.append(os.path.dirname(sys.executable))
+    bases.append(os.path.dirname(os.path.abspath(__file__)))
+    for b in bases:
+        for name in ("app_icon.ico", "Suchmaschine.ico"):
+            p = os.path.join(b, name)
+            if os.path.isfile(p):
+                return p
+    return ""
+
+
+def _wait_for_port(port: int, timeout: float = 6.0) -> bool:
+    import socket
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(0.2)
+        try:
+            if s.connect_ex(("127.0.0.1", port)) == 0:
+                return True
+        except Exception:
+            pass
+        finally:
+            try:
+                s.close()
+            except Exception:
+                pass
+        time.sleep(0.1)
+    return False
+
+
+def _launch_desktop_window(url: str) -> bool:
+    """Oeffnet die Datei-Suchmaschine als echtes Windows-Desktop-Fenster (WebView2, 1 Taskleisten-Icon)."""
+    if os.name == "nt" and not getattr(sys, "frozen", False):
+        try:
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("DateiSuchmaschine.Pro.1")
+        except Exception:
+            pass
+    try:
+        import tempfile
+        import webview
+
+        webview.settings["ALLOW_DOWNLOADS"] = True
+        webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
+        storage_dir = os.path.join(
+            os.environ.get("LOCALAPPDATA") or tempfile.gettempdir(),
+            "DateiSuchmaschinePro",
+            "WebView2",
+        )
+        os.makedirs(storage_dir, exist_ok=True)
+        icon_path = _resolve_app_icon() or None
+        webview.create_window(
+            f"Datei-Suchmaschine Pro  {file_service.APP_VERSION}",
+            url,
+            width=1380,
+            height=880,
+            min_size=(960, 640),
+            text_select=True,
+            zoomable=True,
+            background_color="#f8fafc",
+        )
+        webview.start(
+            gui="edgechromium" if os.name == "nt" else None,
+            icon=icon_path,
+            private_mode=False,
+            storage_path=storage_dir,
+        )
+        return True
+    except Exception:
+        return False
+
+
 def _open_suchmaschine_app_window(url: str):
-    """Oeffnet die Suchmaschine als eigenstaendiges Edge-App-Fenster (ohne Browser-Tabs) mit Fallback."""
+    """Fallback-Fensterstart ueber Edge --app oder Standardbrowser, falls WebView2 nicht startet."""
     import subprocess
     import webbrowser
     edge = _find_msedge_exe() if os.name == "nt" else ""
@@ -607,15 +686,15 @@ def _open_suchmaschine_app_window(url: str):
     webbrowser.open(url)
 
 
-def _activate_running_suchmaschine(port: int) -> bool:
-    """Prueft ueber Bridge-API und Win32-Fenster, ob bereits ein Tab/Fenster offen ist und holt es nach vorn."""
+def _activate_running_suchmaschine(port: int, open_path: str = "") -> bool:
+    """Prueft ueber Bridge-API und Win32-Fenster, ob bereits ein Fenster offen ist und holt es nach vorn."""
     import json
     import urllib.request
     reused = False
     try:
         req = urllib.request.Request(
             f"http://127.0.0.1:{port}/api/bridge/open-in-active",
-            data=json.dumps({"path": "", "focus": True}).encode("utf-8"),
+            data=json.dumps({"path": open_path, "focus": True}).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
         )
@@ -684,13 +763,22 @@ if __name__ == "__main__":
             pass
         sys.exit(0)
 
-    import webbrowser
     import socket
+    import urllib.parse
     try:
         sys.stdout.reconfigure(encoding='utf-8')
     except Exception:
         pass
     port = 5005
+
+    open_path_arg = ""
+    if "--open-path" in sys.argv:
+        p_idx = sys.argv.index("--open-path")
+        if p_idx + 1 < len(sys.argv):
+            open_path_arg = sys.argv[p_idx + 1].strip()
+    start_url = f"http://localhost:{port}/"
+    if open_path_arg:
+        start_url = f"http://localhost:{port}/?open_path={urllib.parse.quote(open_path_arg)}"
 
     # 2. Prüfen, ob bereits eine Instanz auf Port 5005 läuft
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -702,11 +790,12 @@ if __name__ == "__main__":
         server_already_running = True
 
     if server_already_running:
-        # Server läuft bereits: Bestehende Edge-App/Browser-Instanz fokussieren statt zweites Tab zu öffnen
+        # Server läuft bereits: Bestehende Instanz fokussieren (oder Desktop-Fenster oeffnen, falls Server headless lief)
         if "--no-browser" not in sys.argv:
             try:
-                if not _activate_running_suchmaschine(port):
-                    _open_suchmaschine_app_window(f"http://localhost:{port}")
+                if not _activate_running_suchmaschine(port, open_path=open_path_arg):
+                    if not _launch_desktop_window(start_url):
+                        _open_suchmaschine_app_window(start_url)
             except Exception:
                 pass
         sys.exit(0)
@@ -715,10 +804,18 @@ if __name__ == "__main__":
     print(f"Datei-Suchmaschine laeuft auf:")
     print(f"  - Lokal:        http://localhost:{port}")
     print(f"  - iPad / iPhone: http://{local_ip}:{port}")
-    try:
-        if "--no-browser" not in sys.argv:
-            _open_suchmaschine_app_window(f"http://localhost:{port}")
-    except Exception:
-        pass
-    # Auf 0.0.0.0 lauschen für Zugriff von iPad, iPhone & Heim/Geschäftsnetzwerk
-    app.run(host="0.0.0.0", port=port, debug=False)
+
+    if "--no-browser" in sys.argv:
+        # Reiner Hintergrundserver-Modus ohne eigenes Fenster
+        app.run(host="0.0.0.0", port=port, debug=False)
+    else:
+        # Standard Desktop-App-Modus: Server im Daemon-Thread + eigenes WebView2-Fenster (genau 1 Taskleisten-Icon)
+        server_thread = threading.Thread(
+            target=lambda: app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False),
+            daemon=True,
+        )
+        server_thread.start()
+        _wait_for_port(port, timeout=6.0)
+        if not _launch_desktop_window(start_url):
+            _open_suchmaschine_app_window(start_url)
+            server_thread.join()

@@ -2335,7 +2335,7 @@ function escapeJs(str) {
 // ==========================================
 function applyGitInfoToModal(data) {
   state.gitInfo = data;
-  const appVer = data.version || 'v1.7.16';
+  const appVer = data.version || 'v1.7.17';
 
   const topTagEl = document.getElementById('app-version-tag');
   if (topTagEl) topTagEl.textContent = appVer;
