@@ -48,7 +48,7 @@
 <body class="bg-[#0f172a] text-slate-100 font-['Inter'] antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
 
   <!-- Top App Navigation / Header -->
-  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/80 border-b border-slate-800/80 px-4 lg:px-6 py-3 flex flex-wrap items-center justify-between gap-2.5">
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/80 border-b border-slate-800/80 px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
     <div class="flex items-center space-x-3 shrink-0">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
         <i class="fa-solid fa-magnifying-glass-chart text-white text-base"></i>
@@ -112,8 +112,8 @@
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="flex-1 flex flex-col p-6 max-w-[1700px] w-full mx-auto space-y-6">
+  <!-- Main Container (Volle Fensterbreite wie 7-Ordner-Pro, ohne unnötige Seitenränder) -->
+  <main class="flex-1 flex flex-col px-3 sm:px-4 py-3 w-full space-y-4">
 
     <!-- ========================================== -->
     <!-- TAB 1: DATEISUCHE & FILTER MASKE          -->
@@ -474,24 +474,24 @@
       </div>
 
       <!-- Ergebnis-Toolbar & Massen-Aktionen (Sticky angedockt unter dem Haupt-Header: Bild 2) -->
-      <div id="results-toolbar" class="hidden sticky top-[68px] z-30 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/95 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-800 shadow-xl transition-all">
+      <div id="results-toolbar" class="hidden sticky top-[64px] z-30 flex flex-wrap items-center justify-between gap-2.5 bg-slate-900/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-800 shadow-xl transition-all">
         <!-- Result Stats -->
-        <div class="flex items-center space-x-3 text-xs text-slate-300">
-          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+        <div class="flex items-center space-x-2.5 text-xs text-slate-300 whitespace-nowrap shrink-0">
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30 whitespace-nowrap">
             <i class="fa-solid fa-list-check mr-0.5"></i>
             <span id="stat-count">0</span>
             <span>Treffer</span>
           </span>
           <span class="text-slate-400">&bull;</span>
-          <span id="stat-size" class="font-medium text-slate-200">0 MB</span>
+          <span id="stat-size" class="font-medium text-slate-200 whitespace-nowrap">0 MB</span>
           <span class="text-slate-400">&bull;</span>
-          <span id="stat-time" class="text-slate-400">0.00s</span>
+          <span id="stat-time" class="text-slate-400 whitespace-nowrap">0.00s</span>
           <span class="text-slate-400">&bull;</span>
-          <span id="selected-counter" class="text-indigo-400 font-semibold">0 ausgewählt</span>
+          <span id="selected-counter" class="text-indigo-400 font-semibold whitespace-nowrap">0 ausgewählt</span>
         </div>
 
         <!-- Massen-Aktionen Buttons -->
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap items-center gap-1.5">
           <!-- Speicher-Ordner wählen / ändern & Kopieren/Verschieben -->
           <button
             id="btn-choose-target-folder"
