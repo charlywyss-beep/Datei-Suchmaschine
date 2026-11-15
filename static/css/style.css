@@ -1458,3 +1458,12 @@ html.light #btn-reset-columns:hover {
   background-color: #f1f5f9 !important;
   color: #0f172a !important;
 }
+
+/* Dateityp-Schnellfilter: niemals Text abschneiden/überlappen (z. B. PowerPoint auf schmalem Fenster) */
+#category-filter-group .cat-pill {
+  flex: 1 0 auto !important;
+  min-width: max-content !important;
+  white-space: nowrap !important;
+  padding-left: 11px !important;
+  padding-right: 11px !important;
+}

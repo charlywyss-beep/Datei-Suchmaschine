@@ -47,31 +47,31 @@
 <body class="bg-[#0f172a] text-slate-100 font-['Inter'] antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
 
   <!-- Top App Navigation / Header -->
-  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/80 border-b border-slate-800/80 px-6 py-3.5 flex items-center justify-between">
-    <div class="flex items-center space-x-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-        <i class="fa-solid fa-magnifying-glass-chart text-white text-lg"></i>
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-900/80 border-b border-slate-800/80 px-4 lg:px-6 py-3 flex flex-wrap items-center justify-between gap-2.5">
+    <div class="flex items-center space-x-3 shrink-0">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
+        <i class="fa-solid fa-magnifying-glass-chart text-white text-base"></i>
       </div>
-      <div>
-        <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent flex items-center gap-2">
+      <div class="min-w-0">
+        <h1 class="text-base lg:text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent flex items-center gap-2 whitespace-nowrap">
           Datei-Suchmaschine <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">PRO</span>
         </h1>
-        <p class="text-xs text-slate-400">Lokale PC-Suche &bull; OneDrive &bull; Duplikat-Beseitigung &bull; Teams &amp; Mail</p>
+        <p class="text-[11px] text-slate-400 whitespace-nowrap hidden xl:block">Lokale PC-Suche &bull; OneDrive &bull; Duplikat-Beseitigung &bull; Teams &amp; Mail</p>
       </div>
     </div>
 
     <!-- Center Navigation Tabs -->
-    <nav class="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60 shadow-inner">
-      <button id="tab-search" onclick="switchTab('search')" class="tab-btn active px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+    <nav class="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60 shadow-inner shrink-0">
+      <button id="tab-search" onclick="switchTab('search')" class="tab-btn active px-3 lg:px-4 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap">
         <i class="fa-solid fa-search"></i>
         <span>Dateisuche</span>
       </button>
-      <button id="tab-duplicates" onclick="switchTab('duplicates')" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+      <button id="tab-duplicates" onclick="switchTab('duplicates')" class="tab-btn px-3 lg:px-4 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap">
         <i class="fa-solid fa-clone"></i>
         <span>Doppel-Eliminierung</span>
         <span id="badge-duplicates-count" class="hidden text-xs bg-amber-500/30 text-amber-300 px-1.5 py-0.2 rounded-full font-bold">0</span>
       </button>
-      <button id="tab-rename" onclick="switchTab('rename')" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2">
+      <button id="tab-rename" onclick="switchTab('rename')" class="tab-btn px-3 lg:px-4 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap">
         <i class="fa-solid fa-pen-to-square"></i>
         <span>Massen-Umbenennung</span>
         <span id="badge-rename-count" class="hidden text-xs bg-indigo-500/30 text-indigo-300 px-1.5 py-0.2 rounded-full font-bold">0</span>
@@ -79,32 +79,33 @@
     </nav>
 
     <!-- Header Right Quick Actions -->
-    <div class="flex items-center space-x-2.5">
+    <div class="flex items-center space-x-2 shrink-0">
       <!-- Mobile / iPad / iPhone Sync Button -->
-      <button onclick="openMobileSyncModal()" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium transition flex items-center gap-1.5 shadow-sm" title="Mit iPad / iPhone oder Geschäfts-PC verbinden">
+      <button onclick="openMobileSyncModal()" class="px-2.5 lg:px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium transition flex items-center gap-1.5 shadow-sm whitespace-nowrap" title="Mit iPad / iPhone oder Geschäfts-PC verbinden">
         <i class="fa-solid fa-mobile-screen-button"></i>
         <span>iPad &amp; iPhone</span>
       </button>
 
       <!-- Transfer-Hub & Abgleich Anleitung Button -->
-      <button onclick="openTransferGuideModal()" class="px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Anleitung: Transfer-Hub, USB-Stick &amp; Abgleich kniffliger Fälle">
+      <button onclick="openTransferGuideModal()" class="px-2.5 lg:px-3 py-1.5 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm whitespace-nowrap" title="Anleitung: Transfer-Hub, USB-Stick &amp; Abgleich kniffliger Fälle">
         <i class="fa-solid fa-book-open"></i>
-        <span>Transfer-Hub &amp; Sync Anleitung</span>
+        <span class="hidden sm:inline">Transfer-Hub &amp; Sync</span>
+        <span class="hidden 2xl:inline">Anleitung</span>
       </button>
 
       <!-- GitHub Update Button (Wie in Portfolio-Manager) -->
-      <button onclick="openGitUpdateModal()" class="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm" title="Über GitHub aktualisieren">
+      <button onclick="openGitUpdateModal()" class="px-2.5 lg:px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm whitespace-nowrap" title="Über GitHub aktualisieren">
         <i class="fa-brands fa-github text-sm"></i>
         <span id="header-version-tag">{{ version or 'v1.7.13' }}</span>
       </button>
 
       <!-- Theme Switcher (Dunkel / Hell) -->
-      <button id="theme-toggle-btn" onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center transition shadow-sm" title="Design wechseln (Dunkel / Hell)">
+      <button id="theme-toggle-btn" onclick="toggleTheme()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center transition shadow-sm shrink-0" title="Design wechseln (Dunkel / Hell)">
         <i id="theme-icon" class="fa-solid fa-moon text-indigo-400"></i>
       </button>
 
       <!-- Einstellungen Button (Zahnrad) -->
-      <button id="btn-open-settings" onclick="openSettingsModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition shadow-sm" title="Einstellungen &amp; Optionen">
+      <button id="btn-open-settings" onclick="openSettingsModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition shadow-sm shrink-0" title="Einstellungen &amp; Optionen">
         <i class="fa-solid fa-gear"></i>
       </button>
     </div>
