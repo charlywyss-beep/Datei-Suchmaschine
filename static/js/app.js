@@ -1171,6 +1171,310 @@ function setViewMode(mode) {
   renderResults();
 }
 
+// ==========================================
+// DYNAMISCHE TABELLENSPALTEN (VERSCHIEBBAR + BREITE VERSTELLBAR WIE 7-ORDNER-PRO)
+// ==========================================
+const COLUMN_LAYOUT_STORAGE_KEY = 'ds_column_layout_v1';
+const DEFAULT_COLUMN_ORDER = [
+  'name',
+  'ext',
+  'size',
+  'dup_status',
+  'category_label',
+  'target_sub',
+  'modified',
+  'folder',
+  'actions'
+];
+const DEFAULT_COLUMN_WIDTHS = {
+  name: 245,
+  ext: 78,
+  size: 112,
+  dup_status: 136,
+  category_label: 168,
+  target_sub: 175,
+  modified: 136,
+  folder: 235,
+  actions: 176
+};
+
+const COLUMN_META = {
+  name: { label: 'Dateiname', sortKey: 'name', title: 'Nach Dateiname sortieren' },
+  ext: { label: 'Typ', sortKey: 'ext', title: 'Nach Dateityp sortieren' },
+  size: { label: 'Dateigröße', sortKey: 'size', title: 'Nach Dateigröße sortieren' },
+  dup_status: { label: 'Original / Duplikat', sortKey: 'dup_status', title: 'Nach Original / Duplikat sortieren' },
+  category_label: { label: 'Erkannte Kategorie', sortKey: 'category_label', title: 'Nach Kategorie sortieren' },
+  target_sub: { label: 'Zielordner', sortKey: 'target_sub', title: 'Nach Zielordner sortieren' },
+  modified: { label: 'Änderungsdatum', sortKey: 'modified', title: 'Nach Änderungsdatum sortieren' },
+  folder: { label: 'Gefunden in (Pfad)', sortKey: 'folder', title: 'Nach Ordnerpfad sortieren' },
+  actions: { label: 'Aktion', sortKey: null, title: 'Spalte per Ziehen verschieben' }
+};
+
+function _getColumnLayout() {
+  if (!Array.isArray(state.columnOrder) || state.columnOrder.length !== DEFAULT_COLUMN_ORDER.length) {
+    let loadedOrder = null;
+    let loadedWidths = null;
+    try {
+      const raw = localStorage.getItem(COLUMN_LAYOUT_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.order) && parsed.order.length === DEFAULT_COLUMN_ORDER.length &&
+            DEFAULT_COLUMN_ORDER.every(k => parsed.order.includes(k))) {
+          loadedOrder = parsed.order;
+        }
+        if (parsed.widths && typeof parsed.widths === 'object') {
+          loadedWidths = parsed.widths;
+        }
+      }
+    } catch (_e) {}
+    state.columnOrder = loadedOrder ? [...loadedOrder] : [...DEFAULT_COLUMN_ORDER];
+    state.columnWidths = Object.assign({}, DEFAULT_COLUMN_WIDTHS, loadedWidths || {});
+  }
+  return { order: state.columnOrder, widths: state.columnWidths };
+}
+
+function _saveColumnLayout() {
+  try {
+    localStorage.setItem(COLUMN_LAYOUT_STORAGE_KEY, JSON.stringify({
+      order: state.columnOrder || DEFAULT_COLUMN_ORDER,
+      widths: state.columnWidths || DEFAULT_COLUMN_WIDTHS
+    }));
+  } catch (_e) {}
+}
+
+function resetColumnLayout() {
+  state.columnOrder = [...DEFAULT_COLUMN_ORDER];
+  state.columnWidths = Object.assign({}, DEFAULT_COLUMN_WIDTHS);
+  try {
+    localStorage.removeItem(COLUMN_LAYOUT_STORAGE_KEY);
+  } catch (_e) {}
+  renderResults();
+  showToast('↺ Spaltenreihenfolge & -breiten zurückgesetzt.', 'info');
+}
+
+function renderTableHeader() {
+  const thead = document.getElementById('results-thead');
+  const colgroup = document.getElementById('results-colgroup');
+  if (!thead || !colgroup) return;
+
+  const { order, widths } = _getColumnLayout();
+  const allChecked = state.currentFiles.length > 0 && state.currentFiles.every(f => state.selectedFilePaths.has(f.path));
+
+  colgroup.innerHTML = `<col style="width: 36px;">` + order.map(k => {
+    const w = Math.max(54, Number(widths[k]) || DEFAULT_COLUMN_WIDTHS[k] || 120);
+    return `<col data-col-key="${k}" style="width: ${w}px;">`;
+  }).join('');
+
+  const thCells = order.map((key, idx) => {
+    const meta = COLUMN_META[key] || { label: key, sortKey: null, title: '' };
+    const isLast = idx === order.length - 1;
+    const thCls = isLast ? 'th-cell-last' : 'th-cell';
+    const clickAttr = meta.sortKey ? `onclick="sortResults('${meta.sortKey}')"` : '';
+    let sortIconHtml = '';
+    if (meta.sortKey) {
+      if (state.sortCol === meta.sortKey) {
+        sortIconHtml = state.sortAsc
+          ? `<i class="fa-solid fa-sort-up ml-1 text-blue-500"></i>`
+          : `<i class="fa-solid fa-sort-down ml-1 text-blue-500"></i>`;
+      } else {
+        sortIconHtml = `<i class="fa-solid fa-sort ml-1 opacity-60"></i>`;
+      }
+    }
+    return `
+      <th
+        data-col-key="${key}"
+        draggable="true"
+        ondragstart="onColDragStart(event, '${key}')"
+        ondragover="onColDragOver(event, '${key}')"
+        ondragleave="onColDragLeave(event)"
+        ondrop="onColDrop(event, '${key}')"
+        ondragend="onColDragEnd(event)"
+        ${clickAttr}
+        class="${thCls} th-draggable py-2.5 px-2.5 text-center hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap"
+        style="top: var(--sticky-table-top, 126px)"
+        title="${meta.title} (Ziehen zum Verschieben · Rand ziehen für Breite)"
+      >
+        <span class="pointer-events-none">${meta.label} ${sortIconHtml}</span>
+        <span class="col-resize-handle" draggable="false" onmousedown="startColumnResize(event, '${key}')" onclick="event.stopPropagation()"></span>
+      </th>
+    `;
+  }).join('');
+
+  thead.innerHTML = `
+    <tr class="bg-slate-950/95 backdrop-blur-md text-slate-300 font-semibold text-[11px] select-none">
+      <th class="th-cell py-2.5 px-2 text-center sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">
+        <input type="checkbox" id="select-all-checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
+      </th>
+      ${thCells}
+    </tr>
+  `;
+}
+
+let _dragSourceColKey = null;
+function onColDragStart(e, key) {
+  if (state.isResizingColumn) {
+    e.preventDefault();
+    return;
+  }
+  _dragSourceColKey = key;
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', key);
+  }
+  e.currentTarget.classList.add('th-dragging');
+}
+
+function onColDragOver(e, targetKey) {
+  if (!_dragSourceColKey || _dragSourceColKey === targetKey) return;
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('th-drag-over');
+}
+
+function onColDragLeave(e) {
+  e.currentTarget.classList.remove('th-drag-over');
+}
+
+function onColDrop(e, targetKey) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('th-drag-over');
+  if (!_dragSourceColKey || _dragSourceColKey === targetKey) return;
+
+  const { order } = _getColumnLayout();
+  const fromIdx = order.indexOf(_dragSourceColKey);
+  const toIdx = order.indexOf(targetKey);
+  if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+
+  order.splice(fromIdx, 1);
+  order.splice(toIdx, 0, _dragSourceColKey);
+  _saveColumnLayout();
+
+  state.justDraggedCol = true;
+  setTimeout(() => { state.justDraggedCol = false; }, 120);
+  renderResults();
+  const movedLabel = COLUMN_META[_dragSourceColKey]?.label || _dragSourceColKey;
+  showToast(`Spalte „${movedLabel}“ verschoben.`, 'info');
+}
+
+function onColDragEnd(e) {
+  _dragSourceColKey = null;
+  document.querySelectorAll('#results-thead th').forEach(th => {
+    th.classList.remove('th-dragging', 'th-drag-over');
+  });
+}
+
+function startColumnResize(e, key) {
+  e.preventDefault();
+  e.stopPropagation();
+  const colEl = document.querySelector(`#results-colgroup col[data-col-key="${key}"]`);
+  const thEl = e.currentTarget.closest('th');
+  const handle = e.currentTarget;
+  if (!colEl || !thEl) return;
+
+  state.isResizingColumn = true;
+  state.justDraggedCol = true;
+  handle.classList.add('resizing');
+  const startX = e.clientX;
+  const startWidth = thEl.getBoundingClientRect().width;
+
+  const onMove = (moveEvt) => {
+    const nextW = Math.max(54, Math.round(startWidth + (moveEvt.clientX - startX)));
+    colEl.style.width = `${nextW}px`;
+    const { widths } = _getColumnLayout();
+    widths[key] = nextW;
+  };
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    handle.classList.remove('resizing');
+    state.isResizingColumn = false;
+    _saveColumnLayout();
+    setTimeout(() => { state.justDraggedCol = false; }, 120);
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function _renderFileCellByKey(key, file, ctx) {
+  const escPath = ctx.escPath;
+  switch (key) {
+    case 'name':
+      return `
+        <td class="py-1.5 px-3 font-medium text-slate-100 truncate" title="${escapeHtml(file.name)} (Doppelklick: öffnen · Klick: Vorschau)">
+          <span class="inline-flex items-center gap-1.5 max-w-full truncate">
+            ${ctx.fileIcon}
+            <span class="truncate">${escapeHtml(file.name)}</span>
+          </span>
+          ${ctx.cloudTag}
+        </td>`;
+    case 'ext':
+      return `
+        <td class="py-1.5 px-2 text-center whitespace-nowrap">
+          <span class="ext-badge text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${escapeHtml(file.ext || 'DATEI')}</span>
+        </td>`;
+    case 'size':
+      return `
+        <td class="py-1.5 px-2.5 text-right text-slate-300 font-mono text-[11px] whitespace-nowrap">
+          ${escapeHtml(file.size_formatted)}
+        </td>`;
+    case 'dup_status':
+      return `
+        <td class="py-1.5 px-2.5 text-center text-[11px] whitespace-nowrap">
+          ${ctx.dupCellHtml}
+        </td>`;
+    case 'category_label':
+      return `
+        <td class="py-1.5 px-3 text-[11px] text-slate-300 truncate" title="${escapeHtml(ctx.catLabel)}">
+          ${escapeHtml(ctx.catLabel)}
+        </td>`;
+    case 'target_sub':
+      return `
+        <td class="py-1.5 px-3 text-[11px] truncate" onclick="event.stopPropagation(); openTargetFolderModal(['${escPath}'])" title="Klicken zum Ändern oder direkt dorthin kopieren: ${escapeHtml(ctx.targetSub)}">
+          <span class="cursor-pointer hover:underline text-blue-400 font-medium">${escapeHtml(ctx.targetSub)}</span>
+        </td>`;
+    case 'modified':
+      return `
+        <td class="py-1.5 px-2.5 text-center text-slate-400 whitespace-nowrap text-[11px]">
+          ${escapeHtml(file.modified_formatted)}
+        </td>`;
+    case 'folder': {
+      const dispFolder = toGermanDisplayPath(file.folder);
+      return `
+        <td class="py-1.5 px-3 text-slate-300 font-mono text-[11px] truncate cursor-pointer hover:text-yellow-400 transition" onclick="event.stopPropagation(); openFolder('${escPath}')" title="Im Windows Explorer öffnen: ${escapeHtml(dispFolder)}">
+          ${escapeHtml(dispFolder)}
+        </td>`;
+    }
+    case 'actions':
+      return `
+        <td class="py-1.5 px-2.5 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-end gap-0.5">
+            <button onclick="openFile('${escPath}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="In ${getAppLabelForExt(file.ext)} öffnen">
+              <i class="fa-solid fa-play text-xs"></i>
+            </button>
+            <button onclick="openTargetFolderModal(['${escPath}'])" class="p-1.5 rounded-lg text-sky-400 hover:text-sky-300 hover:bg-sky-500/20 transition" title="Speicher-Ordner wählen &amp; kopieren/verschieben">
+              <i class="fa-solid fa-folder-plus text-xs"></i>
+            </button>
+            <button onclick="openFolder('${escPath}')" class="p-1.5 rounded-lg text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 transition" title="Im Windows Explorer anzeigen">
+              <i class="fa-solid fa-folder-open text-xs"></i>
+            </button>
+            <button onclick="openShareModal('${escPath}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-violet-400 hover:text-violet-300 hover:bg-violet-500/20 transition" title="Per Teams oder E-Mail senden">
+              <i class="fa-solid fa-paper-plane text-xs"></i>
+            </button>
+            <button onclick="openSingleRename('${escPath}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 transition" title="Umbenennen">
+              <i class="fa-solid fa-pen text-xs"></i>
+            </button>
+            <button onclick="deleteSingleFile('${escPath}')" class="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition" title="In Windows-Papierkorb löschen">
+              <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        </td>`;
+    default:
+      return `<td class="py-1.5 px-2"></td>`;
+  }
+}
+
 function renderResults() {
   const tableWrapper = document.getElementById('view-table-wrapper');
   const gridWrapper = document.getElementById('view-grid-wrapper');
@@ -1184,7 +1488,10 @@ function renderResults() {
   if (state.viewMode === 'table') {
     tableWrapper.classList.remove('hidden');
     gridWrapper.classList.add('hidden');
+    renderTableHeader();
     tbody.innerHTML = '';
+
+    const { order } = _getColumnLayout();
 
     state.currentFiles.forEach((file) => {
       const isSelected = state.selectedFilePaths.has(file.path);
@@ -1219,70 +1526,21 @@ function renderResults() {
         dupCellHtml = `<span class="text-sky-500 font-medium whitespace-nowrap"><i class="fa-solid fa-cloud mr-1 text-[10px]"></i>Cloud</span>`;
       }
 
-      const catLabel = file.category_label || 'Unbekannt -> Inbox';
-      const targetSub = file.target_sub || '01_Eingang_Inbox';
+      const ctx = {
+        escPath: escapeJs(file.path),
+        fileIcon,
+        cloudTag,
+        dupCellHtml,
+        catLabel: file.category_label || 'Unbekannt -> Inbox',
+        targetSub: file.target_sub || '01_Eingang_Inbox'
+      };
 
-      row.innerHTML = `
-        <td class="py-1.5 px-2.5 text-center" onclick="event.stopPropagation()">
-          <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
-        </td>
-        <td class="py-1.5 px-3 font-medium text-slate-100 max-w-[230px] truncate" title="${file.name} (Doppelklick: öffnen · Klick: Vorschau)">
-          <span class="inline-flex items-center gap-1.5 max-w-full truncate">
-            ${fileIcon}
-            <span class="truncate">${file.name}</span>
-          </span>
-          ${cloudTag}
-        </td>
-        <td class="py-1.5 px-2.5 text-center whitespace-nowrap">
-          <span class="ext-badge text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${file.ext || 'DATEI'}</span>
-        </td>
-        <td class="py-1.5 px-2.5 text-right text-slate-300 font-mono text-[11px] whitespace-nowrap">
-          ${file.size_formatted}
-        </td>
-        <td class="py-1.5 px-2.5 text-center text-[11px] whitespace-nowrap">
-          ${dupCellHtml}
-        </td>
-        <td class="py-1.5 px-3 text-[11px] text-slate-300 truncate max-w-[175px]" title="${catLabel}">
-          ${catLabel}
-        </td>
-        <td class="py-1.5 px-3 text-[11px] truncate max-w-[185px]" onclick="event.stopPropagation(); openTargetFolderModal(['${escapeJs(file.path)}'])" title="Klicken zum Ändern oder direkt dorthin kopieren: ${targetSub}">
-          <span class="cursor-pointer hover:underline text-blue-400 font-medium">${targetSub}</span>
-        </td>
-        <td class="py-1.5 px-2.5 text-center text-slate-400 whitespace-nowrap text-[11px]">
-          ${file.modified_formatted}
-        </td>
-        <td class="py-1.5 px-3 text-slate-300 font-mono text-[11px] truncate max-w-[220px] cursor-pointer hover:text-yellow-400 transition" onclick="event.stopPropagation(); openFolder('${escapeJs(file.path)}')" title="Im Windows Explorer öffnen: ${toGermanDisplayPath(file.folder)}">
-          ${toGermanDisplayPath(file.folder)}
-        </td>
-        <td class="py-1.5 px-3 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
-          <div class="flex items-center justify-end gap-0.5">
-            <!-- Direktes Öffnen in Standard-App -->
-            <button onclick="openFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="In ${getAppLabelForExt(file.ext)} öffnen">
-              <i class="fa-solid fa-play text-xs"></i>
-            </button>
-            <!-- Speicher-Ordner wählen / kopieren -->
-            <button onclick="openTargetFolderModal(['${escapeJs(file.path)}'])" class="p-1.5 rounded-lg text-sky-400 hover:text-sky-300 hover:bg-sky-500/20 transition" title="Speicher-Ordner wählen & kopieren/verschieben">
-              <i class="fa-solid fa-folder-plus text-xs"></i>
-            </button>
-            <!-- In Explorer zeigen -->
-            <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 transition" title="Im Windows Explorer anzeigen">
-              <i class="fa-solid fa-folder-open text-xs"></i>
-            </button>
-            <!-- Teams / Mail Teilen -->
-            <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-violet-400 hover:text-violet-300 hover:bg-violet-500/20 transition" title="Per Teams oder E-Mail senden">
-              <i class="fa-solid fa-paper-plane text-xs"></i>
-            </button>
-            <!-- Umbenennen -->
-            <button onclick="openSingleRename('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 transition" title="Umbenennen">
-              <i class="fa-solid fa-pen text-xs"></i>
-            </button>
-            <!-- In Papierkorb -->
-            <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition" title="In Windows-Papierkorb löschen">
-              <i class="fa-solid fa-trash-can text-xs"></i>
-            </button>
-          </div>
+      const checkboxTd = `
+        <td class="py-1.5 px-2 text-center" onclick="event.stopPropagation()">
+          <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${ctx.escPath}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
         </td>
       `;
+      row.innerHTML = checkboxTd + order.map(k => _renderFileCellByKey(k, file, ctx)).join('');
       tbody.appendChild(row);
     });
   } else {
@@ -1472,6 +1730,7 @@ function updateSelectedCounter() {
 }
 
 function sortResults(column) {
+  if (state.justDraggedCol || state.isResizingColumn) return;
   if (state.sortCol === column) {
     state.sortAsc = !state.sortAsc;
   } else {

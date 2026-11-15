@@ -532,6 +532,17 @@
             <span>Doppel-Eliminierung</span>
           </button>
 
+          <!-- Spalten zurücksetzen (wie 7-Ordner-Pro) -->
+          <button
+            id="btn-reset-columns"
+            onclick="resetColumnLayout()"
+            class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+            title="Spaltenreihenfolge &amp; Spaltenbreiten auf Standard zurücksetzen"
+          >
+            <i class="fa-solid fa-rotate-left"></i>
+            <span>Spalten</span>
+          </button>
+
           <!-- Dateivorschau rechts ein-/ausblenden -->
           <button
             id="btn-toggle-preview"
@@ -569,40 +580,10 @@
             <!-- Tabelle (Default, identische Spalten & Trennlinien wie 7-Ordner-Pro) -->
             <div id="view-table-wrapper" class="hidden glass-card rounded-2xl border border-slate-800/80 shadow-xl bg-slate-900/50">
               <div class="overflow-visible">
-                <table class="w-full text-left text-xs seven-parity-table" style="border-collapse: separate; border-spacing: 0;">
-                  <thead class="sticky z-20" style="top: var(--sticky-table-top, 126px)">
-                    <tr class="bg-slate-950/95 backdrop-blur-md text-slate-300 font-semibold text-[11px] select-none">
-                      <th class="th-cell py-2.5 px-2.5 w-9 text-center sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">
-                        <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
-                      </th>
-                      <th class="th-cell py-2.5 px-3 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 min-w-[180px] whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('name')">
-                        Dateiname <i class="fa-solid fa-sort ml-1 opacity-60"></i>
-                      </th>
-                      <th class="th-cell py-2.5 px-2.5 min-w-[68px] text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('ext')" title="Nach Dateityp sortieren">
-                        Typ <i class="fa-solid fa-sort ml-1 opacity-60"></i>
-                      </th>
-                      <th class="th-cell py-2.5 px-3 min-w-[106px] text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('size')">
-                        Dateigröße <i class="fa-solid fa-sort ml-1 opacity-60"></i>
-                      </th>
-                      <th class="th-cell py-2.5 px-2.5 w-32 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('dup_status')">
-                        Original / Duplikat <i class="fa-solid fa-sort ml-1 opacity-60"></i>
-                      </th>
-                      <th class="th-cell py-2.5 px-3 w-40 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('category_label')">
-                        Erkannte Kategorie <i class="fa-solid fa-sort ml-1 opacity-60"></i>
-                      </th>
-                      <th class="th-cell py-2.5 px-3 w-44 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('target_sub')">
-                        Zielordner <i class="fa-solid fa-sort ml-1 opacity-60"></i>
-                      </th>
-                      <th class="th-cell py-2.5 px-2.5 w-32 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('modified')">
-                        Änderungsdatum <i class="fa-solid fa-sort ml-1 opacity-60"></i>
-                      </th>
-                      <th class="th-cell py-2.5 px-3 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 min-w-[200px] whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('folder')">
-                        Gefunden in (Pfad) <i class="fa-solid fa-sort ml-1 opacity-60"></i>
-                      </th>
-                      <th class="th-cell-last py-2.5 px-3 w-44 text-center sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)">
-                        Aktion
-                      </th>
-                    </tr>
+                <table class="w-full text-left text-xs seven-parity-table" style="border-collapse: separate; border-spacing: 0; table-layout: fixed;">
+                  <colgroup id="results-colgroup"></colgroup>
+                  <thead id="results-thead" class="sticky z-20" style="top: var(--sticky-table-top, 126px)">
+                    <!-- Dynamisch via renderTableHeader() (Drag & Drop + Breite anpassbar) -->
                   </thead>
                   <tbody id="results-tbody" class="divide-y divide-slate-800/60 text-slate-300">
                     <!-- Dynamische Zeilen via JS -->

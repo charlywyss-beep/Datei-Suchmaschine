@@ -1409,3 +1409,52 @@ html.light #modal-target-folder .tf-preset-btn:hover {
   background-color: #eff6ff !important;
   border-color: #2563eb !important;
 }
+
+/* Verschiebbare & in der Breite verstellbare Tabellenspalten (wie 7-Ordner-Pro) */
+.seven-parity-table thead th {
+  position: sticky;
+  overflow: visible;
+}
+.seven-parity-table thead th.th-draggable {
+  cursor: grab;
+}
+.seven-parity-table thead th.th-draggable:active {
+  cursor: grabbing;
+}
+.seven-parity-table thead th.th-dragging {
+  opacity: 0.48;
+}
+.seven-parity-table thead th.th-drag-over {
+  box-shadow: inset 3px 0 0 #2563eb !important;
+  background-color: rgba(37, 99, 235, 0.14) !important;
+}
+html.light .seven-parity-table thead th.th-drag-over {
+  background-color: #dbeafe !important;
+}
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 30;
+  user-select: none;
+}
+.col-resize-handle:hover,
+.col-resize-handle.resizing {
+  background-color: rgba(37, 99, 235, 0.45);
+}
+.seven-parity-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html.light #btn-reset-columns {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+html.light #btn-reset-columns:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
