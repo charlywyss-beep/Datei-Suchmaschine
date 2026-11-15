@@ -1073,11 +1073,29 @@
             <span class="text-slate-400">Einstellungen (<code class="text-indigo-300 font-mono">config.json</code>) bleiben erhalten.</span>
           </div>
         </div>
-        <div>
-          <a id="git-exe-download-btn" href="https://github.com/charlywyss-beep/Datei-Suchmaschine/raw/main/Datei-Suchmaschine-Pro.exe" download="Datei-Suchmaschine-Pro.exe" target="_blank" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-md shadow-emerald-600/25 whitespace-nowrap">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <a id="git-exe-download-btn" href="https://github.com/charlywyss-beep/Datei-Suchmaschine/raw/main/Datei-Suchmaschine-Pro.exe" download="Datei-Suchmaschine-Pro.exe" target="_blank" class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-md shadow-emerald-600/25 whitespace-nowrap">
             <i class="fa-solid fa-download text-sm shrink-0"></i>
-            <span id="git-exe-download-label">Neueste Datei-Suchmaschine-Pro.exe herunterladen</span>
+            <span id="git-exe-download-label">GitHub .exe laden</span>
           </a>
+          <button type="button" id="btn-usb-deploy" onclick="deployExeToUsb()" class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs transition shadow-md shadow-sky-600/25 whitespace-nowrap">
+            <i class="fa-solid fa-usb text-sm shrink-0"></i>
+            <span>Auf USB-Stick ablegen</span>
+          </button>
+        </div>
+        <div class="flex items-center gap-1.5 text-[11px]">
+          <span class="text-emerald-300 font-semibold shrink-0">USB-Ziel:</span>
+          <select id="git-usb-target-select" onchange="onUsbTargetChange()" class="flex-1 min-w-0 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-sky-500">
+            <option value="">Suche USB-Sticks...</option>
+          </select>
+          <input type="text" id="git-usb-custom-path" placeholder="z.B. E:\Tools\Datei-Suchmaschine" class="hidden flex-1 min-w-0 px-2 py-1 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-sky-500">
+          <button type="button" id="btn-usb-refresh" onclick="loadUsbDrives()" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] shrink-0" title="USB-Sticks neu erkennen">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+        <div id="git-usb-status" class="hidden items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-emerald-500/40 text-[11px]">
+          <span id="git-usb-status-text" class="text-emerald-300 font-medium truncate"></span>
+          <button type="button" id="btn-usb-open-dir" onclick="openDeployedUsbDir()" class="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold shrink-0">Ordner öffnen</button>
         </div>
       </div>
 
@@ -1334,7 +1352,7 @@
             <strong>Die Lösung: Beide Portable-Apps komplett auf den USB-Stick legen (kein C:\ nötig):</strong>
           </p>
           <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-300 pl-1">
-            <li>Legen Sie auf dem USB-Stick am besten zwei Unterordner nebeneinander an (Ordnernamen frei wählbar, auch ohne Bindestrich), z.B. <code class="text-emerald-400 font-mono">E:\Tools\Suchmaschine\Datei-Suchmaschine-Pro.exe</code> und <code class="text-indigo-300 font-mono">E:\Tools\7_Ordner_Pro\7-Ordner-Pro.exe</code> (alternativ beide direkt in <code class="text-slate-200 font-mono">E:\Tools\</code>).</li>
+            <li>Legen Sie auf dem USB-Stick am besten zwei Unterordner nebeneinander an (Ordnernamen frei wählbar), genau wie im Arbeitsbereich z.B. <code class="text-emerald-400 font-mono">E:\Tools\Datei-Suchmaschine\Datei-Suchmaschine-Pro.exe</code> und <code class="text-indigo-300 font-mono">E:\Tools\Ordner-Struktur\7-Ordner-Pro.exe</code> — oder klicken Sie in beiden Tools im GitHub-Dialog einfach auf <strong>„Auf USB-Stick ablegen“</strong>.</li>
             <li>Legen Sie einen Arbeitsordner an, z.B. <code class="text-indigo-300 font-mono">E:\Transfer-Hub</code>.</li>
             <li>Im Geschäft USB-Stick einstecken und <code class="text-slate-200 font-mono">Datei-Suchmaschine-Pro.exe</code> starten — <em>braucht weder Installation, noch Python, noch Admin-Rechte!</em></li>
             <li><strong>Automatisches Zusammenspiel:</strong> Sobald Sie hier auf <em>„An 7-Ordner-Pro übergeben“</em> oder <em>„In 7-Ordner-Pro sortieren“</em> klicken, findet und startet die Suchmaschine <code class="text-indigo-300 font-mono">7-Ordner-Pro.exe</code> vom USB-Stick (im selben oder Nachbarordner) <strong>automatisch</strong>.</li>

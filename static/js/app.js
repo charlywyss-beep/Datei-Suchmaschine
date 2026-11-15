@@ -2327,7 +2327,7 @@ function applyGitInfoToModal(data) {
   const exeLbl = document.getElementById('git-exe-download-label');
   if (exeLbl) {
     const sizeText = data.exe_size_mb ? ` (${data.exe_size_mb})` : '';
-    exeLbl.textContent = `Neueste Datei-Suchmaschine-Pro.exe herunterladen${sizeText}`;
+    exeLbl.textContent = `GitHub .exe laden${sizeText}`;
   }
 
   // Deutlicher Sync-Banner
@@ -2401,6 +2401,7 @@ function applyGitInfoToModal(data) {
 
 async function openGitUpdateModal() {
   document.getElementById('modal-git-update').classList.remove('hidden');
+  loadUsbDrives();
   const pushBtn = document.getElementById('btn-run-git-push');
   if (pushBtn) {
     pushBtn.disabled = false;
@@ -2458,6 +2459,114 @@ async function runGitPush() {
 
 function closeGitUpdateModal() {
   document.getElementById('modal-git-update').classList.add('hidden');
+}
+
+let _lastUsbDeployedDir = '';
+
+function onUsbTargetChange() {
+  const sel = document.getElementById('git-usb-target-select');
+  const inp = document.getElementById('git-usb-custom-path');
+  if (!sel || !inp) return;
+  if (sel.value === '__custom__') {
+    inp.classList.remove('hidden');
+    inp.focus();
+  } else {
+    inp.classList.add('hidden');
+  }
+}
+
+async function loadUsbDrives() {
+  const sel = document.getElementById('git-usb-target-select');
+  const inp = document.getElementById('git-usb-custom-path');
+  if (!sel) return;
+  try {
+    const res = await fetch('/api/usb-drives');
+    const data = await res.json();
+    const drives = Array.isArray(data.drives) ? data.drives : [];
+    sel.innerHTML = '';
+    if (drives.length > 0) {
+      drives.forEach((d, idx) => {
+        const opt = document.createElement('option');
+        opt.value = d.default_dir;
+        const badge = d.has_exe ? ' (Update vorhanden)' : ' (Ordner wird erstellt)';
+        opt.textContent = `${d.display} -> ${d.default_dir}${badge}`;
+        if (idx === 0) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      const customOpt = document.createElement('option');
+      customOpt.value = '__custom__';
+      customOpt.textContent = 'Anderen Zielordner eingeben...';
+      sel.appendChild(customOpt);
+      if (inp) inp.classList.add('hidden');
+    } else {
+      const opt = document.createElement('option');
+      opt.value = '__custom__';
+      opt.textContent = 'Kein USB-Stick erkannt – Zielordner eingeben';
+      opt.selected = true;
+      sel.appendChild(opt);
+      if (inp) inp.classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('USB-Suche Fehler:', err);
+  }
+}
+
+async function deployExeToUsb() {
+  const btn = document.getElementById('btn-usb-deploy');
+  const sel = document.getElementById('git-usb-target-select');
+  const inp = document.getElementById('git-usb-custom-path');
+  const statusEl = document.getElementById('git-usb-status');
+  const statusTxt = document.getElementById('git-usb-status-text');
+
+  let targetRoot = '';
+  if (sel && sel.value && sel.value !== '__custom__') {
+    targetRoot = sel.value;
+  } else if (inp) {
+    targetRoot = inp.value.trim();
+  }
+  if (!targetRoot) {
+    showToast('Bitte USB-Stick einstecken oder einen Zielordner eingeben.', 'warning');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Kopiere auf USB...</span>';
+  try {
+    const res = await fetch('/api/usb-install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_root: targetRoot })
+    });
+    const d = await res.json();
+    if (d.success) {
+      _lastUsbDeployedDir = d.target_dir || '';
+      if (statusEl && statusTxt) {
+        statusTxt.textContent = d.message || `Abgelegt in ${d.target_dir}`;
+        statusEl.classList.remove('hidden');
+        statusEl.classList.add('flex');
+      }
+      showToast(d.message || 'EXE erfolgreich auf USB-Stick abgelegt!', 'success');
+      loadUsbDrives();
+    } else {
+      showToast(d.error || 'Kopieren auf USB-Stick fehlgeschlagen.', 'error');
+    }
+  } catch (err) {
+    showToast(`USB-Fehler: ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-usb text-sm shrink-0"></i><span>Auf USB-Stick ablegen</span>';
+  }
+}
+
+async function openDeployedUsbDir() {
+  if (!_lastUsbDeployedDir) return;
+  try {
+    await fetch('/api/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: _lastUsbDeployedDir })
+    });
+  } catch (err) {}
 }
 
 async function saveGitRemote() {

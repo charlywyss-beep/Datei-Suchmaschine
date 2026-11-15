@@ -224,6 +224,16 @@ def git_set_remote_route():
     res = file_service.git_set_remote(remote_url)
     return jsonify(res)
 
+@app.route("/api/usb-drives", methods=["GET"])
+def usb_drives_route():
+    return jsonify({"drives": file_service.list_usb_drives()})
+
+@app.route("/api/usb-install", methods=["POST"])
+def usb_install_route():
+    data = request.get_json() or {}
+    target_root = data.get("target_root", "")
+    return jsonify(file_service.deploy_exe_to_usb(target_root))
+
 @app.route("/api/upload-file", methods=["POST"])
 def upload_file_route():
     if 'file' not in request.files:

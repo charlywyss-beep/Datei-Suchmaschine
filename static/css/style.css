@@ -780,6 +780,37 @@ html.light #git-exe-download-btn:hover,
   background-color: #047857 !important;
   color: #ffffff !important;
 }
+html.light #btn-usb-deploy,
+#btn-usb-deploy {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+html.light #btn-usb-deploy *,
+#btn-usb-deploy * {
+  background-color: transparent !important;
+  color: #ffffff !important;
+}
+html.light #btn-usb-deploy:hover,
+#btn-usb-deploy:hover {
+  background-color: #0369a1 !important;
+  color: #ffffff !important;
+}
+html.light #git-usb-target-select,
+html.light #git-usb-custom-path {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html.light #btn-usb-refresh {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+html.light #btn-usb-open-dir,
+#btn-usb-open-dir {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
 html.light #btn-run-git-rollback:hover {
   background-color: #fef3c7 !important;
 }
