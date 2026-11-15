@@ -59,10 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Escape-Taste schließt geöffnete Vorschau und alle Modals sofort
+  // Escape-Taste schließt geöffnete Seiten-Vorschau und alle Modals sofort
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      closePreviewModal();
+      if (state.previewVisible && typeof togglePreviewPane === 'function') togglePreviewPane(false);
       if (typeof closeSingleRenameModal === 'function') closeSingleRenameModal();
       if (typeof closeSavePathModal === 'function') closeSavePathModal();
       if (typeof closeAddNetworkModal === 'function') closeAddNetworkModal();
@@ -1888,10 +1888,8 @@ async function saveFileContent(path, content) {
     const d = await res.json();
     if (d.success) {
       showToast('💾 Änderungen erfolgreich auf Festplatte gespeichert!', 'success');
-      // Update metadata in preview
-      const meta = document.getElementById('preview-modal-meta');
-      if (meta) {
-        meta.textContent = `${d.size_formatted} • ${d.modified_formatted} • ${path}`;
+      if (state.previewVisible && state.activePreviewPath === path) {
+        loadPreviewPaneForPath(path);
       }
     } else {
       showToast(d.error || 'Fehler beim Speichern', 'error');
@@ -2158,38 +2156,12 @@ function editFileFromPreview() {
 // ==========================================
 // DATEI VORSCHAU MODAL
 // ==========================================
-let currentPreviewPath = '';
-
+// 7. VORSCHAU (EINZIGE SEITEN-VORSCHAU RECHTS)
+// ==========================================
 async function previewFile(path) {
   if (path) {
     openFile(path);
   }
-}
-
-function openInBrowserViewer() {
-  if (currentPreviewPath) {
-    window.open('/api/preview?path=' + encodeURIComponent(currentPreviewPath), '_blank');
-  }
-}
-
-function openInPdfXAutomated(path) {
-  const targetPath = path || currentPreviewPath;
-  if (!targetPath) return;
-  openFile(targetPath);
-}
-
-function openFileFromPreview() {
-  if (currentPreviewPath) {
-    openFile(currentPreviewPath);
-  }
-}
-
-function closePreviewModal() {
-  const modal = document.getElementById('modal-preview');
-  if (modal) modal.classList.add('hidden');
-  const body = document.getElementById('preview-modal-body');
-  if (body) body.innerHTML = '';
-  currentPreviewPath = '';
 }
 
 // ==========================================
@@ -3580,12 +3552,14 @@ async function loadPreviewPaneForPath(path, fileHint = null) {
     if (folderEl) folderEl.textContent = toGermanDisplayPath(fileObj.folder || '');
   }
 
+  stage.classList.remove('has-media');
   stage.innerHTML = `<div class="text-xs text-slate-400 py-8"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Lade Vorschau...</div>`;
 
   try {
     const res = await fetch('/api/preview-info?path=' + encodeURIComponent(path));
     const info = await res.json();
     if (!info || !info.success) {
+      stage.classList.remove('has-media');
       stage.textContent = info?.error || 'Vorschau nicht verfügbar.';
       return;
     }
@@ -3602,16 +3576,21 @@ async function loadPreviewPaneForPath(path, fileHint = null) {
 
     if (info.kind === 'image') {
       const imgUrl = '/api/preview?path=' + encodeURIComponent(path);
-      stage.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(info.name)}" class="max-w-full max-h-[340px] object-contain rounded-lg shadow-sm mx-auto">`;
+      stage.classList.add('has-media');
+      stage.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(info.name)}" class="max-w-full max-h-[380px] object-contain rounded-lg shadow-sm mx-auto">`;
     } else if (info.kind === 'pdf') {
-      const pdfUrl = '/api/preview?path=' + encodeURIComponent(path) + '#toolbar=0&navpanes=0';
-      stage.innerHTML = `<iframe src="${pdfUrl}" class="w-full h-[320px] rounded-lg border border-slate-700/50 bg-white"></iframe>`;
+      const pdfUrl = '/api/preview?path=' + encodeURIComponent(path) + '#toolbar=0&navpanes=0&scrollbar=0&view=Fit';
+      stage.classList.add('has-media');
+      stage.innerHTML = `<iframe src="${pdfUrl}" class="w-full h-[380px] rounded-lg border border-slate-800/60 bg-[#111827]"></iframe>`;
     } else if (info.kind === 'text') {
-      stage.innerHTML = `<pre class="w-full h-full max-h-[320px] overflow-auto text-left text-[11px] font-mono whitespace-pre-wrap break-words p-2">${escapeHtml(info.text || '')}</pre>`;
+      stage.classList.remove('has-media');
+      stage.innerHTML = `<pre class="w-full h-full max-h-[360px] overflow-auto text-left text-[11px] font-mono whitespace-pre-wrap break-words p-2">${escapeHtml(info.text || '')}</pre>`;
     } else {
+      stage.classList.remove('has-media');
       stage.innerHTML = `<div class="p-4 text-xs text-slate-400 whitespace-pre-line">${escapeHtml(info.text || 'Keine direkte Vorschau.')}</div>`;
     }
   } catch (err) {
+    stage.classList.remove('has-media');
     stage.textContent = `Vorschau-Fehler: ${err.message}`;
   }
 }
