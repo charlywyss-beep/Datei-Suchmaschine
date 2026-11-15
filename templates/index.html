@@ -42,7 +42,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/static/css/style.css?v={{ asset_v or version or 'v1.7.18' }}">
+  <link rel="stylesheet" href="/static/css/style.css?v={{ asset_v or version or 'v1.7.19' }}">
 </head>
 <body class="bg-[#0f172a] text-slate-100 font-['Inter'] antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
 
@@ -1028,7 +1028,7 @@
           <div>
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.18' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.19' }}</span>
             </h3>
             <p class="text-[11px] text-slate-400">Automatische Aktualisierung &bull; Sync &amp; Versions-Retour</p>
           </div>
@@ -1104,7 +1104,7 @@
         <div class="grid grid-cols-2 gap-3 pb-1 border-b border-slate-800/60">
           <div class="flex justify-between items-center">
             <span class="text-slate-400">App-Version (lokal):</span>
-            <span id="git-app-version" class="font-mono text-emerald-400 font-bold">{{ version or 'v1.7.18' }}</span>
+            <span id="git-app-version" class="font-mono text-emerald-400 font-bold">{{ version or 'v1.7.19' }}</span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-slate-400">Branch:</span>
@@ -1657,6 +1657,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ asset_v or version or 'v1.7.18' }}"></script>
+  <script src="/static/js/app.js?v={{ asset_v or version or 'v1.7.19' }}"></script>
 </body>
 </html>

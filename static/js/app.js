@@ -108,6 +108,8 @@ async function initSystemInfo() {
     state.searchHistory = data.search_history || [];
     state.savedSearches = data.saved_searches || [];
     state.emailClient = data.email_client || 'thunderbird';
+    state.usbStickDir = data.usb_stick_dir || '';
+    state.usbDrives = data.usb_drives || [];
 
     // Version im Header aktualisieren
     const vTag = document.getElementById('header-version-tag');
@@ -136,9 +138,27 @@ async function initSystemInfo() {
       setSearchScope('pc');
     }
     startBridgePollLoop();
+    if (!window._usbFocusRefreshBound) {
+      window._usbFocusRefreshBound = true;
+      window.addEventListener('focus', refreshUsbStickShortcut);
+    }
   } catch (err) {
     console.error('System-Info Fehler:', err);
   }
+}
+
+async function refreshUsbStickShortcut() {
+  try {
+    const res = await fetch('/api/usb-drives');
+    if (!res.ok) return;
+    const d = await res.json();
+    const nextDir = d.usb_stick_dir || '';
+    if (nextDir !== (state.usbStickDir || '')) {
+      state.usbStickDir = nextDir;
+      state.usbDrives = d.drives || [];
+      renderLocationShortcuts();
+    }
+  } catch (_e) {}
 }
 
 const _bridgeClientId = 'sm_' + Math.random().toString(36).slice(2) + '_' + Date.now();
@@ -305,6 +325,21 @@ function renderLocationShortcuts() {
     btn.title = 'Gemeinsamer Transfer-Hub für PC Zuhause, PC Geschäft, iPad & iPhone';
     btn.innerHTML = `<i class="fa-solid fa-arrows-rotate text-emerald-400"></i><span>Transfer-Hub (Sync)</span>`;
     btn.onclick = () => setLocation(transfer.path, false);
+    container.appendChild(btn);
+  }
+
+  // 5b. Dynamischer USB_Stick Schnell-Button (unabhängig vom Laufwerksbuchstaben)
+  if (state.usbStickDir) {
+    const driveLabel = state.usbStickDir.slice(0, 2);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-700/80 transition shadow-sm';
+    btn.title = `USB-Stick Datenordner (${state.usbStickDir}) – erkennt Laufwerksbuchstaben automatisch`;
+    btn.innerHTML = `<i class="fa-solid fa-hard-drive text-cyan-400"></i><span>USB_Stick (${driveLabel})</span>`;
+    btn.onclick = async () => {
+      await refreshUsbStickShortcut();
+      setLocation(state.usbStickDir || `${driveLabel}\\USB_Stick`, false);
+    };
     container.appendChild(btn);
   }
 
@@ -2335,7 +2370,7 @@ function escapeJs(str) {
 // ==========================================
 function applyGitInfoToModal(data) {
   state.gitInfo = data;
-  const appVer = data.version || 'v1.7.18';
+  const appVer = data.version || 'v1.7.19';
 
   const topTagEl = document.getElementById('app-version-tag');
   if (topTagEl) topTagEl.textContent = appVer;

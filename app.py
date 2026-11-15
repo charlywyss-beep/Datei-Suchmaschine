@@ -69,7 +69,9 @@ def system_info():
         "locations": locations,
         "search_history": search_history,
         "saved_searches": saved_searches,
-        "email_client": file_service.get_email_client()
+        "email_client": file_service.get_email_client(),
+        "usb_stick_dir": file_service.find_usb_stick_data_dir(),
+        "usb_drives": file_service.list_usb_drives(),
     })
 
 @app.route("/api/network-paths", methods=["GET"])
@@ -242,7 +244,10 @@ def git_set_remote_route():
 
 @app.route("/api/usb-drives", methods=["GET"])
 def usb_drives_route():
-    return jsonify({"drives": file_service.list_usb_drives()})
+    return jsonify({
+        "drives": file_service.list_usb_drives(),
+        "usb_stick_dir": file_service.find_usb_stick_data_dir(),
+    })
 
 @app.route("/api/usb-install", methods=["POST"])
 def usb_install_route():
