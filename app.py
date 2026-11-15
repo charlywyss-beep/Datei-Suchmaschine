@@ -194,11 +194,25 @@ def _schedule_server_restart():
     threading.Thread(target=_restart, daemon=True).start()
 
 
+def _schedule_clean_exit(delay_sec=0.8):
+    import threading
+    def _exit_soon():
+        import time
+        time.sleep(delay_sec)
+        os._exit(0)
+    threading.Thread(target=_exit_soon, daemon=True).start()
+
+
 @app.route("/api/git-update", methods=["POST"])
 def git_update_route():
     res = file_service.git_pull_update()
     if res.get("success"):
-        _schedule_server_restart()
+        if res.get("already_up_to_date"):
+            pass
+        elif res.get("self_updating"):
+            _schedule_clean_exit(0.8)
+        else:
+            _schedule_server_restart()
     return jsonify(res)
 
 

@@ -2335,7 +2335,7 @@ function escapeJs(str) {
 // ==========================================
 function applyGitInfoToModal(data) {
   state.gitInfo = data;
-  const appVer = data.version || 'v1.7.17';
+  const appVer = data.version || 'v1.7.18';
 
   const topTagEl = document.getElementById('app-version-tag');
   if (topTagEl) topTagEl.textContent = appVer;
@@ -2400,7 +2400,7 @@ function applyGitInfoToModal(data) {
       banner.className = 'p-2.5 rounded-xl border border-slate-700 bg-slate-800/60 text-xs flex items-start gap-2.5';
       iconEl.className = 'fa-solid fa-circle-info text-base text-slate-400 mt-0.5 shrink-0';
       badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 shrink-0';
-      badgeEl.textContent = st === 'no_git' ? 'Kein Git' : 'Status unvollständig';
+      badgeEl.textContent = st === 'offline' ? 'Offline' : (st === 'no_git' ? 'Kein Git' : 'Status unvollständig');
     }
   }
 
@@ -2650,9 +2650,17 @@ async function runGitUpdate() {
     logOutput.textContent = d.output || d.message || d.error || 'Keine Rückmeldung';
 
     if (d.success) {
-      showToast('Erfolgreich auf den neuesten GitHub-Stand aktualisiert!', 'success');
-      btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Aktuell!</span>';
-      setTimeout(() => location.reload(), 2500);
+      if (d.already_up_to_date) {
+        showToast(d.message || 'Bereits auf dem neuesten Stand!', 'info');
+        btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Aktuell!</span>';
+      } else if (d.self_updating) {
+        showToast(d.message || 'Update geladen – App wird ersetzt und startet gleich neu...', 'success');
+        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i><span>Neustart läuft...</span>';
+      } else {
+        showToast('Erfolgreich auf den neuesten GitHub-Stand aktualisiert!', 'success');
+        btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Aktuell!</span>';
+        setTimeout(() => location.reload(), 2500);
+      }
     } else {
       showToast(d.message || d.error || 'Update fehlgeschlagen', 'error');
       btn.disabled = false;
