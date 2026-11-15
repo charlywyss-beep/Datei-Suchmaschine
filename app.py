@@ -710,17 +710,34 @@ def _launch_desktop_window(url: str) -> bool:
         )
         os.makedirs(storage_dir, exist_ok=True)
         icon_path = _resolve_app_icon() or None
-        webview.create_window(
+        win = webview.create_window(
             f"Datei-Suchmaschine Pro  {file_service.APP_VERSION}",
             url,
             width=1380,
             height=880,
             min_size=(960, 640),
+            maximized=True,
             text_select=True,
             zoomable=True,
             background_color="#f8fafc",
         )
+
+        def _maximize_window(w):
+            import time as _time
+            try:
+                w.maximize()
+                _time.sleep(0.15)
+                w.maximize()
+            except Exception:
+                pass
+
+        try:
+            win.events.shown += (lambda *_: win.maximize())
+        except Exception:
+            pass
         webview.start(
+            _maximize_window,
+            win,
             gui="edgechromium" if os.name == "nt" else None,
             icon=icon_path,
             private_mode=False,
@@ -739,7 +756,7 @@ def _open_suchmaschine_app_window(url: str):
     if edge:
         try:
             flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-            subprocess.Popen([edge, f"--app={url}"], creationflags=flags)
+            subprocess.Popen([edge, f"--app={url}", "--start-maximized"], creationflags=flags)
             return
         except Exception:
             pass
