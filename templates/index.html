@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Datei-Suchmaschine Pro | Lokale Suche, Duplikate & Automatisierung</title>
+  <link rel="icon" type="image/png" href="/static/app_icon.png">
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -349,6 +350,18 @@
                 <span>Netzwerk-Pfad +</span>
               </button>
 
+              <!-- Brücke: Ordner an 7-Ordner-Pro übergeben -->
+              <button
+                type="button"
+                id="btn-handoff-folder-seven"
+                onclick="sendFolderToSevenFolder()"
+                class="px-3.5 py-2.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                title="Aktuellen Ordner in 7-Ordner-Pro sortieren (startet 7-Ordner-Pro automatisch)"
+              >
+                <i class="fa-solid fa-folder-tree text-teal-400"></i>
+                <span>In 7-Ordner-Pro sortieren</span>
+              </button>
+
               <!-- Toggle Erweiterte Filter -->
               <button type="button" onclick="toggleAdvancedFilters()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 transition">
                 <i class="fa-solid fa-sliders"></i>
@@ -410,6 +423,18 @@
 
         <!-- Massen-Aktionen Buttons -->
         <div class="flex flex-wrap items-center gap-2">
+          <!-- Brücke: Treffer an 7-Ordner-Pro übergeben (links eingeordnet) -->
+          <button
+            id="btn-handoff-seven-folder"
+            onclick="sendToSevenFolder()"
+            class="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium transition flex items-center gap-1.5"
+            title="Markierte Dateien (oder Treffer) direkt in 7-Ordner-Pro sortieren — startet die App automatisch"
+          >
+            <i class="fa-solid fa-folder-tree text-emerald-400"></i>
+            <span>An 7-Ordner-Pro übergeben</span>
+            <span id="badge-seven-folder-count" class="hidden px-1.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 text-[10px] font-bold">0</span>
+          </button>
+
           <!-- Massen-Aktion: Ausgewählte Dateien in den Papierkorb löschen -->
           <button id="btn-delete-selected" onclick="deleteSelectedFiles()" class="hidden px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95" title="Alle ausgewählten Dateien sicher in den Windows-Papierkorb verschieben">
             <i class="fa-solid fa-trash-can text-rose-400"></i>
@@ -994,7 +1019,7 @@
   <!-- MODAL: GITHUB UPDATE (WIE PORTFOLIO-MGR)   -->
   <!-- ========================================== -->
   <div id="modal-git-update" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl border border-indigo-500/30">
@@ -1003,14 +1028,26 @@
           <div>
             <h3 class="text-base font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
-              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.13' }}</span>
+              <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.15' }}</span>
             </h3>
-            <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Wie im Portfolio-Manager</p>
+            <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Sync &amp; Versions-Retour</p>
           </div>
         </div>
         <button onclick="closeGitUpdateModal()" class="text-slate-400 hover:text-white transition">
           <i class="fa-solid fa-xmark"></i>
         </button>
+      </div>
+
+      <!-- Deutlicher GitHub Sync Status Banner -->
+      <div id="git-sync-banner" class="p-3.5 rounded-xl border border-slate-700 bg-slate-800/60 text-xs flex items-start gap-3">
+        <i id="git-sync-icon" class="fa-solid fa-circle-info text-base text-indigo-400 mt-0.5 shrink-0"></i>
+        <div class="space-y-1 min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <span id="git-sync-title" class="font-bold text-slate-100">Prüfe GitHub-Status...</span>
+            <span id="git-version-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-200">Lade...</span>
+          </div>
+          <p id="git-sync-detail" class="text-[11px] text-slate-300 leading-relaxed"></p>
+        </div>
       </div>
 
       <!-- Speziell für USB-Stick & Geschäfts-PC (.exe Update) -->
@@ -1042,19 +1079,23 @@
         <div class="pt-1">
           <a href="https://github.com/charlywyss-beep/Datei-Suchmaschine/raw/main/Datei-Suchmaschine-Pro.exe" download="Datei-Suchmaschine-Pro.exe" target="_blank" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-600/30">
             <i class="fa-solid fa-download text-sm"></i>
-            <span>Neueste Datei-Suchmaschine-Pro.exe herunterladen (12.7 MB Direkt-Download)</span>
+            <span id="git-exe-download-label">Neueste Datei-Suchmaschine-Pro.exe herunterladen (Direkt-Download)</span>
           </a>
         </div>
       </div>
 
       <!-- Git Repo Status Info -->
       <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400">Aktive App-Version (lokal):</span>
+          <span id="git-app-version" class="font-mono text-emerald-400 font-bold">{{ version or 'v1.7.15' }}</span>
+        </div>
         <div class="flex justify-between">
           <span class="text-slate-400">Branch:</span>
           <span id="git-branch" class="font-mono text-slate-100 font-bold">main</span>
         </div>
-        <div class="flex justify-between items-center">
-          <span class="text-slate-400">Aktueller Commit:</span>
+        <div class="flex justify-between items-center gap-2">
+          <span class="text-slate-400 shrink-0">Letzter Git-Commit:</span>
           <span id="git-last-commit" class="font-mono text-indigo-300 text-[11px] truncate max-w-xs font-semibold">-</span>
         </div>
         <div class="flex flex-col space-y-1.5 pt-2 border-t border-slate-800/80">
@@ -1067,6 +1108,30 @@
           </div>
         </div>
       </div>
+
+      <!-- Optional: Retour in den Versionen (nur mit Sicherheitsabfrage) -->
+      <details id="git-rollback-details" class="p-3 bg-slate-950/50 border border-slate-800 rounded-xl text-xs">
+        <summary class="cursor-pointer select-none font-semibold text-slate-300 flex items-center justify-between gap-2">
+          <span class="flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+            <span>Frühere Version wiederherstellen (Retour)</span>
+          </span>
+          <span class="text-[10px] text-amber-400 font-normal">mit Sicherheitsabfrage</span>
+        </summary>
+        <div class="mt-3 space-y-2.5 pt-2.5 border-t border-slate-800/80">
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Wähle bei Bedarf einen früheren Commit aus der Git-Historie. Lokale Code-Änderungen werden vorher automatisch per Git-Stash gesichert, deine <code class="text-indigo-300 font-mono">config.json</code> bleibt erhalten.
+          </p>
+          <div class="flex gap-2">
+            <select id="git-rollback-select" class="flex-1 min-w-0 px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-amber-500">
+              <option value="">Keine Historie geladen</option>
+            </select>
+            <button onclick="runGitRollback()" id="btn-run-git-rollback" class="px-3 py-2 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-semibold shrink-0 transition">
+              Zurücksetzen
+            </button>
+          </div>
+        </div>
+      </details>
 
       <!-- Info Box: Falls noch nicht auf GitHub angelegt -->
       <div class="p-3 bg-indigo-950/30 border border-indigo-500/30 rounded-xl text-xs space-y-2 text-slate-300">
@@ -1081,7 +1146,7 @@
           </a>
         </div>
         <p class="text-[11px] text-slate-400 leading-relaxed">
-          Falls das Repository auf Ihrem GitHub-Account (<code class="text-indigo-300 font-mono">charlywyss-beep</code>) noch nicht angelegt ist, einmal auf GitHub erstellen und danach auf <strong>„Stand nach GitHub hochladen“</strong> klicken.
+          „Stand nach GitHub hochladen“ erstellt automatisch einen neuen Commit (ohne <code class="text-indigo-300 font-mono">config.json</code>) und lädt alles auf GitHub hoch.
         </p>
       </div>
 
@@ -1097,7 +1162,7 @@
           Schließen
         </button>
         <!-- Stand nach GitHub hochladen -->
-        <button onclick="runGitPush()" id="btn-run-git-push" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Aktuellen Stand nach GitHub hochladen">
+        <button onclick="runGitPush()" id="btn-run-git-push" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Änderungen committen und nach GitHub hochladen">
           <i class="fa-solid fa-arrow-up-from-bracket"></i>
           <span>Stand nach GitHub hochladen</span>
         </button>
@@ -1557,7 +1622,7 @@
     </div>
   </div>
 
-  <div id="modal-confirm-dialog" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+  <div id="modal-confirm-dialog" class="fixed inset-0 z-[60] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="glass-card bg-slate-900 border border-slate-700/90 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-start gap-4">
         <div id="confirm-modal-icon-container" class="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center text-xl shrink-0">

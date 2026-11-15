@@ -200,7 +200,7 @@ html.light {
 }
 
 html.light body {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   color: #0f172a !important;
   --bg-gradient: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 60%);
 }
@@ -279,7 +279,7 @@ html.light #btn-open-settings {
 
 html.light #theme-toggle-btn:hover,
 html.light #btn-open-settings:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   border-color: #94a3b8 !important;
   color: #0f172a !important;
 }
@@ -557,7 +557,7 @@ html.light .loc-btn {
 }
 
 html.light .loc-btn:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   border-color: #94a3b8 !important;
   color: #0f172a !important;
 }
@@ -631,7 +631,7 @@ html.light #search-history-panel [class*="bg-slate-900"] {
 }
 
 html.light #search-history-panel [class*="bg-slate-900"]:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   border-color: #94a3b8 !important;
 }
 
@@ -701,6 +701,63 @@ html.light #modal-settings [class*="bg-slate-950"] {
   border: 1px solid #e2e8f0 !important;
 }
 
+/* GitHub Modal Sync Banner & Rollback in Light Mode */
+html.light #git-sync-banner.git-sync-warn {
+  background-color: #fffbeb !important;
+  border: 1.5px solid #f59e0b !important;
+}
+html.light #git-sync-banner.git-sync-warn #git-sync-title {
+  color: #92400e !important;
+}
+html.light #git-sync-banner.git-sync-warn #git-sync-detail {
+  color: #78350f !important;
+}
+html.light #git-sync-banner.git-sync-warn #git-version-badge {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #f59e0b !important;
+}
+
+html.light #git-sync-banner.git-sync-ok {
+  background-color: #ecfdf5 !important;
+  border: 1.5px solid #10b981 !important;
+}
+html.light #git-sync-banner.git-sync-ok #git-sync-title {
+  color: #065f46 !important;
+}
+html.light #git-sync-banner.git-sync-ok #git-sync-detail {
+  color: #047857 !important;
+}
+html.light #git-sync-banner.git-sync-ok #git-version-badge {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  border: 1px solid #10b981 !important;
+}
+
+html.light #git-sync-banner.git-sync-info {
+  background-color: #eff6ff !important;
+  border: 1.5px solid #3b82f6 !important;
+}
+html.light #git-sync-banner.git-sync-info #git-sync-title {
+  color: #1e40af !important;
+}
+html.light #git-sync-banner.git-sync-info #git-sync-detail {
+  color: #1d4ed8 !important;
+}
+html.light #git-rollback-select {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html.light #btn-run-git-rollback {
+  background-color: #fffbeb !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+}
+html.light #btn-run-git-rollback:hover {
+  background-color: #fef3c7 !important;
+}
+
 html.light footer {
   border-color: #e2e8f0 !important;
   color: #64748b !important;
@@ -768,7 +825,7 @@ html.light [id^="modal-"] .font-mono {
 html.light [id^="modal-"] button[onclick*="close"],
 html.light [id^="modal-"] #confirm-modal-btn-cancel,
 html.light [id^="modal-"] button[class*="bg-slate-800"] {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   border: 1px solid #cbd5e1 !important;
   color: #1e293b !important;
   font-weight: 700 !important;
@@ -839,7 +896,7 @@ html.light table tbody tr:hover {
 
 /* Empty state in Light Mode */
 html.light #empty-state .w-16.h-16 {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   border: 1px solid #cbd5e1 !important;
   color: #4f46e5 !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
@@ -950,7 +1007,7 @@ html.light #settings-email-selector button {
 }
 
 html.light #settings-email-selector button:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   border-color: #94a3b8 !important;
 }
 
@@ -977,3 +1034,54 @@ html.light #share-email-pills button.font-bold {
   border-color: #6366f1 !important;
   color: #312e81 !important;
 }
+
+
+/* Light Mode: Dateiendung-Badges in der Spalte TYP, Toolbar-Statistik & 7-Ordner-Brücke */
+html.light .ext-badge,
+html.light .result-row td span[class*="bg-slate-800"] {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light #results-toolbar #stat-size {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+html.light #results-toolbar #stat-time {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+html.light #btn-handoff-folder-seven {
+  background-color: #f0fdfa !important;
+  border: 1.5px solid #5eead4 !important;
+  color: #0f766e !important;
+  font-weight: 800 !important;
+}
+html.light #btn-handoff-folder-seven:hover {
+  background-color: #ccfbf1 !important;
+  border-color: #14b8a6 !important;
+}
+html.light #btn-handoff-folder-seven i {
+  color: #0d9488 !important;
+}
+
+html.light #btn-handoff-seven-folder {
+  background-color: #ecfdf5 !important;
+  border: 1px solid #6ee7b7 !important;
+  color: #065f46 !important;
+  font-weight: 700 !important;
+}
+html.light #btn-handoff-seven-folder:hover {
+  background-color: #d1fae5 !important;
+  border-color: #10b981 !important;
+}
+html.light #btn-handoff-seven-folder i {
+  color: #059669 !important;
+}
+html.light #badge-seven-folder-count {
+  background-color: #a7f3d0 !important;
+  color: #064e3b !important;
+}

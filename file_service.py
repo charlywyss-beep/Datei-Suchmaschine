@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 import time
@@ -13,7 +14,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.13"
+APP_VERSION = "v1.7.15"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -1264,97 +1265,352 @@ def save_text_file(filepath, content):
 # ==========================================
 # GITHUB AKTUALISIERUNG (WIE IN PORTFOLIO-MANAGER)
 # ==========================================
+def _get_git_repo_dir():
+    base = _get_base_dir()
+    if os.path.exists(os.path.join(base, ".git")):
+        return base
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _extract_version_tag(text):
+    if not text:
+        return ""
+    m = re.search(r"v\d+\.\d+\.\d+", str(text), re.IGNORECASE)
+    return m.group(0).lower() if m else ""
+
+
+def _parse_version_tuple(ver_str):
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", str(ver_str or ""))
+    if not m:
+        return (0, 0, 0)
+    return tuple(int(x) for x in m.groups())
+
+
+def _filter_meaningful_git_dirty_lines(porcelain_output):
+    """Ignoriert Laufzeit-Dateien wie config.json oder __pycache__ für die Sync-Anzeige."""
+    ignored_prefixes = ("__pycache__/", "build/", "dist/")
+    ignored_names = {"config.json", "open_queue.json", ".DS_Store", "Thumbs.db"}
+    dirty = []
+    for raw in (porcelain_output or "").splitlines():
+        if not raw.strip():
+            continue
+        path = raw[3:].strip().strip('"').replace("\\", "/")
+        if " -> " in path:
+            path = path.split(" -> ", 1)[-1].strip().strip('"')
+        if any(path.startswith(p) for p in ignored_prefixes) or path.endswith((".pyc", ".pyo")):
+            continue
+        if path in ignored_names or os.path.basename(path) in ignored_names:
+            continue
+        dirty.append(path)
+    return dirty
+
+
 def get_git_info():
-    """Liest aktuellen Git-Status, Version und Remote-URL"""
-    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    """Liest aktuellen Git-Status, Versionsvergleich und Remote-URL."""
+    repo_dir = _get_git_repo_dir()
+    exe_path = os.path.join(repo_dir, "Datei-Suchmaschine-Pro.exe")
+    exe_size_mb = ""
+    if os.path.exists(exe_path):
+        try:
+            exe_size_mb = f"{os.path.getsize(exe_path) / (1024 * 1024):.1f} MB"
+        except Exception:
+            exe_size_mb = ""
+
     info = {
         "version": APP_VERSION,
         "is_git": os.path.exists(os.path.join(repo_dir, ".git")),
         "remote_url": "",
-        "branch": "master",
+        "branch": "main",
         "last_commit": "",
-        "commit_date": "",
-        "dirty": False
+        "git_version": "",
+        "remote_commit": "",
+        "remote_version": "",
+        "ahead": 0,
+        "behind": 0,
+        "dirty": False,
+        "dirty_files": [],
+        "exe_size_mb": exe_size_mb,
+        "local_is_newer": False,
+        "sync_state": "no_git",
+        "sync_title": "Kein Git-Repository verknüpft",
+        "sync_detail": "Die App läuft ohne lokale Git-Historie.",
+        "history": [],
     }
 
     if not info["is_git"]:
         return info
 
     try:
-        # Remote URL
         res = subprocess.run(["git", "remote", "get-url", "origin"], cwd=repo_dir, capture_output=True, text=True)
         if res.returncode == 0:
             info["remote_url"] = res.stdout.strip()
-        
-        # Branch
+
         res = subprocess.run(["git", "branch", "--show-current"], cwd=repo_dir, capture_output=True, text=True)
         if res.returncode == 0 and res.stdout.strip():
             info["branch"] = res.stdout.strip()
+        branch_name = info["branch"] or "main"
 
-        # Last commit
-        res = subprocess.run(["git", "log", "-1", "--format=%h - %s • %ad", "--date=format:%d.%m.%y %H:%M"], cwd=repo_dir, capture_output=True, text=True)
+        res = subprocess.run(
+            ["git", "log", "-1", "--format=%h - %s • %ad", "--date=format:%d.%m.%y %H:%M"],
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
         if res.returncode == 0:
             info["last_commit"] = res.stdout.strip()
 
-        # Status check
-        res = subprocess.run(["git", "status", "--porcelain"], cwd=repo_dir, capture_output=True, text=True)
-        info["dirty"] = bool(res.stdout.strip())
+        res_sub = subprocess.run(
+            ["git", "log", "-1", "--format=%s"],
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        if res_sub.returncode == 0:
+            info["git_version"] = _extract_version_tag(res_sub.stdout.strip())
+
+        remote_ref = f"origin/{branch_name}"
+        res_rem = subprocess.run(
+            ["git", "log", "-1", remote_ref, "--format=%h - %s • %ad", "--date=format:%d.%m.%y %H:%M"],
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        if res_rem.returncode == 0 and res_rem.stdout.strip():
+            info["remote_commit"] = res_rem.stdout.strip()
+            info["remote_version"] = _extract_version_tag(res_rem.stdout.strip())
+        else:
+            info["remote_commit"] = info["last_commit"]
+            info["remote_version"] = info["git_version"]
+
+        res_lr = subprocess.run(
+            ["git", "rev-list", "--left-right", "--count", f"HEAD...{remote_ref}"],
+            cwd=repo_dir, capture_output=True, text=True
+        )
+        if res_lr.returncode == 0:
+            parts = res_lr.stdout.strip().split()
+            if len(parts) == 2:
+                info["ahead"] = int(parts[0])
+                info["behind"] = int(parts[1])
+
+        res_st = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        dirty_files = _filter_meaningful_git_dirty_lines(res_st.stdout)
+        info["dirty_files"] = dirty_files
+        info["dirty"] = bool(dirty_files)
+
+        res_hist = subprocess.run(
+            ["git", "log", "-n", "10", "--format=%H|%h|%s|%ad", "--date=format:%d.%m.%y %H:%M"],
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        if res_hist.returncode == 0:
+            hist = []
+            for line in res_hist.stdout.splitlines():
+                cols = line.split("|", 3)
+                if len(cols) == 4:
+                    hist.append({
+                        "hash": cols[0].strip(),
+                        "short": cols[1].strip(),
+                        "subject": cols[2].strip(),
+                        "date": cols[3].strip(),
+                        "version": _extract_version_tag(cols[2]) or cols[1].strip(),
+                    })
+            info["history"] = hist
+
+        local_tuple = _parse_version_tuple(APP_VERSION)
+        ref_ver = info["remote_version"] or info["git_version"]
+        remote_tuple = _parse_version_tuple(ref_ver)
+        has_local_changes = bool(dirty_files) or info["ahead"] > 0
+
+        if local_tuple > remote_tuple:
+            info["local_is_newer"] = True
+            info["sync_state"] = "local_newer"
+            ref_label = ref_ver or "älterer Stand"
+            info["sync_title"] = f"Lokale App-Version ({APP_VERSION}) ist höher als auf GitHub ({ref_label})"
+            info["sync_detail"] = (
+                f"{len(dirty_files)} geänderte Datei(en) bzw. noch nicht auf GitHub hochgeladen. "
+                "Klicke auf „Stand nach GitHub hochladen“, um Code & EXE auf GitHub zu aktualisieren."
+            )
+        elif has_local_changes:
+            info["local_is_newer"] = True
+            info["sync_state"] = "local_ahead"
+            info["sync_title"] = f"Lokale Änderungen noch nicht auf GitHub hochgeladen ({APP_VERSION})"
+            details = []
+            if dirty_files:
+                details.append(f"{len(dirty_files)} lokal geänderte Datei(en)")
+            if info["ahead"] > 0:
+                details.append(f"{info['ahead']} ungesicherte Commit(s)")
+            info["sync_detail"] = " • ".join(details) + ". Mit „Stand nach GitHub hochladen“ auf GitHub sichern."
+        elif info["behind"] > 0:
+            info["sync_state"] = "remote_newer"
+            info["sync_title"] = f"Neuerer Stand auf GitHub verfügbar ({info['remote_version'] or str(info['behind']) + ' Commit(s)'})"
+            info["sync_detail"] = (
+                f"GitHub ist {info['behind']} Commit(s) voraus. "
+                "Klicke auf „Jetzt von GitHub aktualisieren“, um den Stand zu laden."
+            )
+        else:
+            info["sync_state"] = "in_sync"
+            info["sync_title"] = f"Auf dem neuesten Stand mit GitHub ({APP_VERSION})"
+            info["sync_detail"] = "Lokale Version und GitHub-Repository sind synchron."
     except Exception as e:
         info["error"] = str(e)
 
     return info
 
+
 def git_pull_update():
-    """Führt git pull aus, um die neueste Version von GitHub zu laden"""
-    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    """Führt git pull aus, um die neueste Version von GitHub zu laden."""
+    repo_dir = _get_git_repo_dir()
     try:
-        # Check if remote exists
         check_rem = subprocess.run(["git", "remote", "-v"], cwd=repo_dir, capture_output=True, text=True)
         if not check_rem.stdout.strip():
             return {
-                "success": False, 
+                "success": False,
                 "error": "Kein GitHub-Remote konfiguriert."
             }
 
-        res = subprocess.run(["git", "pull", "origin", "main"], cwd=repo_dir, capture_output=True, text=True, timeout=25)
+        res_branch = subprocess.run(["git", "branch", "--show-current"], cwd=repo_dir, capture_output=True, text=True)
+        branch = (res_branch.stdout or "").strip() or "main"
+
+        res = subprocess.run(["git", "pull", "origin", branch], cwd=repo_dir, capture_output=True, text=True, timeout=35)
         output = (res.stdout + "\n" + res.stderr).strip()
         success = res.returncode == 0
 
-        # Wenn main fehlschlägt, versuche git pull direkt
         if not success:
-            res2 = subprocess.run(["git", "pull"], cwd=repo_dir, capture_output=True, text=True, timeout=25)
+            res2 = subprocess.run(["git", "pull"], cwd=repo_dir, capture_output=True, text=True, timeout=35)
             output = (res2.stdout + "\n" + res2.stderr).strip()
             success = res2.returncode == 0
 
         msg = "Update erfolgreich eingespielt!"
-        if "Already up to date" in output:
+        if "Already up to date" in output or "Bereits aktuell" in output:
             msg = "Bereits auf dem neuesten Stand! Keine neuen Änderungen auf GitHub vorhanden."
 
         return {
             "success": success,
             "output": output,
-            "message": msg
+            "message": msg,
+            "git_info": get_git_info(),
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
+
 
 def git_push_upload():
-    """Führt git push aus, um den aktuellen Stand nach GitHub zu übertragen"""
-    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    """Erstellt bei Bedarf einen Commit (ohne config.json/__pycache__) und überträgt ihn nach GitHub."""
+    repo_dir = _get_git_repo_dir()
+    logs = []
     try:
-        res = subprocess.run(["git", "push", "-u", "origin", "main"], cwd=repo_dir, capture_output=True, text=True, timeout=30)
-        output = (res.stdout + "\n" + res.stderr).strip()
+        res_branch = subprocess.run(["git", "branch", "--show-current"], cwd=repo_dir, capture_output=True, text=True)
+        branch = (res_branch.stdout or "").strip() or "main"
+
+        # Versehentlich getrackte Cache-Dateien einmalig aus dem Index entfernen
+        subprocess.run(["git", "rm", "-r", "--cached", "--ignore-unmatch", "__pycache__"], cwd=repo_dir, capture_output=True, text=True)
+
+        # Änderungen stagen; persönliche config.json & ignorierte Cache-Dateien außen vor lassen
+        add_res = subprocess.run(
+            ["git", "add", "-A"],
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        if add_res.returncode != 0:
+            return {
+                "success": False,
+                "output": (add_res.stdout + "\n" + add_res.stderr).strip(),
+                "message": "Staging (git add) fehlgeschlagen: " + (add_res.stderr.strip() or add_res.stdout.strip()),
+                "git_info": get_git_info(),
+            }
+        if add_res.stdout.strip():
+            logs.append(add_res.stdout.strip())
+        # config.json bewusst nicht mit committen (lokale Nutzer-Einstellungen/History)
+        subprocess.run(["git", "reset", "-q", "HEAD", "--", "config.json"], cwd=repo_dir, capture_output=True)
+
+        diff_res = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo_dir, capture_output=True)
+        if diff_res.returncode != 0:
+            commit_msg = f"{APP_VERSION}: Sync & Build nach GitHub ({datetime.now().strftime('%d.%m.%Y %H:%M')})"
+            c_res = subprocess.run(
+                ["git", "commit", "-m", commit_msg],
+                cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+            )
+            c_out = (c_res.stdout + "\n" + c_res.stderr).strip()
+            if c_out:
+                logs.append(c_out)
+            if c_res.returncode != 0:
+                return {
+                    "success": False,
+                    "output": "\n".join(logs),
+                    "message": "Commit fehlgeschlagen: " + (c_res.stderr.strip() or c_res.stdout.strip()),
+                    "git_info": get_git_info(),
+                }
+
+        res = subprocess.run(
+            ["git", "push", "-u", "origin", branch],
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90
+        )
+        p_out = (res.stdout + "\n" + res.stderr).strip()
+        if p_out:
+            logs.append(p_out)
+
         return {
             "success": res.returncode == 0,
-            "output": output,
-            "message": "Stand erfolgreich nach GitHub hochgeladen!" if res.returncode == 0 else output
+            "output": "\n\n".join([x for x in logs if x]).strip() or "Erfolgreich hochgeladen.",
+            "message": f"Stand ({APP_VERSION}) erfolgreich nach GitHub hochgeladen!" if res.returncode == 0 else p_out,
+            "git_info": get_git_info(),
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+def git_rollback_version(commit_hash):
+    """Setzt die Arbeitskopie sicher auf einen früheren Commit zurück (mit config.json-Erhalt & Sicherheits-Stash)."""
+    repo_dir = _get_git_repo_dir()
+    commit_hash = (commit_hash or "").strip()
+    if not re.fullmatch(r"[0-9a-fA-F]{7,40}", commit_hash):
+        return {"success": False, "error": "Ungültige Commit-ID."}
+    try:
+        chk = subprocess.run(["git", "cat-file", "-t", commit_hash], cwd=repo_dir, capture_output=True, text=True)
+        if chk.returncode != 0 or chk.stdout.strip() != "commit":
+            return {"success": False, "error": f"Commit {commit_hash} nicht gefunden."}
+
+        # Persönliche config.json im Speicher sichern, damit beim Reset nichts verloren geht
+        cfg_path = os.path.join(repo_dir, "config.json")
+        saved_cfg = None
+        if os.path.exists(cfg_path):
+            with open(cfg_path, "rb") as f:
+                saved_cfg = f.read()
+
+        logs = []
+        dirty = _filter_meaningful_git_dirty_lines(
+            subprocess.run(["git", "status", "--porcelain"], cwd=repo_dir, capture_output=True, text=True).stdout
+        )
+        if dirty:
+            st_msg = f"Sicherheitskopie vor Retour ({datetime.now().strftime('%d.%m.%Y %H:%M:%S')})"
+            st_res = subprocess.run(
+                ["git", "stash", "push", "-u", "-m", st_msg],
+                cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+            )
+            if st_res.stdout.strip() or st_res.stderr.strip():
+                logs.append("Backup erstellt: " + (st_res.stdout + "\n" + st_res.stderr).strip())
+
+        rst_res = subprocess.run(
+            ["git", "reset", "--hard", commit_hash],
+            cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
+        logs.append((rst_res.stdout + "\n" + rst_res.stderr).strip())
+
+        if saved_cfg is not None:
+            with open(cfg_path, "wb") as f:
+                f.write(saved_cfg)
+
+        if rst_res.returncode != 0:
+            return {"success": False, "output": "\n".join(logs), "error": "Zurücksetzen fehlgeschlagen."}
+
+        return {
+            "success": True,
+            "output": "\n".join([x for x in logs if x]).strip(),
+            "message": f"Erfolgreich auf Version {commit_hash[:7]} zurückgesetzt (Einstellungen behalten).",
+            "git_info": get_git_info(),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def git_set_remote(remote_url):
-    """Setzt oder ändert die GitHub Remote URL"""
-    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    """Setzt oder ändert die GitHub Remote URL."""
+    repo_dir = _get_git_repo_dir()
     try:
         # Remove existing if any
         subprocess.run(["git", "remote", "remove", "origin"], cwd=repo_dir, capture_output=True)
@@ -1777,4 +2033,236 @@ def send_file_via_email(filepath, recipient="", client=None):
         "success": True,
         "method": "clipboard_mailto",
         "message": f"E-Mail geöffnet & '{filename}' in Zwischenablage kopiert (in E-Mail einfach [Strg + V] drücken)!"
+    }
+
+
+# ============================================================
+# BRÜCKE ZU 7-ORDNER-PRO (App-Discovery & Datei-/Ordner-Übergabe)
+# ============================================================
+
+def get_shared_bridge_dir() -> str:
+    """Gemeinsames Austauschverzeichnis unter %APPDATA%\\7-Ordner-Pro für beide Apps."""
+    appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
+    bridge_dir = os.path.join(appdata, "7-Ordner-Pro")
+    try:
+        os.makedirs(bridge_dir, exist_ok=True)
+    except Exception:
+        pass
+    return bridge_dir
+
+
+def get_shared_bridge_file() -> str:
+    return os.path.join(get_shared_bridge_dir(), "app_bridge.json")
+
+
+def _load_bridge_registry() -> dict:
+    path = get_shared_bridge_file()
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+
+def register_suchmaschine_bridge(port: int = 5005) -> str:
+    """Registriert Installationspfade von Datei-Suchmaschine Pro für 7-Ordner-Pro."""
+    base_dir = _get_base_dir()
+    data = _load_bridge_registry()
+    entry = {
+        "version": APP_VERSION,
+        "dir": base_dir,
+        "config_file": CONFIG_FILE,
+        "port": int(port),
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    if getattr(sys, "frozen", False):
+        entry["exe"] = sys.executable
+    else:
+        exe_candidate = os.path.join(base_dir, "Datei-Suchmaschine-Pro.exe")
+        if os.path.isfile(exe_candidate):
+            entry["exe"] = exe_candidate
+        script_candidate = os.path.join(base_dir, "app.py")
+        if os.path.isfile(script_candidate):
+            entry["script"] = script_candidate
+    vbs_candidate = os.path.join(base_dir, "Start_Hintergrund.vbs")
+    if os.path.isfile(vbs_candidate):
+        entry["vbs"] = vbs_candidate
+    data["suchmaschine"] = entry
+
+    bridge_path = get_shared_bridge_file()
+    try:
+        with open(bridge_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        logger.debug("Bridge-Registrierung fehlgeschlagen: %s", exc)
+    return bridge_path
+
+
+def find_seven_folder_app() -> list | None:
+    """Sucht 7-Ordner-Pro (EXE oder Python-Skript) über Bridge-Registry oder Standardpfade."""
+    reg = _load_bridge_registry()
+    sf = reg.get("seven_folder", {}) if isinstance(reg.get("seven_folder"), dict) else {}
+
+    exe_candidates = []
+    if sf.get("exe"):
+        exe_candidates.append(sf["exe"])
+    base_dir = _get_base_dir()
+    user_home = os.path.expanduser("~")
+    desktop_dir = os.path.join(user_home, "Desktop")
+    exe_candidates.extend([
+        os.path.join(desktop_dir, "7-Ordner-Pro.exe"),
+        os.path.join(os.path.dirname(base_dir), "Ordner-Struktur", "7-Ordner-Pro.exe"),
+        os.path.join(user_home, ".gemini", "antigravity", "scratch", "Ordner-Struktur", "7-Ordner-Pro.exe"),
+    ])
+    if sf.get("dir"):
+        exe_candidates.append(os.path.join(sf["dir"], "7-Ordner-Pro.exe"))
+
+    for cand in exe_candidates:
+        if cand and os.path.isfile(cand):
+            return [cand]
+
+    script_candidates = []
+    if sf.get("script"):
+        script_candidates.append(sf["script"])
+    script_candidates.extend([
+        os.path.join(os.path.dirname(base_dir), "Ordner-Struktur", "app.pyw"),
+        os.path.join(user_home, ".gemini", "antigravity", "scratch", "Ordner-Struktur", "app.pyw"),
+    ])
+    for script in script_candidates:
+        if script and os.path.isfile(script):
+            py_exe = sys.executable if not getattr(sys, "frozen", False) else "python"
+            py_dir = os.path.dirname(py_exe)
+            pyw = os.path.join(py_dir, "pythonw.exe")
+            runner = pyw if os.path.isfile(pyw) else py_exe
+            return [runner, script]
+    return None
+
+
+def _save_bridge_registry(data: dict) -> str:
+    bridge_path = get_shared_bridge_file()
+    try:
+        os.makedirs(os.path.dirname(bridge_path), exist_ok=True)
+        with open(bridge_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as exc:
+        logger.debug("Bridge-Speichern fehlgeschlagen: %s", exc)
+    return bridge_path
+
+
+def get_shared_theme() -> str:
+    reg = _load_bridge_registry()
+    val = str(reg.get("theme") or "").strip().lower()
+    return val if val in ("light", "dark") else "light"
+
+
+def set_shared_theme(theme: str) -> str:
+    clean = "dark" if str(theme or "").strip().lower() == "dark" else "light"
+    reg = _load_bridge_registry()
+    reg["theme"] = clean
+    reg["theme_updated_at"] = datetime.now().isoformat(timespec="seconds")
+    _save_bridge_registry(reg)
+    return clean
+
+
+def send_to_seven_folder(paths=None, folder_path: str | None = None, target_dir: str | None = None, theme: str | None = None) -> dict:
+    """Übergibt markierte Dateien oder einen Ordner an 7-Ordner-Pro und startet es bei Bedarf automatisch."""
+    register_suchmaschine_bridge()
+    resolved_theme = set_shared_theme(theme) if theme in ("light", "dark") else get_shared_theme()
+    base_cmd = find_seven_folder_app()
+    if not base_cmd:
+        return {
+            "success": False,
+            "error": "7-Ordner-Pro wurde nicht gefunden (weder EXE noch app.pyw). Bitte 7-Ordner-Pro einmalig starten."
+        }
+
+    clean_paths = []
+    seen = set()
+    for raw in (paths or []):
+        p_str = str(raw or "").strip()
+        if not p_str:
+            continue
+        norm = os.path.normpath(p_str)
+        low = norm.lower()
+        if low in seen:
+            continue
+        if os.path.exists(norm):
+            seen.add(low)
+            clean_paths.append(norm)
+
+    cmd = list(base_cmd)
+    handoff_file = ""
+    mode = "launch"
+
+    if clean_paths:
+        parents = [os.path.dirname(p) for p in clean_paths if os.path.dirname(p)]
+        common_src = ""
+        if parents:
+            try:
+                cand = os.path.commonpath(parents)
+                if os.path.isdir(cand):
+                    common_src = cand
+            except Exception:
+                common_src = ""
+        if not common_src and parents:
+            common_src = parents[0]
+
+        bridge_dir = get_shared_bridge_dir()
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        handoff_file = os.path.join(bridge_dir, f"handoff_queue_{ts}.json")
+        payload = {
+            "version": 1,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "source_app": "Datei-Suchmaschine",
+            "source_dir": common_src,
+            "target_dir": os.path.normpath(target_dir) if target_dir else "",
+            "theme": resolved_theme,
+            "paths": clean_paths,
+        }
+        try:
+            with open(handoff_file, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+        except Exception as exc:
+            return {"success": False, "error": f"Übergabedatei konnte nicht geschrieben werden: {exc}"}
+
+        cmd.extend(["--handoff", handoff_file])
+        mode = "handoff"
+    elif folder_path and str(folder_path).strip():
+        clean_folder = os.path.normpath(str(folder_path).strip())
+        if not os.path.isdir(clean_folder):
+            return {"success": False, "error": f"Ordner nicht gefunden: {clean_folder}"}
+        cmd.extend(["--source", clean_folder])
+        if target_dir and str(target_dir).strip():
+            cmd.extend(["--target", os.path.normpath(str(target_dir).strip())])
+        mode = "source"
+
+    cmd.extend(["--theme", resolved_theme])
+
+    creation_flags = 0
+    if os.name == "nt":
+        creation_flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+
+    try:
+        app_cwd = os.path.dirname(base_cmd[-1]) or None
+        proc = subprocess.Popen(cmd, cwd=app_cwd, creationflags=creation_flags)
+        if os.name == "nt":
+            try:
+                import ctypes
+                ctypes.windll.user32.AllowSetForegroundWindow(int(proc.pid))
+            except Exception:
+                pass
+    except Exception as exc:
+        return {"success": False, "error": f"7-Ordner-Pro konnte nicht gestartet werden: {exc}"}
+
+    return {
+        "success": True,
+        "mode": mode,
+        "count": len(clean_paths),
+        "folder": os.path.normpath(str(folder_path).strip()) if folder_path else "",
+        "handoff_file": handoff_file,
+        "app_cmd": base_cmd[0],
+        "launched": True,
     }

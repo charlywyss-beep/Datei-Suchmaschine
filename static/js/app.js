@@ -123,8 +123,18 @@ async function initSystemInfo() {
     renderSearchHistoryAndSaved();
     updateEmailClientUI();
 
-    // Standard-Suchverzeichnis: DIESER PC (Alle Laufwerke C:, D: etc.)
-    setSearchScope('pc');
+    // Brücke aus 7-Ordner-Pro: Direktziel via ?open_path=... sofort öffnen und suchen
+    const urlParams = new URLSearchParams(window.location.search);
+    const openPath = (urlParams.get('open_path') || '').trim();
+    if (openPath) {
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (_e) {}
+      setLocation(openPath, 'custom');
+    } else {
+      // Standard-Suchverzeichnis: DIESER PC (Alle Laufwerke C:, D: etc.)
+      setSearchScope('pc');
+    }
   } catch (err) {
     console.error('System-Info Fehler:', err);
   }
@@ -177,7 +187,15 @@ function setSearchScope(scope) {
     showToast('🌐 Suchbereich: Nur Netzwerk (Freigaben & Netzlaufwerke)', 'info');
   } else if (scope === 'folder') {
     if (btnFold) btnFold.className = 'scope-btn active p-3 rounded-xl border border-amber-500/50 bg-amber-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-amber-500/20';
-    if (dirInput && (dirInput.value.includes('Dieser PC') || dirInput.value.includes('OneDrive') || dirInput.value.includes('Netzwerk') || ['THIS_PC', 'ONEDRIVE_ALL', 'NETWORK'].includes(dirInput.value))) {
+    const curVal = dirInput ? dirInput.value.trim() : '';
+    const isScopePlaceholder = (
+      !curVal ||
+      curVal.startsWith('Dieser PC (') ||
+      curVal.startsWith('OneDrive (') ||
+      curVal.startsWith('Netzwerk (') ||
+      ['THIS_PC', 'ONEDRIVE_ALL', 'NETWORK'].includes(curVal)
+    );
+    if (dirInput && isScopePlaceholder) {
       dirInput.value = 'C:\\Users\\01\\Documents\\';
     }
   }
@@ -994,7 +1012,7 @@ function renderResults() {
         <td class="py-2.5 px-4 text-left whitespace-nowrap">
           <div class="inline-flex items-center gap-1.5" title="Dateityp: ${file.ext || 'DATEI'} (${getAppLabelForExt(file.ext)})">
             ${fileIcon}
-            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${file.ext || 'DATEI'}</span>
+            <span class="ext-badge text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${file.ext || 'DATEI'}</span>
           </div>
         </td>
         <td class="py-2.5 px-4 font-medium text-slate-100 max-w-xs md:max-w-md truncate" onclick="openFile('${escapeJs(file.path)}')">
@@ -1203,6 +1221,11 @@ function updateSelectedCounter() {
   if (renameBadge) {
     renameBadge.textContent = count;
     renameBadge.classList.toggle('hidden', count === 0);
+  }
+  const sevenBadge = document.getElementById('badge-seven-folder-count');
+  if (sevenBadge) {
+    sevenBadge.textContent = count;
+    sevenBadge.classList.toggle('hidden', count === 0);
   }
   const deleteBtn = document.getElementById('btn-delete-selected');
   const deleteCountEl = document.getElementById('delete-selected-count');
@@ -2189,6 +2212,10 @@ function showToast(message, type = 'info', duration = 4000) {
   }, duration);
 }
 
+function getCurrentThemeName() {
+  return document.documentElement.classList.contains('light') ? 'light' : 'dark';
+}
+
 function initTheme() {
   const savedTheme = localStorage.getItem('suchmaschine_theme') || 'dark';
   applyTheme(savedTheme, false);
@@ -2220,6 +2247,11 @@ function applyTheme(theme, showNotice = false) {
   }
   localStorage.setItem('suchmaschine_theme', theme);
   updateSettingsThemeBtns();
+  fetch('/api/bridge/theme', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme })
+  }).catch(() => {});
   if (showNotice) {
     showToast(theme === 'light' ? 'Helles Design aktiviert ☀️' : 'Dunkles Design aktiviert 🌙', 'info');
   }
@@ -2273,20 +2305,116 @@ function escapeJs(str) {
 }
 
 // ==========================================
-// GITHUB UPDATE MODAL (WIE IN PORTFOLIO-MANAGER)
+// GITHUB UPDATE MODAL (MIT SYNC-STATUS & RETOUR-SICHERHEIT)
 // ==========================================
+function applyGitInfoToModal(data) {
+  state.gitInfo = data;
+  const appVer = data.version || 'v1.7.15';
+
+  const modalVerEl = document.getElementById('git-modal-version');
+  if (modalVerEl) modalVerEl.textContent = appVer;
+  const appVerEl = document.getElementById('git-app-version');
+  if (appVerEl) appVerEl.textContent = appVer;
+
+  document.getElementById('git-branch').textContent = data.branch || 'main';
+  document.getElementById('git-last-commit').textContent = data.last_commit || 'Keine Commit-Information';
+
+  const remoteInput = document.getElementById('git-remote-input');
+  if (remoteInput) {
+    remoteInput.value = data.remote_url || 'https://github.com/charlywyss-beep/Datei-Suchmaschine.git';
+  }
+
+  const exeLbl = document.getElementById('git-exe-download-label');
+  if (exeLbl) {
+    const sizeText = data.exe_size_mb ? `${data.exe_size_mb} Direkt-Download` : 'Direkt-Download';
+    exeLbl.textContent = `Neueste Datei-Suchmaschine-Pro.exe herunterladen (${sizeText})`;
+  }
+
+  // Deutlicher Sync-Banner
+  const banner = document.getElementById('git-sync-banner');
+  const iconEl = document.getElementById('git-sync-icon');
+  const titleEl = document.getElementById('git-sync-title');
+  const detailEl = document.getElementById('git-sync-detail');
+  const badgeEl = document.getElementById('git-version-badge');
+  const pushBtn = document.getElementById('btn-run-git-push');
+
+  if (banner && titleEl && detailEl && badgeEl && iconEl) {
+    const st = data.sync_state || 'in_sync';
+    titleEl.textContent = data.sync_title || '';
+    detailEl.textContent = data.sync_detail || '';
+
+    if (st === 'local_newer' || st === 'local_ahead') {
+      banner.className = 'git-sync-warn p-3.5 rounded-xl border border-amber-500/50 bg-amber-950/30 text-xs flex items-start gap-3';
+      iconEl.className = 'fa-solid fa-triangle-exclamation text-base text-amber-400 mt-0.5 shrink-0';
+      badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0';
+      const refVer = data.remote_version || data.git_version || 'älter';
+      badgeEl.textContent = st === 'local_newer' ? `Lokal ${appVer} > GitHub ${refVer}` : 'Ungesicherter Stand';
+      if (pushBtn) {
+        pushBtn.className = 'px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 border border-amber-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-amber-600/25';
+      }
+    } else if (st === 'remote_newer') {
+      banner.className = 'git-sync-info p-3.5 rounded-xl border border-sky-500/50 bg-sky-950/30 text-xs flex items-start gap-3';
+      iconEl.className = 'fa-solid fa-cloud-arrow-down text-base text-sky-400 mt-0.5 shrink-0';
+      badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 shrink-0';
+      badgeEl.textContent = `GitHub neuer (${data.remote_version || '+' + (data.behind || 1)})`;
+      if (pushBtn) {
+        pushBtn.className = 'px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5';
+      }
+    } else if (st === 'in_sync') {
+      banner.className = 'git-sync-ok p-3.5 rounded-xl border border-emerald-500/40 bg-emerald-950/25 text-xs flex items-start gap-3';
+      iconEl.className = 'fa-solid fa-circle-check text-base text-emerald-400 mt-0.5 shrink-0';
+      badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0';
+      badgeEl.textContent = `Synchron (${appVer})`;
+      if (pushBtn) {
+        pushBtn.className = 'px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5';
+      }
+    } else {
+      banner.className = 'p-3.5 rounded-xl border border-slate-700 bg-slate-800/60 text-xs flex items-start gap-3';
+      iconEl.className = 'fa-solid fa-circle-info text-base text-slate-400 mt-0.5 shrink-0';
+      badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 shrink-0';
+      badgeEl.textContent = 'Kein Git';
+    }
+  }
+
+  // Commit-Historie für optionales Retour befüllen (aktuellsten Eintrag markieren)
+  const sel = document.getElementById('git-rollback-select');
+  if (sel) {
+    sel.innerHTML = '';
+    const hist = Array.isArray(data.history) ? data.history : [];
+    if (hist.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Keine Commit-Historie verfügbar';
+      sel.appendChild(opt);
+    } else {
+      hist.forEach((item, idx) => {
+        const opt = document.createElement('option');
+        opt.value = item.hash;
+        const label = idx === 0 ? '[Aktueller Commit] ' : '';
+        opt.textContent = `${label}${item.short} — ${item.subject} (${item.date})`;
+        if (idx === 1) opt.selected = true; // Praktisch: vorangehende Version vorauswählen
+        sel.appendChild(opt);
+      });
+    }
+  }
+}
+
 async function openGitUpdateModal() {
   document.getElementById('modal-git-update').classList.remove('hidden');
+  const pushBtn = document.getElementById('btn-run-git-push');
+  if (pushBtn) {
+    pushBtn.disabled = false;
+    pushBtn.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i><span>Stand nach GitHub hochladen</span>';
+  }
+  const updateBtn = document.getElementById('btn-run-git-update');
+  if (updateBtn) {
+    updateBtn.disabled = false;
+    updateBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i><span>Jetzt von GitHub aktualisieren</span>';
+  }
   try {
     const res = await fetch('/api/git-info');
     const data = await res.json();
-    state.gitInfo = data;
-    document.getElementById('git-branch').textContent = data.branch || 'main';
-    document.getElementById('git-last-commit').textContent = data.last_commit || 'Keine Commit-Information';
-    const remoteInput = document.getElementById('git-remote-input');
-    if (remoteInput) {
-      remoteInput.value = data.remote_url || 'https://github.com/charlywyss-beep/Datei-Suchmaschine.git';
-    }
+    applyGitInfoToModal(data);
   } catch (err) {
     console.error('Git-Info Fehler:', err);
   }
@@ -2298,9 +2426,9 @@ async function runGitPush() {
   const logOutput = document.getElementById('git-log-output');
 
   btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Übertrage nach GitHub...</span>';
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Committe &amp; übertrage nach GitHub...</span>';
   logContainer.classList.remove('hidden');
-  logOutput.textContent = 'Führe "git push -u origin main" aus...\n';
+  logOutput.textContent = 'Erstelle Commit (falls nötig) und führe "git push" nach GitHub aus...\n';
 
   try {
     const res = await fetch('/api/git-push', { method: 'POST' });
@@ -2308,8 +2436,13 @@ async function runGitPush() {
     logOutput.textContent = d.output || d.message || d.error || 'Fertig';
 
     if (d.success) {
-      showToast('🎉 Stand erfolgreich nach GitHub übertragen!', 'success');
+      showToast(d.message || 'Stand erfolgreich nach GitHub übertragen!', 'success');
       btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Übertragen!</span>';
+      if (d.git_info) {
+        applyGitInfoToModal(d.git_info);
+      } else {
+        openGitUpdateModal();
+      }
     } else {
       showToast(d.message || d.error || 'Upload fehlgeschlagen', 'error');
       btn.disabled = false;
@@ -2319,7 +2452,7 @@ async function runGitPush() {
     logOutput.textContent = `Fehler: ${err.message}`;
     showToast(`Fehler: ${err.message}`, 'error');
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i><span>Stand hochladen</span>';
+    btn.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i><span>Stand nach GitHub hochladen</span>';
   }
 }
 
@@ -2351,6 +2484,19 @@ async function saveGitRemote() {
 }
 
 async function runGitUpdate() {
+  const info = state.gitInfo || {};
+  if (info.local_is_newer) {
+    const confirmed = await showConfirmDialog({
+      type: 'warning',
+      title: 'Achtung: Lokale Version ist neuer als GitHub!',
+      message: info.sync_title || `Die lokale Version (${info.version || ''}) ist neuer als der Stand auf GitHub.`,
+      detail: 'Wenn Sie jetzt „von GitHub aktualisieren“ statt „Stand nach GitHub hochladen“, erhalten Sie eventuell einen älteren Stand oder lokale Änderungen blockieren das Pull. Möchten Sie wirklich von GitHub laden?',
+      confirmText: 'Trotzdem von GitHub laden',
+      cancelText: 'Abbrechen'
+    });
+    if (!confirmed) return;
+  }
+
   const btn = document.getElementById('btn-run-git-update');
   const logContainer = document.getElementById('git-log-container');
   const logOutput = document.getElementById('git-log-output');
@@ -2367,7 +2513,7 @@ async function runGitUpdate() {
     logOutput.textContent = d.output || d.message || d.error || 'Keine Rückmeldung';
 
     if (d.success) {
-      showToast('🎉 Erfolgreich auf den neuesten GitHub-Stand aktualisiert!', 'success');
+      showToast('Erfolgreich auf den neuesten GitHub-Stand aktualisiert!', 'success');
       btn.innerHTML = '<i class="fa-solid fa-check"></i><span>Aktuell!</span>';
       setTimeout(() => location.reload(), 2500);
     } else {
@@ -2379,7 +2525,60 @@ async function runGitUpdate() {
     logOutput.textContent = `Fehler: ${err.message}`;
     showToast(`Update-Fehler: ${err.message}`, 'error');
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i><span>Jetzt aktualisieren</span>';
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i><span>Jetzt von GitHub aktualisieren</span>';
+  }
+}
+
+async function runGitRollback() {
+  const sel = document.getElementById('git-rollback-select');
+  const commitHash = sel ? sel.value : '';
+  const commitLabel = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].textContent : '';
+  if (!commitHash) {
+    showToast('Bitte zuerst eine frühere Version auswählen.', 'error');
+    return;
+  }
+
+  const confirmed = await showConfirmDialog({
+    type: 'warning',
+    title: 'Zurück zu einer früheren Version? (Retour)',
+    message: `Möchten Sie den Programmstand wirklich auf diesen Commit zurücksetzen?\n\n${commitLabel}`,
+    detail: 'Sicherheitsnetz: Ungesicherte lokale Änderungen werden automatisch im Git-Stash gesichert, Ihre Einstellungen (config.json) bleiben erhalten, und mit „Jetzt von GitHub aktualisieren“ können Sie später wieder vorwärts wechseln.',
+    confirmText: 'Ja, Version wiederherstellen',
+    cancelText: 'Abbrechen'
+  });
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btn-run-git-rollback');
+  const logContainer = document.getElementById('git-log-container');
+  const logOutput = document.getElementById('git-log-output');
+
+  btn.disabled = true;
+  const origHtml = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>Setze zurück...</span>';
+  logContainer.classList.remove('hidden');
+  logOutput.textContent = `Setze sicher zurück auf Commit ${commitHash.slice(0, 7)}...\n`;
+
+  try {
+    const res = await fetch('/api/git-rollback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commit_hash: commitHash })
+    });
+    const d = await res.json();
+    logOutput.textContent = d.output || d.message || d.error || 'Fertig';
+    if (d.success) {
+      showToast(d.message || 'Auf frühere Version zurückgesetzt – starte neu...', 'success');
+      setTimeout(() => location.reload(), 2500);
+    } else {
+      showToast(d.error || 'Zurücksetzen fehlgeschlagen', 'error');
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  } catch (err) {
+    logOutput.textContent = `Fehler: ${err.message}`;
+    showToast(`Fehler: ${err.message}`, 'error');
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
   }
 }
 
@@ -2605,5 +2804,76 @@ async function saveGdriveSettings() {
     }
   } catch (err) {
     showToast(`Fehler: ${err.message}`, 'error');
+  }
+}
+
+// ==========================================
+// BRÜCKE ZU 7-ORDNER-PRO
+// ==========================================
+async function sendToSevenFolder() {
+  let paths = Array.from(state.selectedFilePaths || []);
+  if (paths.length === 0) {
+    const visiblePaths = (state.currentFiles || []).map(f => f.path).filter(Boolean);
+    if (visiblePaths.length === 0) {
+      await sendFolderToSevenFolder();
+      return;
+    }
+    const ok = await showConfirmDialog({
+      title: 'Alle Treffer an 7-Ordner-Pro übergeben?',
+      message: `Es sind keine einzelnen Dateien markiert. Sollen alle ${visiblePaths.length} gefundenen Dateien an 7-Ordner-Pro zur Sortier-Vorschau übergeben werden?`,
+      confirmText: `${visiblePaths.length} Dateien übergeben`,
+      cancelText: 'Abbrechen',
+      type: 'info'
+    });
+    if (!ok) return;
+    paths = visiblePaths;
+  }
+
+  try {
+    showToast('🚀 Starte 7-Ordner-Pro mit Übergabeliste...', 'info');
+    const res = await fetch('/api/handoff-seven-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths, theme: getCurrentThemeName() })
+    });
+    const d = await res.json();
+    if (d.success) {
+      showToast(`✅ ${d.count} Dateien an 7-Ordner-Pro übergeben!`, 'success');
+    } else {
+      showToast(d.error || '7-Ordner-Pro konnte nicht gestartet werden', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler bei Übergabe: ${err.message}`, 'error');
+  }
+}
+
+async function sendFolderToSevenFolder() {
+  const dirInput = document.getElementById('target-directory');
+  const rawVal = dirInput ? dirInput.value.trim() : '';
+  const isScopeLabel = (
+    !rawVal ||
+    rawVal.startsWith('Dieser PC (') ||
+    rawVal.startsWith('OneDrive (') ||
+    rawVal.startsWith('Netzwerk (') ||
+    ['THIS_PC', 'ONEDRIVE_ALL', 'NETWORK'].includes(rawVal)
+  );
+  const payload = isScopeLabel ? { theme: getCurrentThemeName() } : { folder_path: rawVal, theme: getCurrentThemeName() };
+
+  try {
+    showToast('📂 Öffne 7-Ordner-Pro...', 'info');
+    const res = await fetch('/api/handoff-seven-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+    if (d.success) {
+      const info = d.folder ? ` (${d.folder})` : '';
+      showToast(`✅ 7-Ordner-Pro gestartet${info}`, 'success');
+    } else {
+      showToast(d.error || '7-Ordner-Pro konnte nicht gestartet werden', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler beim Start: ${err.message}`, 'error');
   }
 }

@@ -15,6 +15,7 @@ else:
 import file_service
 # Max upload/request size
 app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 @app.after_request
 def add_header(response):
@@ -161,27 +162,42 @@ def save_gdrive_path_route():
 def git_info_route():
     return jsonify(file_service.get_git_info())
 
+def _schedule_server_restart():
+    import threading
+    def _restart():
+        import time
+        time.sleep(1.2)
+        if getattr(sys, 'frozen', False):
+            subprocess.Popen([sys.executable, "--no-browser"], cwd=os.path.dirname(sys.executable))
+        else:
+            python_exe = sys.executable
+            app_script = os.path.abspath(__file__)
+            subprocess.Popen([python_exe, app_script, "--no-browser"], cwd=os.path.dirname(app_script))
+        os._exit(0)
+    threading.Thread(target=_restart, daemon=True).start()
+
+
 @app.route("/api/git-update", methods=["POST"])
 def git_update_route():
     res = file_service.git_pull_update()
     if res.get("success"):
-        import threading
-        def _restart():
-            import time
-            time.sleep(1.2)
-            if getattr(sys, 'frozen', False):
-                subprocess.Popen([sys.executable], cwd=os.path.dirname(sys.executable))
-            else:
-                python_exe = sys.executable
-                app_script = os.path.abspath(__file__)
-                subprocess.Popen([python_exe, app_script], cwd=os.path.dirname(app_script))
-            os._exit(0)
-        threading.Thread(target=_restart, daemon=True).start()
+        _schedule_server_restart()
     return jsonify(res)
+
 
 @app.route("/api/git-push", methods=["POST"])
 def git_push_route():
     res = file_service.git_push_upload()
+    return jsonify(res)
+
+
+@app.route("/api/git-rollback", methods=["POST"])
+def git_rollback_route():
+    data = request.get_json() or {}
+    commit_hash = (data.get("commit_hash") or "").strip()
+    res = file_service.git_rollback_version(commit_hash)
+    if res.get("success"):
+        _schedule_server_restart()
     return jsonify(res)
 
 @app.route("/api/git-set-remote", methods=["POST"])
@@ -460,6 +476,40 @@ def file_preview():
         "size": file_service.format_size(stat.st_size),
         "mimetype": mime_type or "application/octet-stream"
     })
+
+
+@app.route("/api/handoff-seven-folder", methods=["POST"])
+def api_handoff_seven_folder():
+    """Übergibt markierte Dateien oder einen Ordner an 7-Ordner-Pro (startet es bei Bedarf automatisch)."""
+    data = request.get_json(silent=True) or {}
+    paths = data.get("paths") or []
+    folder_path = data.get("folder_path")
+    target_dir = data.get("target_dir")
+    theme = data.get("theme")
+    res = file_service.send_to_seven_folder(
+        paths=paths if isinstance(paths, list) else [],
+        folder_path=folder_path,
+        target_dir=target_dir,
+        theme=theme if theme in ("light", "dark") else None,
+    )
+    return jsonify(res), (200 if res.get("success") else 400)
+
+
+@app.route("/api/bridge/theme", methods=["GET", "POST"])
+def api_bridge_theme():
+    """Liest oder setzt das gemeinsame Hell/Dunkel-Theme fuer beide Apps."""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        t = file_service.set_shared_theme(data.get("theme") or "light")
+        return jsonify({"success": True, "theme": t})
+    return jsonify({"success": True, "theme": file_service.get_shared_theme()})
+
+
+try:
+    file_service.register_suchmaschine_bridge(port=5005)
+except Exception:
+    pass
+
 
 if __name__ == "__main__":
     # 1. Behandle 'suchmaschine://' Protokoll-Aufrufe (für Standalone-EXE ohne Python)
