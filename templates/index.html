@@ -1331,14 +1331,14 @@
             <strong>Das Problem:</strong> Viele Firmen sperren privates OneDrive, Dropbox oder Google Drive in der Firmenfirewall. Zudem hat man oft keine Administratorrechte und Python ist nicht installiert.
           </div>
           <p class="text-slate-400 text-[11px]">
-            <strong>Die Lösung: Der USB-Stick als autarke Zentrale:</strong>
+            <strong>Die Lösung: Beide Portable-Apps komplett auf den USB-Stick legen (kein C:\ nötig):</strong>
           </p>
           <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-300 pl-1">
-            <li>Kopieren Sie die fertige <code class="text-emerald-400 font-mono">Datei-Suchmaschine-Pro.exe</code> auf Ihren USB-Stick.</li>
-            <li>Legen Sie auf dem Stick einen Ordner an, z.B. <code class="text-indigo-300 font-mono">E:\Transfer-Hub</code>.</li>
-            <li>Stecken Sie den Stick im Geschäft ein und doppelklicken Sie die <code class="text-slate-200">.exe</code>. <em>Sie benötigt weder Installation, noch Python, noch Admin-Rechte!</em></li>
-            <li>Speichern Sie Ihre geschäftlichen Arbeitsdateien einfach in den Ordner auf dem USB-Stick.</li>
-            <li>Zu Hause stecken Sie den USB-Stick ein und gleichen die Dateien über die Doppel-Eliminierung mit Ihrem Heim-PC oder OneDrive ab.</li>
+            <li>Legen Sie auf dem USB-Stick am besten zwei Unterordner nebeneinander an: <code class="text-emerald-400 font-mono">E:\Tools\Datei-Suchmaschine\Datei-Suchmaschine-Pro.exe</code> und <code class="text-indigo-300 font-mono">E:\Tools\7-Ordner-Pro\7-Ordner-Pro.exe</code> (alternativ beide direkt in <code class="text-slate-200 font-mono">E:\Tools\</code>).</li>
+            <li>Legen Sie einen Arbeitsordner an, z.B. <code class="text-indigo-300 font-mono">E:\Transfer-Hub</code>.</li>
+            <li>Im Geschäft USB-Stick einstecken und <code class="text-slate-200 font-mono">Datei-Suchmaschine-Pro.exe</code> starten — <em>braucht weder Installation, noch Python, noch Admin-Rechte!</em></li>
+            <li><strong>Automatisches Zusammenspiel:</strong> Sobald Sie hier auf <em>„An 7-Ordner-Pro übergeben“</em> oder <em>„In 7-Ordner-Pro sortieren“</em> klicken, findet und startet die Suchmaschine <code class="text-indigo-300 font-mono">7-Ordner-Pro.exe</code> vom USB-Stick (im selben oder Nachbarordner) <strong>automatisch</strong>.</li>
+            <li><strong>Wann ausnahmsweise nach C:\ kopieren?</strong> Nur falls Ihre Firmen-IT das Ausführen von <code class="text-slate-200">.exe</code>-Dateien direkt vom USB-Stick blockiert (AppLocker) oder der Stick sehr langsam ist — dann beide Ordner einfach in Ihren Benutzerordner z.B. <code class="text-slate-200 font-mono">C:\Users\&lt;Name&gt;\Tools\</code> (oder Desktop, <strong>nicht</strong> <code class="text-slate-200">C:\Program Files</code>) kopieren.</li>
           </ol>
         </div>
 
@@ -1391,11 +1391,11 @@
             </div>
             <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
               <span class="font-bold text-indigo-300 block mb-1">Schritt 2: Ersetzen</span>
-              <span class="text-slate-400">Die neue <code class="text-slate-200">Datei-Suchmaschine-Pro.exe</code> auf den USB-Stick kopieren und die alte Datei überschreiben.</span>
+              <span class="text-slate-400">Die neue <code class="text-slate-200">Datei-Suchmaschine-Pro.exe</code> (bzw. <code class="text-slate-200">7-Ordner-Pro.exe</code>) auf dem USB-Stick überschreiben.</span>
             </div>
             <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
               <span class="font-bold text-indigo-300 block mb-1">Schritt 3: Fertig!</span>
-              <span class="text-slate-400">Ihre Einstellungen (<code class="text-emerald-400 font-mono">config.json</code>) bleiben voll erhalten!</span>
+              <span class="text-slate-400">Einstellungen (<code class="text-emerald-400 font-mono">config.json</code> &amp; <code class="text-emerald-400 font-mono">window_state.json</code>) bleiben erhalten!</span>
             </div>
           </div>
           <div class="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400">

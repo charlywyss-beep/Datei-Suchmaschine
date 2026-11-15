@@ -2103,35 +2103,46 @@ def register_suchmaschine_bridge(port: int = 5005) -> str:
 
 
 def find_seven_folder_app() -> list | None:
-    """Sucht 7-Ordner-Pro (EXE oder Python-Skript) über Bridge-Registry oder Standardpfade."""
+    """Sucht 7-Ordner-Pro (EXE oder Python-Skript) lokal/USB-relativ, über Bridge-Registry oder Standardpfade."""
     reg = _load_bridge_registry()
     sf = reg.get("seven_folder", {}) if isinstance(reg.get("seven_folder"), dict) else {}
 
-    exe_candidates = []
-    if sf.get("exe"):
-        exe_candidates.append(sf["exe"])
     base_dir = _get_base_dir()
+    parent_dir = os.path.dirname(base_dir)
     user_home = os.path.expanduser("~")
     desktop_dir = os.path.join(user_home, "Desktop")
-    exe_candidates.extend([
-        os.path.join(desktop_dir, "7-Ordner-Pro.exe"),
-        os.path.join(os.path.dirname(base_dir), "Ordner-Struktur", "7-Ordner-Pro.exe"),
-        os.path.join(user_home, ".gemini", "antigravity", "scratch", "Ordner-Struktur", "7-Ordner-Pro.exe"),
-    ])
+
+    # Zuerst direkt am aktuellen App-/USB-Speicherort suchen (funktioniert ohne Vorab-Start auf Firmen-PC)
+    exe_candidates = [
+        os.path.join(base_dir, "7-Ordner-Pro.exe"),
+        os.path.join(base_dir, "7-Ordner-Pro", "7-Ordner-Pro.exe"),
+        os.path.join(parent_dir, "7-Ordner-Pro", "7-Ordner-Pro.exe"),
+        os.path.join(parent_dir, "Ordner-Struktur", "7-Ordner-Pro.exe"),
+        os.path.join(parent_dir, "7-Ordner-Pro.exe"),
+    ]
+    if sf.get("exe"):
+        exe_candidates.append(sf["exe"])
     if sf.get("dir"):
         exe_candidates.append(os.path.join(sf["dir"], "7-Ordner-Pro.exe"))
+    exe_candidates.extend([
+        os.path.join(desktop_dir, "7-Ordner-Pro.exe"),
+        os.path.join(user_home, ".gemini", "antigravity", "scratch", "Ordner-Struktur", "7-Ordner-Pro.exe"),
+    ])
 
     for cand in exe_candidates:
         if cand and os.path.isfile(cand):
             return [cand]
 
-    script_candidates = []
+    script_candidates = [
+        os.path.join(base_dir, "app.pyw"),
+        os.path.join(parent_dir, "Ordner-Struktur", "app.pyw"),
+        os.path.join(parent_dir, "7-Ordner-Pro", "app.pyw"),
+    ]
     if sf.get("script"):
         script_candidates.append(sf["script"])
-    script_candidates.extend([
-        os.path.join(os.path.dirname(base_dir), "Ordner-Struktur", "app.pyw"),
-        os.path.join(user_home, ".gemini", "antigravity", "scratch", "Ordner-Struktur", "app.pyw"),
-    ])
+    script_candidates.append(
+        os.path.join(user_home, ".gemini", "antigravity", "scratch", "Ordner-Struktur", "app.pyw")
+    )
     for script in script_candidates:
         if script and os.path.isfile(script):
             py_exe = sys.executable if not getattr(sys, "frozen", False) else "python"
