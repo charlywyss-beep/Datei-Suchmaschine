@@ -135,9 +135,33 @@ async function initSystemInfo() {
       // Standard-Suchverzeichnis: DIESER PC (Alle Laufwerke C:, D: etc.)
       setSearchScope('pc');
     }
+    startBridgePollLoop();
   } catch (err) {
     console.error('System-Info Fehler:', err);
   }
+}
+
+const _bridgeClientId = 'sm_' + Math.random().toString(36).slice(2) + '_' + Date.now();
+let _bridgePollTimer = null;
+
+function startBridgePollLoop() {
+  if (_bridgePollTimer) return;
+  const pollOnce = async () => {
+    try {
+      const res = await fetch('/api/bridge/poll?client_id=' + encodeURIComponent(_bridgeClientId), { cache: 'no-store' });
+      if (!res.ok) return;
+      const d = await res.json();
+      if (d && d.command) {
+        if (d.command.open_path) {
+          setLocation(d.command.open_path, 'custom');
+          showToast(`Ordner aus 7-Ordner-Pro geladen: ${d.command.open_path}`, 'info');
+        }
+        try { window.focus(); } catch (_e) {}
+      }
+    } catch (_e) {}
+  };
+  pollOnce();
+  _bridgePollTimer = setInterval(pollOnce, 1800);
 }
 
 function toGermanDisplayPath(path) {

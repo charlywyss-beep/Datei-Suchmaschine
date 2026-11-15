@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+import threading
 import mimetypes
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, abort
 
@@ -530,6 +532,89 @@ def api_bridge_theme():
     return jsonify({"success": True, "theme": file_service.get_shared_theme()})
 
 
+_BRIDGE_LOCK = threading.Lock()
+_ACTIVE_CLIENTS: dict[str, float] = {}
+_PENDING_OPEN_QUEUE: list[dict] = []
+
+
+def _focus_existing_suchmaschine_window() -> bool:
+    """Bringt ein bereits offenes Edge-App- oder Browser-Fenster von 'Datei-Suchmaschine Pro' in den Vordergrund."""
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        found = []
+
+        @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        def _enum_cb(hwnd, _lp):
+            if not user32.IsWindowVisible(hwnd):
+                return True
+            ln = user32.GetWindowTextLengthW(hwnd)
+            if ln <= 0:
+                return True
+            tbuf = ctypes.create_unicode_buffer(ln + 1)
+            user32.GetWindowTextW(hwnd, tbuf, ln + 1)
+            title = tbuf.value
+            if "Datei-Suchmaschine Pro" in title:
+                cbuf = ctypes.create_unicode_buffer(128)
+                user32.GetClassNameW(hwnd, cbuf, 128)
+                if cbuf.value not in ("CabinetWClass", "ConsoleWindowClass", "CASCADIA_HOSTING_WINDOW_CLASS"):
+                    found.append(hwnd)
+                    return False
+            return True
+
+        user32.EnumWindows(_enum_cb, 0)
+        if found:
+            hwnd = found[0]
+            user32.ShowWindow(hwnd, 9 if user32.IsIconic(hwnd) else 5)
+            user32.SetForegroundWindow(hwnd)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+@app.route("/api/bridge/poll", methods=["GET"])
+def api_bridge_poll():
+    """Herzschlag geöffneter Fenster (Edge-App/Browser) + Auslieferung ausstehender Ordner-Aufträge."""
+    client_id = (request.args.get("client_id") or "").strip()[:80]
+    now = time.monotonic()
+    cmd = None
+    with _BRIDGE_LOCK:
+        for cid in [k for k, ts in _ACTIVE_CLIENTS.items() if now - ts > 8.0]:
+            _ACTIVE_CLIENTS.pop(cid, None)
+        if client_id:
+            _ACTIVE_CLIENTS[client_id] = now
+        if _PENDING_OPEN_QUEUE:
+            cmd = _PENDING_OPEN_QUEUE.pop(0)
+    return jsonify({
+        "ok": True,
+        "command": cmd,
+    })
+
+
+@app.route("/api/bridge/open-in-active", methods=["POST"])
+def api_bridge_open_in_active():
+    """Übergibt einen Pfad an eine bereits offene Edge-App-/Browser-Instanz ohne neues Fenster zu öffnen."""
+    data = request.get_json(silent=True) or {}
+    path = (data.get("path") or "").strip()
+    now = time.monotonic()
+    with _BRIDGE_LOCK:
+        for cid in [k for k, ts in _ACTIVE_CLIENTS.items() if now - ts > 8.0]:
+            _ACTIVE_CLIENTS.pop(cid, None)
+        active_count = len(_ACTIVE_CLIENTS)
+        if active_count > 0:
+            _PENDING_OPEN_QUEUE.append({"open_path": path, "focus": True})
+    focused = _focus_existing_suchmaschine_window() if active_count > 0 else False
+    return jsonify({
+        "success": True,
+        "reused_existing": active_count > 0,
+        "active_clients": active_count,
+        "focused": focused,
+    })
+
+
 try:
     file_service.register_suchmaschine_bridge(port=5005)
 except Exception:
@@ -564,10 +649,11 @@ if __name__ == "__main__":
         server_already_running = True
 
     if server_already_running:
-        # Server läuft bereits: Nur Browser öffnen und sauber beenden
+        # Server läuft bereits: Bestehende Edge-App/Browser-Instanz fokussieren statt zweites Tab zu öffnen
         if "--no-browser" not in sys.argv:
             try:
-                webbrowser.open(f"http://localhost:{port}")
+                if not _focus_existing_suchmaschine_window():
+                    webbrowser.open(f"http://localhost:{port}")
             except Exception:
                 pass
         sys.exit(0)
