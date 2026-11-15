@@ -540,10 +540,11 @@ html.light [class*="bg-emerald-950"] {
   color: #065f46 !important;
   font-weight: 700 !important;
 }
-html.light [class*="bg-emerald-950"]:hover {
+html.light button[class*="bg-emerald-950"]:hover,
+html.light .loc-btn[class*="bg-emerald-950"]:hover {
   background-color: #d1fae5 !important;
 }
-html.light [class*="bg-emerald-950"] * {
+html.light [class*="bg-emerald-950"] :not(.bg-emerald-600):not(#git-exe-download-btn):not(#git-exe-download-label):not(.fa-download) {
   color: #065f46 !important;
 }
 
@@ -753,6 +754,31 @@ html.light #btn-run-git-rollback {
   background-color: #fffbeb !important;
   border-color: #f59e0b !important;
   color: #92400e !important;
+}
+html.light #git-usb-card p,
+html.light #git-usb-card .text-slate-400 {
+  font-weight: 500 !important;
+  color: #334155 !important;
+}
+html.light #git-usb-card .bg-white\/80,
+html.light #git-usb-card .bg-slate-900 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+html.light #git-exe-download-btn,
+#git-exe-download-btn {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+}
+html.light #git-exe-download-btn *,
+#git-exe-download-btn * {
+  background-color: transparent !important;
+  color: #ffffff !important;
+}
+html.light #git-exe-download-btn:hover,
+#git-exe-download-btn:hover {
+  background-color: #047857 !important;
+  color: #ffffff !important;
 }
 html.light #btn-run-git-rollback:hover {
   background-color: #fef3c7 !important;

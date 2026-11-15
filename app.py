@@ -16,6 +16,7 @@ import file_service
 # Max upload/request size
 app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 @app.after_request
 def add_header(response):
@@ -24,9 +25,23 @@ def add_header(response):
     response.headers["Expires"] = "0"
     return response
 
+
+def _get_asset_version():
+    static_root = app.static_folder or os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    mtimes = []
+    for rel in ("css/style.css", "js/app.js"):
+        p = os.path.join(static_root, rel)
+        if os.path.exists(p):
+            try:
+                mtimes.append(int(os.path.getmtime(p)))
+            except Exception:
+                pass
+    return f"{file_service.APP_VERSION}_{max(mtimes) if mtimes else 0}"
+
+
 @app.route("/")
 def index():
-    return render_template("index.html", version=file_service.APP_VERSION)
+    return render_template("index.html", version=file_service.APP_VERSION, asset_v=_get_asset_version())
 
 @app.route("/api/system-info", methods=["GET"])
 def system_info():

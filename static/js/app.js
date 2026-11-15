@@ -2326,8 +2326,8 @@ function applyGitInfoToModal(data) {
 
   const exeLbl = document.getElementById('git-exe-download-label');
   if (exeLbl) {
-    const sizeText = data.exe_size_mb ? `${data.exe_size_mb} Direkt-Download` : 'Direkt-Download';
-    exeLbl.textContent = `Neueste Datei-Suchmaschine-Pro.exe herunterladen (${sizeText})`;
+    const sizeText = data.exe_size_mb ? ` (${data.exe_size_mb})` : '';
+    exeLbl.textContent = `Neueste Datei-Suchmaschine-Pro.exe herunterladen${sizeText}`;
   }
 
   // Deutlicher Sync-Banner
@@ -2339,40 +2339,40 @@ function applyGitInfoToModal(data) {
   const pushBtn = document.getElementById('btn-run-git-push');
 
   if (banner && titleEl && detailEl && badgeEl && iconEl) {
-    const st = data.sync_state || 'in_sync';
-    titleEl.textContent = data.sync_title || '';
+    const st = data.sync_state || (data.is_git ? 'unknown' : 'no_git');
+    titleEl.textContent = data.sync_title || (st === 'in_sync' ? `Auf dem neuesten Stand mit GitHub (${appVer})` : 'GitHub-Status konnte nicht vollständig gelesen werden');
     detailEl.textContent = data.sync_detail || '';
 
     if (st === 'local_newer' || st === 'local_ahead') {
-      banner.className = 'git-sync-warn p-3.5 rounded-xl border border-amber-500/50 bg-amber-950/30 text-xs flex items-start gap-3';
+      banner.className = 'git-sync-warn p-2.5 rounded-xl border border-amber-500/50 bg-amber-950/30 text-xs flex items-start gap-2.5';
       iconEl.className = 'fa-solid fa-triangle-exclamation text-base text-amber-400 mt-0.5 shrink-0';
       badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0';
       const refVer = data.remote_version || data.git_version || 'älter';
       badgeEl.textContent = st === 'local_newer' ? `Lokal ${appVer} > GitHub ${refVer}` : 'Ungesicherter Stand';
       if (pushBtn) {
-        pushBtn.className = 'px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 border border-amber-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-amber-600/25';
+        pushBtn.className = 'px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 border border-amber-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-amber-600/25';
       }
     } else if (st === 'remote_newer') {
-      banner.className = 'git-sync-info p-3.5 rounded-xl border border-sky-500/50 bg-sky-950/30 text-xs flex items-start gap-3';
+      banner.className = 'git-sync-info p-2.5 rounded-xl border border-sky-500/50 bg-sky-950/30 text-xs flex items-start gap-2.5';
       iconEl.className = 'fa-solid fa-cloud-arrow-down text-base text-sky-400 mt-0.5 shrink-0';
       badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 shrink-0';
       badgeEl.textContent = `GitHub neuer (${data.remote_version || '+' + (data.behind || 1)})`;
       if (pushBtn) {
-        pushBtn.className = 'px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5';
+        pushBtn.className = 'px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5';
       }
     } else if (st === 'in_sync') {
-      banner.className = 'git-sync-ok p-3.5 rounded-xl border border-emerald-500/40 bg-emerald-950/25 text-xs flex items-start gap-3';
+      banner.className = 'git-sync-ok p-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/25 text-xs flex items-start gap-2.5';
       iconEl.className = 'fa-solid fa-circle-check text-base text-emerald-400 mt-0.5 shrink-0';
       badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0';
       badgeEl.textContent = `Synchron (${appVer})`;
       if (pushBtn) {
-        pushBtn.className = 'px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5';
+        pushBtn.className = 'px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5';
       }
     } else {
-      banner.className = 'p-3.5 rounded-xl border border-slate-700 bg-slate-800/60 text-xs flex items-start gap-3';
+      banner.className = 'p-2.5 rounded-xl border border-slate-700 bg-slate-800/60 text-xs flex items-start gap-2.5';
       iconEl.className = 'fa-solid fa-circle-info text-base text-slate-400 mt-0.5 shrink-0';
       badgeEl.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 shrink-0';
-      badgeEl.textContent = 'Kein Git';
+      badgeEl.textContent = st === 'no_git' ? 'Kein Git' : 'Status unvollständig';
     }
   }
 

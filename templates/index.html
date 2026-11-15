@@ -42,7 +42,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v={{ asset_v or version or 'v1.7.15' }}">
 </head>
 <body class="bg-[#0f172a] text-slate-100 font-['Inter'] antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
 
@@ -1018,91 +1018,96 @@
   <!-- ========================================== -->
   <!-- MODAL: GITHUB UPDATE (WIE PORTFOLIO-MGR)   -->
   <!-- ========================================== -->
-  <div id="modal-git-update" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl">
+  <div id="modal-git-update" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-2xl w-full max-h-[96vh] overflow-y-auto p-5 space-y-2.5 shadow-2xl">
       <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl border border-indigo-500/30">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg border border-indigo-500/30">
             <i class="fa-brands fa-github"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
               GitHub Versions-Aktualisierung
               <span id="git-modal-version" class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">{{ version or 'v1.7.15' }}</span>
             </h3>
-            <p class="text-xs text-slate-400">Automatische Aktualisierung &bull; Sync &amp; Versions-Retour</p>
+            <p class="text-[11px] text-slate-400">Automatische Aktualisierung &bull; Sync &amp; Versions-Retour</p>
           </div>
         </div>
-        <button onclick="closeGitUpdateModal()" class="text-slate-400 hover:text-white transition">
+        <button onclick="closeGitUpdateModal()" class="text-slate-400 hover:text-white transition p-1">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
       <!-- Deutlicher GitHub Sync Status Banner -->
-      <div id="git-sync-banner" class="p-3.5 rounded-xl border border-slate-700 bg-slate-800/60 text-xs flex items-start gap-3">
+      <div id="git-sync-banner" class="p-2.5 rounded-xl border border-slate-700 bg-slate-800/60 text-xs flex items-start gap-2.5">
         <i id="git-sync-icon" class="fa-solid fa-circle-info text-base text-indigo-400 mt-0.5 shrink-0"></i>
-        <div class="space-y-1 min-w-0 flex-1">
+        <div class="space-y-0.5 min-w-0 flex-1">
           <div class="flex items-center justify-between gap-2 flex-wrap">
             <span id="git-sync-title" class="font-bold text-slate-100">Prüfe GitHub-Status...</span>
             <span id="git-version-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-700 text-slate-200">Lade...</span>
           </div>
-          <p id="git-sync-detail" class="text-[11px] text-slate-300 leading-relaxed"></p>
+          <p id="git-sync-detail" class="text-[11px] text-slate-300 leading-snug"></p>
         </div>
       </div>
 
       <!-- Speziell für USB-Stick & Geschäfts-PC (.exe Update) -->
-      <div class="p-4 bg-emerald-950/30 border border-emerald-500/30 rounded-xl text-xs space-y-3 text-slate-300">
-        <div class="flex items-center justify-between">
-          <span class="font-bold text-emerald-300 flex items-center gap-2 text-sm">
-            <i class="fa-solid fa-floppy-disk text-base"></i>
-            <span>USB-Stick &amp; Geschäfts-PC (.exe Update)</span>
+      <div id="git-usb-card" class="p-3 bg-emerald-950/30 border border-emerald-500/30 rounded-xl text-xs space-y-2 text-slate-300">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-bold text-emerald-300 flex items-center gap-2 text-xs">
+            <i class="fa-solid fa-floppy-disk text-sm"></i>
+            <span>USB-Stick &amp; Geschäfts-PC (.exe Update) – ohne Installation</span>
           </span>
-          <span class="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/40">Kein Python &bull; Kein Git nötig</span>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/40 shrink-0">Kein Python &bull; Kein Git nötig</span>
         </div>
-        <p class="text-[11px] text-slate-300 leading-relaxed">
-          Sie nutzen die Datei-Suchmaschine auf einem USB-Stick oder Firmen-PC? So aktualisieren Sie ohne Installation in 3 Schritten:
-        </p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
-          <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-            <span class="font-bold text-emerald-400 block mb-0.5">1. Herunterladen</span>
-            <span class="text-slate-400">Klicken Sie unten auf den grünen Download-Knopf.</span>
+        <div class="grid grid-cols-3 gap-2 text-[11px] leading-snug">
+          <div class="p-2 rounded-lg bg-slate-900 border border-slate-800">
+            <span class="font-bold text-emerald-400 block">1. Herunterladen</span>
+            <span class="text-slate-400">Grünen Download-Knopf unten anklicken.</span>
           </div>
-          <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-            <span class="font-bold text-emerald-400 block mb-0.5">2. Ersetzen</span>
-            <span class="text-slate-400">Neue <code class="text-slate-200">Datei-Suchmaschine-Pro.exe</code> auf den USB-Stick kopieren &amp; überschreiben.</span>
+          <div class="p-2 rounded-lg bg-slate-900 border border-slate-800">
+            <span class="font-bold text-emerald-400 block">2. Ersetzen</span>
+            <span class="text-slate-400"><code class="text-slate-200">Datei-Suchmaschine-Pro.exe</code> überschreiben.</span>
           </div>
-          <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-            <span class="font-bold text-emerald-400 block mb-0.5">3. Fertig!</span>
-            <span class="text-slate-400">Ihre Einstellungen &amp; Favoriten (<code class="text-indigo-300 font-mono">config.json</code>) bleiben 100% erhalten!</span>
+          <div class="p-2 rounded-lg bg-slate-900 border border-slate-800">
+            <span class="font-bold text-emerald-400 block">3. Fertig!</span>
+            <span class="text-slate-400">Einstellungen (<code class="text-indigo-300 font-mono">config.json</code>) bleiben erhalten.</span>
           </div>
         </div>
-        <div class="pt-1">
-          <a href="https://github.com/charlywyss-beep/Datei-Suchmaschine/raw/main/Datei-Suchmaschine-Pro.exe" download="Datei-Suchmaschine-Pro.exe" target="_blank" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-lg shadow-emerald-600/30">
-            <i class="fa-solid fa-download text-sm"></i>
-            <span id="git-exe-download-label">Neueste Datei-Suchmaschine-Pro.exe herunterladen (Direkt-Download)</span>
+        <div>
+          <a id="git-exe-download-btn" href="https://github.com/charlywyss-beep/Datei-Suchmaschine/raw/main/Datei-Suchmaschine-Pro.exe" download="Datei-Suchmaschine-Pro.exe" target="_blank" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-md shadow-emerald-600/25 whitespace-nowrap">
+            <i class="fa-solid fa-download text-sm shrink-0"></i>
+            <span id="git-exe-download-label">Neueste Datei-Suchmaschine-Pro.exe herunterladen</span>
           </a>
         </div>
       </div>
 
       <!-- Git Repo Status Info -->
-      <div class="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
-        <div class="flex justify-between items-center">
-          <span class="text-slate-400">Aktive App-Version (lokal):</span>
-          <span id="git-app-version" class="font-mono text-emerald-400 font-bold">{{ version or 'v1.7.15' }}</span>
+      <div class="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-1.5 text-xs">
+        <div class="grid grid-cols-2 gap-3 pb-1 border-b border-slate-800/60">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">App-Version (lokal):</span>
+            <span id="git-app-version" class="font-mono text-emerald-400 font-bold">{{ version or 'v1.7.15' }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">Branch:</span>
+            <span id="git-branch" class="font-mono text-slate-100 font-bold">main</span>
+          </div>
         </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Branch:</span>
-          <span id="git-branch" class="font-mono text-slate-100 font-bold">main</span>
-        </div>
-        <div class="flex justify-between items-center gap-2">
+        <div class="flex justify-between items-start gap-3">
           <span class="text-slate-400 shrink-0">Letzter Git-Commit:</span>
-          <span id="git-last-commit" class="font-mono text-indigo-300 text-[11px] truncate max-w-xs font-semibold">-</span>
+          <span id="git-last-commit" class="font-mono text-indigo-300 text-[11px] font-semibold text-right break-words">-</span>
         </div>
-        <div class="flex flex-col space-y-1.5 pt-2 border-t border-slate-800/80">
-          <span class="text-slate-400 font-medium">GitHub Repository URL:</span>
+        <div class="pt-1 border-t border-slate-800/80 space-y-1">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400 font-medium">GitHub Repository URL:</span>
+            <a href="https://github.com/new?name=Datei-Suchmaschine" target="_blank" class="text-sky-400 hover:underline inline-flex items-center gap-1">
+              <span>Auf GitHub anlegen</span>
+              <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+            </a>
+          </div>
           <div class="flex gap-2">
-            <input type="text" id="git-remote-input" value="https://github.com/charlywyss-beep/Datei-Suchmaschine.git" placeholder="https://github.com/charlywyss-beep/Datei-Suchmaschine.git" class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
-            <button onclick="saveGitRemote()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 shrink-0">
+            <input type="text" id="git-remote-input" value="https://github.com/charlywyss-beep/Datei-Suchmaschine.git" placeholder="https://github.com/charlywyss-beep/Datei-Suchmaschine.git" class="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-xs font-mono font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500">
+            <button onclick="saveGitRemote()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 shrink-0">
               Speichern
             </button>
           </div>
@@ -1110,7 +1115,7 @@
       </div>
 
       <!-- Optional: Retour in den Versionen (nur mit Sicherheitsabfrage) -->
-      <details id="git-rollback-details" class="p-3 bg-slate-950/50 border border-slate-800 rounded-xl text-xs">
+      <details id="git-rollback-details" class="px-3 py-2 bg-slate-950/50 border border-slate-800 rounded-xl text-xs">
         <summary class="cursor-pointer select-none font-semibold text-slate-300 flex items-center justify-between gap-2">
           <span class="flex items-center gap-2">
             <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
@@ -1118,59 +1123,43 @@
           </span>
           <span class="text-[10px] text-amber-400 font-normal">mit Sicherheitsabfrage</span>
         </summary>
-        <div class="mt-3 space-y-2.5 pt-2.5 border-t border-slate-800/80">
-          <p class="text-[11px] text-slate-400 leading-relaxed">
-            Wähle bei Bedarf einen früheren Commit aus der Git-Historie. Lokale Code-Änderungen werden vorher automatisch per Git-Stash gesichert, deine <code class="text-indigo-300 font-mono">config.json</code> bleibt erhalten.
+        <div class="mt-2 space-y-2 pt-2 border-t border-slate-800/80">
+          <p class="text-[11px] text-slate-400 leading-snug">
+            Lokale Änderungen werden vorher automatisch im Git-Stash gesichert; Ihre <code class="text-indigo-300 font-mono">config.json</code> bleibt erhalten.
           </p>
           <div class="flex gap-2">
-            <select id="git-rollback-select" class="flex-1 min-w-0 px-2.5 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-amber-500">
+            <select id="git-rollback-select" class="flex-1 min-w-0 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-slate-100 text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-amber-500">
               <option value="">Keine Historie geladen</option>
             </select>
-            <button onclick="runGitRollback()" id="btn-run-git-rollback" class="px-3 py-2 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-semibold shrink-0 transition">
+            <button onclick="runGitRollback()" id="btn-run-git-rollback" class="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-semibold shrink-0 transition">
               Zurücksetzen
             </button>
           </div>
         </div>
       </details>
 
-      <!-- Info Box: Falls noch nicht auf GitHub angelegt -->
-      <div class="p-3 bg-indigo-950/30 border border-indigo-500/30 rounded-xl text-xs space-y-2 text-slate-300">
-        <div class="flex items-center justify-between">
-          <span class="font-semibold text-indigo-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-cloud-arrow-up"></i>
-            <span>GitHub Sync &amp; Erst-Einrichtung</span>
-          </span>
-          <a href="https://github.com/new?name=Datei-Suchmaschine" target="_blank" class="text-[11px] text-sky-400 hover:underline flex items-center gap-1">
-            <span>Auf GitHub anlegen</span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
-          </a>
-        </div>
-        <p class="text-[11px] text-slate-400 leading-relaxed">
-          „Stand nach GitHub hochladen“ erstellt automatisch einen neuen Commit (ohne <code class="text-indigo-300 font-mono">config.json</code>) und lädt alles auf GitHub hoch.
-        </p>
-      </div>
-
       <!-- Update Output Console -->
       <div id="git-log-container" class="hidden">
         <label class="block text-[11px] font-semibold text-slate-300 mb-1">Update-Protokoll:</label>
-        <pre id="git-log-output" class="w-full max-h-36 overflow-auto p-3 bg-slate-950 font-mono text-[11px] text-emerald-400 rounded-xl border border-slate-800 whitespace-pre-wrap leading-tight select-text"></pre>
+        <pre id="git-log-output" class="w-full max-h-28 overflow-auto p-2.5 bg-slate-950 font-mono text-[11px] text-emerald-400 rounded-xl border border-slate-800 whitespace-pre-wrap leading-tight select-text"></pre>
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex flex-wrap items-center justify-end gap-2 pt-2">
-        <button onclick="closeGitUpdateModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
-          Schließen
-        </button>
-        <!-- Stand nach GitHub hochladen -->
-        <button onclick="runGitPush()" id="btn-run-git-push" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Änderungen committen und nach GitHub hochladen">
-          <i class="fa-solid fa-arrow-up-from-bracket"></i>
-          <span>Stand nach GitHub hochladen</span>
-        </button>
-        <!-- Jetzt von GitHub aktualisieren (git pull) -->
-        <button id="btn-run-git-update" onclick="runGitUpdate()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-2 shadow-lg shadow-indigo-600/30">
-          <i class="fa-solid fa-cloud-arrow-down"></i>
-          <span>Jetzt von GitHub aktualisieren</span>
-        </button>
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <span class="text-[10px] text-slate-400">Commit &amp; Push automatisch (ohne <code class="font-mono">config.json</code>)</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="closeGitUpdateModal()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+            Schließen
+          </button>
+          <button onclick="runGitPush()" id="btn-run-git-push" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Änderungen committen und nach GitHub hochladen">
+            <i class="fa-solid fa-arrow-up-from-bracket"></i>
+            <span>Stand nach GitHub hochladen</span>
+          </button>
+          <button id="btn-run-git-update" onclick="runGitUpdate()" class="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-lg shadow-indigo-600/30">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <span>Jetzt von GitHub aktualisieren</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1650,6 +1639,6 @@
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
-  <script src="/static/js/app.js?v={{ version or 'v1.7.13' }}"></script>
+  <script src="/static/js/app.js?v={{ asset_v or version or 'v1.7.15' }}"></script>
 </body>
 </html>
