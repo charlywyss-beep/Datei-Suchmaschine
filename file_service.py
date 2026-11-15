@@ -2102,8 +2102,32 @@ def register_suchmaschine_bridge(port: int = 5005) -> str:
     return bridge_path
 
 
+def _iter_shallow_subdirs(root_dir: str, limit: int = 80) -> list[str]:
+    """Listet direkte (nicht versteckte) Unterordner für ordnernamen-unabhängige USB-Suche."""
+    if not root_dir or not os.path.isdir(root_dir):
+        return []
+    out = []
+    skip = {"windows", "system volume information", "__pycache__", "node_modules", "appdata", "programdata"}
+    try:
+        with os.scandir(root_dir) as it:
+            for entry in it:
+                if len(out) >= limit:
+                    break
+                name_low = entry.name.lower()
+                if name_low.startswith((".", "$")) or name_low in skip:
+                    continue
+                try:
+                    if entry.is_dir(follow_symlinks=False):
+                        out.append(entry.path)
+                except OSError:
+                    continue
+    except OSError:
+        pass
+    return out
+
+
 def find_seven_folder_app() -> list | None:
-    """Sucht 7-Ordner-Pro (EXE oder Python-Skript) lokal/USB-relativ, über Bridge-Registry oder Standardpfade."""
+    """Sucht 7-Ordner-Pro (EXE oder Python-Skript) unabhängig vom Ordnernamen lokal/USB-relativ, über Bridge oder Standardpfade."""
     reg = _load_bridge_registry()
     sf = reg.get("seven_folder", {}) if isinstance(reg.get("seven_folder"), dict) else {}
 
@@ -2112,7 +2136,7 @@ def find_seven_folder_app() -> list | None:
     user_home = os.path.expanduser("~")
     desktop_dir = os.path.join(user_home, "Desktop")
 
-    # Zuerst direkt am aktuellen App-/USB-Speicherort suchen (funktioniert ohne Vorab-Start auf Firmen-PC)
+    # Zuerst direkt am aktuellen App-/USB-Speicherort suchen (ordnernamen-unabhängig, ohne Vorab-Start)
     exe_candidates = [
         os.path.join(base_dir, "7-Ordner-Pro.exe"),
         os.path.join(base_dir, "7-Ordner-Pro", "7-Ordner-Pro.exe"),
@@ -2120,6 +2144,11 @@ def find_seven_folder_app() -> list | None:
         os.path.join(parent_dir, "Ordner-Struktur", "7-Ordner-Pro.exe"),
         os.path.join(parent_dir, "7-Ordner-Pro.exe"),
     ]
+    for sub in _iter_shallow_subdirs(base_dir):
+        exe_candidates.append(os.path.join(sub, "7-Ordner-Pro.exe"))
+    for sub in _iter_shallow_subdirs(parent_dir):
+        exe_candidates.append(os.path.join(sub, "7-Ordner-Pro.exe"))
+
     if sf.get("exe"):
         exe_candidates.append(sf["exe"])
     if sf.get("dir"):
@@ -2138,6 +2167,8 @@ def find_seven_folder_app() -> list | None:
         os.path.join(parent_dir, "Ordner-Struktur", "app.pyw"),
         os.path.join(parent_dir, "7-Ordner-Pro", "app.pyw"),
     ]
+    for sub in _iter_shallow_subdirs(parent_dir):
+        script_candidates.append(os.path.join(sub, "app.pyw"))
     if sf.get("script"):
         script_candidates.append(sf["script"])
     script_candidates.append(
