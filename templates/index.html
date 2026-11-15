@@ -556,8 +556,8 @@
           </button>
 
           <!-- Ansichts-Umschaltung: Liste / Kacheln -->
-          <div class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
-            <button onclick="setViewMode('table')" id="btn-view-table" class="px-2.5 py-1 rounded-md text-xs transition bg-slate-700 text-white" title="Tabellenansicht">
+          <div id="view-mode-switch" class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
+            <button onclick="setViewMode('table')" id="btn-view-table" class="active px-2.5 py-1 rounded-md text-xs transition bg-slate-700 text-white" title="Tabellenansicht">
               <i class="fa-solid fa-table-list"></i>
             </button>
             <button onclick="setViewMode('grid')" id="btn-view-grid" class="px-2.5 py-1 rounded-md text-xs transition text-slate-400 hover:text-white" title="Kachelansicht">

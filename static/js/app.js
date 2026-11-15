@@ -1164,10 +1164,20 @@ async function clearSearchHistory() {
 // ==========================================
 function setViewMode(mode) {
   state.viewMode = mode;
-  document.getElementById('btn-view-table').classList.toggle('bg-slate-700', mode === 'table');
-  document.getElementById('btn-view-table').classList.toggle('text-white', mode === 'table');
-  document.getElementById('btn-view-grid').classList.toggle('bg-slate-700', mode === 'grid');
-  document.getElementById('btn-view-grid').classList.toggle('text-white', mode === 'grid');
+  const btnTable = document.getElementById('btn-view-table');
+  const btnGrid = document.getElementById('btn-view-grid');
+  if (btnTable) {
+    btnTable.classList.toggle('active', mode === 'table');
+    btnTable.classList.toggle('bg-slate-700', mode === 'table');
+    btnTable.classList.toggle('text-white', mode === 'table');
+    btnTable.classList.toggle('text-slate-400', mode !== 'table');
+  }
+  if (btnGrid) {
+    btnGrid.classList.toggle('active', mode === 'grid');
+    btnGrid.classList.toggle('bg-slate-700', mode === 'grid');
+    btnGrid.classList.toggle('text-white', mode === 'grid');
+    btnGrid.classList.toggle('text-slate-400', mode !== 'grid');
+  }
   renderResults();
 }
 

@@ -1467,3 +1467,65 @@ html.light #btn-reset-columns:hover {
   padding-left: 11px !important;
   padding-right: 11px !important;
 }
+
+/* Light-Mode Fluent Styling für Ansichts-Umschalter (Liste / Kachelansicht) & Kachel-Karten */
+html.light #view-mode-switch {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  padding: 2px !important;
+  gap: 2px;
+}
+
+html.light #view-mode-switch button {
+  background-color: transparent !important;
+  color: #475569 !important;
+  border-radius: 6px !important;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+html.light #view-mode-switch button i {
+  color: #475569 !important;
+}
+
+html.light #view-mode-switch button:not(.active):hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+html.light #view-mode-switch button:not(.active):hover i {
+  color: #0f172a !important;
+}
+
+html.light #view-mode-switch button.active {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25) !important;
+}
+
+html.light #view-mode-switch button.active i {
+  color: #ffffff !important;
+}
+
+html.light #view-grid-wrapper .glass-card {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #view-grid-wrapper .glass-card:hover {
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08) !important;
+}
+
+html.light #view-grid-wrapper .glass-card button {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+html.light #view-grid-wrapper .glass-card button:hover {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
