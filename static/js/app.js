@@ -325,19 +325,43 @@ function renderLocationShortcuts() {
   };
   container.appendChild(gdriveWrapper);
 
-  // 5. Transfer-Hub (Sync)
-  const transfer = state.onedriveInfo?.transfer;
-  if (transfer) {
+  // 5. Standard-Ordner (ohne Festplatten/Laufwerke, damit Laufwerke geschlossen nebeneinander stehen)
+  const driveLocs = [];
+  state.systemLocations.forEach(loc => {
+    if (loc.id.startsWith('onedrive') || loc.id === 'transfer_hub' || loc.id === 'icloud_drive' || loc.id === 'gdrive') return;
+    if (loc.id === 'c_drive' || loc.id.startsWith('drive_')) {
+      driveLocs.push(loc);
+      return;
+    }
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/80 transition';
-    btn.title = 'Gemeinsamer Transfer-Hub für PC Zuhause, PC Geschäft, iPad & iPhone';
-    btn.innerHTML = `<i class="fa-solid fa-arrows-rotate text-emerald-400"></i><span>Transfer-Hub (Sync)</span>`;
-    btn.onclick = () => setLocation(transfer.path, false);
-    container.appendChild(btn);
-  }
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
+    let iconHtml = '<i class="fa-solid fa-folder text-amber-400"></i>';
+    if (loc.icon === 'download') iconHtml = '<i class="fa-solid fa-download text-emerald-400"></i>';
+    if (loc.icon === 'monitor') iconHtml = '<i class="fa-solid fa-desktop text-blue-400"></i>';
+    if (loc.icon === 'image') iconHtml = '<i class="fa-solid fa-image text-purple-400"></i>';
 
-  // 5b. Dynamischer USB_Stick Schnell-Button (unabhängig vom Laufwerksbuchstaben)
+    btn.innerHTML = `${iconHtml}<span>${loc.name}</span>`;
+    btn.onclick = () => setLocation(loc.path, false);
+    container.appendChild(btn);
+  });
+
+  // Zeilenumbruch, damit alle Laufwerke (C:, D:, E:, ...) + USB_Stick & Favoriten sauber nebeneinander stehen
+  const rowBreak = document.createElement('div');
+  rowBreak.className = 'basis-full h-0';
+  container.appendChild(rowBreak);
+
+  // 6. Alle lokalen Laufwerke geschlossen nebeneinander (C:, D:, E:, ...)
+  driveLocs.forEach(loc => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
+    btn.innerHTML = `<i class="fa-solid fa-hard-drive text-slate-400"></i><span>${loc.name}</span>`;
+    btn.onclick = () => setLocation(loc.path, false);
+    container.appendChild(btn);
+  });
+
+  // 7. Dynamischer USB_Stick Schnell-Button direkt neben den Laufwerken
   if (state.usbStickDir) {
     const driveLabel = state.usbStickDir.slice(0, 2);
     const btn = document.createElement('button');
@@ -351,23 +375,6 @@ function renderLocationShortcuts() {
     };
     container.appendChild(btn);
   }
-
-  // 5. Standard Systemordner
-  state.systemLocations.forEach(loc => {
-    if (loc.id.startsWith('onedrive') || loc.id === 'transfer_hub' || loc.id === 'icloud_drive' || loc.id === 'gdrive') return;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
-    let iconHtml = '<i class="fa-solid fa-folder text-amber-400"></i>';
-    if (loc.icon === 'download') iconHtml = '<i class="fa-solid fa-download text-emerald-400"></i>';
-    if (loc.icon === 'monitor') iconHtml = '<i class="fa-solid fa-desktop text-blue-400"></i>';
-    if (loc.icon === 'image') iconHtml = '<i class="fa-solid fa-image text-purple-400"></i>';
-    if (loc.icon === 'hard-drive') iconHtml = '<i class="fa-solid fa-hard-drive text-slate-400"></i>';
-
-    btn.innerHTML = `${iconHtml}<span>${loc.name}</span>`;
-    btn.onclick = () => setLocation(loc.path, false);
-    container.appendChild(btn);
-  });
 
   // 5. Gespeicherte Pfade (Favoriten)
   (state.savedPaths || []).forEach(fav => {
