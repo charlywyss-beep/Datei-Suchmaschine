@@ -1301,7 +1301,7 @@ function renderTableHeader() {
         ondragend="onColDragEnd(event)"
         ${clickAttr}
         class="${thCls} th-draggable py-2.5 px-2.5 text-center hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap"
-        style="top: var(--sticky-table-top, 126px)"
+        style="top: 0"
         title="${meta.title} (Ziehen zum Verschieben · Rand ziehen für Breite)"
       >
         <span class="pointer-events-none">${meta.label} ${sortIconHtml}</span>
@@ -1312,7 +1312,7 @@ function renderTableHeader() {
 
   thead.innerHTML = `
     <tr class="bg-slate-950/95 backdrop-blur-md text-slate-300 font-semibold text-[11px] select-none">
-      <th class="th-cell py-2.5 px-2 text-center sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">
+      <th class="th-cell py-2.5 px-2 text-center sticky z-20 bg-slate-950/95" style="top: 0">
         <input type="checkbox" id="select-all-checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
       </th>
       ${thCells}
@@ -3497,17 +3497,78 @@ async function sendFolderToSevenFolder() {
 }
 
 // ==========================================
-// RECHTE DATEIVORSCHAU-SEITENLEISTE (7-ORDNER-PRO)
+// RECHTE DATEIVORSCHAU-SEITENLEISTE (7-ORDNER-PRO & SPLIT)
 // ==========================================
+const PREVIEW_WIDTH_STORAGE_KEY = 'suchmaschine_preview_width_px';
+let _previewSplitterBound = false;
+let _previewLoadSeq = 0;
+
+function _applySavedPreviewPaneWidth() {
+  const pane = document.getElementById('preview-pane');
+  const layout = document.getElementById('results-split-layout');
+  if (!pane || !layout) return;
+  const maxW = Math.max(380, layout.clientWidth - 300);
+  const saved = parseInt(localStorage.getItem(PREVIEW_WIDTH_STORAGE_KEY) || '', 10);
+  if (Number.isFinite(saved) && saved >= 320 && saved <= maxW) {
+    pane.style.width = `${saved}px`;
+  } else {
+    const defW = Math.min(maxW, Math.max(380, Math.round(layout.clientWidth * 0.44)));
+    pane.style.width = `${defW}px`;
+  }
+}
+
+function _initPreviewSplitter() {
+  if (_previewSplitterBound) return;
+  const splitter = document.getElementById('preview-splitter');
+  const pane = document.getElementById('preview-pane');
+  const layout = document.getElementById('results-split-layout');
+  if (!splitter || !pane || !layout) return;
+  _previewSplitterBound = true;
+
+  splitter.addEventListener('mousedown', (ev) => {
+    ev.preventDefault();
+    const startX = ev.clientX;
+    const startWidth = pane.getBoundingClientRect().width;
+    document.body.style.cursor = 'col-resize';
+    document.body.classList.add('select-none');
+
+    const onMove = (moveEv) => {
+      const dx = startX - moveEv.clientX;
+      const maxW = Math.max(360, layout.clientWidth - 280);
+      const nextW = Math.max(320, Math.min(maxW, Math.round(startWidth + dx)));
+      pane.style.width = `${nextW}px`;
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.classList.remove('select-none');
+      const finalW = Math.round(pane.getBoundingClientRect().width);
+      localStorage.setItem(PREVIEW_WIDTH_STORAGE_KEY, String(finalW));
+      if (state.previewVisible && state.activePreviewPath && document.getElementById('preview-pdf-canvas')) {
+        loadPreviewPaneForPath(state.activePreviewPath);
+      }
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
 function togglePreviewPane(forceState = null) {
   const next = forceState === null ? !state.previewVisible : Boolean(forceState);
   state.previewVisible = next;
   const pane = document.getElementById('preview-pane');
+  const splitter = document.getElementById('preview-splitter');
   const btn = document.getElementById('btn-toggle-preview');
   if (pane) pane.classList.toggle('hidden', !next);
+  if (splitter) splitter.classList.toggle('hidden', !next);
   if (btn) btn.classList.toggle('active', next);
-  if (next && state.activePreviewPath) {
-    loadPreviewPaneForPath(state.activePreviewPath);
+  if (next) {
+    _initPreviewSplitter();
+    _applySavedPreviewPaneWidth();
+    if (state.activePreviewPath) {
+      loadPreviewPaneForPath(state.activePreviewPath);
+    }
   }
 }
 
@@ -3552,12 +3613,14 @@ async function loadPreviewPaneForPath(path, fileHint = null) {
     if (folderEl) folderEl.textContent = toGermanDisplayPath(fileObj.folder || '');
   }
 
+  const reqSeq = ++_previewLoadSeq;
   stage.classList.remove('has-media');
   stage.innerHTML = `<div class="text-xs text-slate-400 py-8"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Lade Vorschau...</div>`;
 
   try {
     const res = await fetch('/api/preview-info?path=' + encodeURIComponent(path));
     const info = await res.json();
+    if (reqSeq !== _previewLoadSeq) return;
     if (!info || !info.success) {
       stage.classList.remove('has-media');
       stage.textContent = info?.error || 'Vorschau nicht verfügbar.';
@@ -3577,14 +3640,47 @@ async function loadPreviewPaneForPath(path, fileHint = null) {
     if (info.kind === 'image') {
       const imgUrl = '/api/preview?path=' + encodeURIComponent(path);
       stage.classList.add('has-media');
-      stage.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(info.name)}" class="max-w-full max-h-[380px] object-contain rounded-lg shadow-sm mx-auto">`;
+      stage.innerHTML = `<div class="preview-media-frame w-full h-full flex items-center justify-center p-2 overflow-hidden"><img src="${imgUrl}" alt="${escapeHtml(info.name)}" class="max-w-full max-h-full object-contain block mx-auto"></div>`;
     } else if (info.kind === 'pdf') {
-      const pdfUrl = '/api/preview?path=' + encodeURIComponent(path) + '#toolbar=0&navpanes=0&scrollbar=0&view=Fit';
+      const pdfUrl = '/api/preview?path=' + encodeURIComponent(path);
       stage.classList.add('has-media');
-      stage.innerHTML = `<iframe src="${pdfUrl}" class="w-full h-[380px] rounded-lg border border-slate-800/60 bg-[#111827]"></iframe>`;
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.min.js';
+        stage.innerHTML = `<div class="preview-media-frame w-full h-full flex items-center justify-center p-2 overflow-hidden"><canvas id="preview-pdf-canvas" class="max-w-full max-h-full object-contain block mx-auto"></canvas></div>`;
+        try {
+          const pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+          if (reqSeq !== _previewLoadSeq) return;
+          if (badgeEl) {
+            badgeEl.textContent = `PDF • Seite 1/${pdfDoc.numPages}`;
+            badgeEl.classList.remove('hidden');
+          }
+          const page = await pdfDoc.getPage(1);
+          if (reqSeq !== _previewLoadSeq) return;
+          const canvas = document.getElementById('preview-pdf-canvas');
+          if (canvas) {
+            const boxW = Math.max(260, stage.clientWidth - 28);
+            const boxH = Math.max(260, stage.clientHeight - 28);
+            const vp0 = page.getViewport({ scale: 1 });
+            const fitScale = Math.min(boxW / vp0.width, boxH / vp0.height);
+            const dpr = Math.min(2, window.devicePixelRatio || 1);
+            const vp = page.getViewport({ scale: Math.max(0.2, fitScale * dpr) });
+            canvas.width = Math.max(1, Math.floor(vp.width));
+            canvas.height = Math.max(1, Math.floor(vp.height));
+            canvas.style.width = `${Math.floor(vp.width / dpr)}px`;
+            canvas.style.height = `${Math.floor(vp.height / dpr)}px`;
+            const ctx2d = canvas.getContext('2d');
+            await page.render({ canvasContext: ctx2d, viewport: vp }).promise;
+          }
+        } catch (_pdfErr) {
+          if (reqSeq !== _previewLoadSeq) return;
+          stage.innerHTML = `<div class="preview-media-frame w-full h-full overflow-hidden"><iframe src="${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit" class="w-full h-full border-0"></iframe></div>`;
+        }
+      } else {
+        stage.innerHTML = `<div class="preview-media-frame w-full h-full overflow-hidden"><iframe src="${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=Fit" class="w-full h-full border-0"></iframe></div>`;
+      }
     } else if (info.kind === 'text') {
       stage.classList.remove('has-media');
-      stage.innerHTML = `<pre class="w-full h-full max-h-[360px] overflow-auto text-left text-[11px] font-mono whitespace-pre-wrap break-words p-2">${escapeHtml(info.text || '')}</pre>`;
+      stage.innerHTML = `<pre class="w-full h-full overflow-auto text-left text-[11px] font-mono whitespace-pre-wrap break-words p-2">${escapeHtml(info.text || '')}</pre>`;
     } else {
       stage.classList.remove('has-media');
       stage.innerHTML = `<div class="p-4 text-xs text-slate-400 whitespace-pre-line">${escapeHtml(info.text || 'Keine direkte Vorschau.')}</div>`;

@@ -1023,14 +1023,14 @@ html.light #btn-delete-selected i {
 #view-table-wrapper table thead tr {
   position: -webkit-sticky !important;
   position: sticky !important;
-  top: var(--sticky-table-top, 126px) !important;
+  top: 0 !important;
   z-index: 20 !important;
 }
 
 #view-table-wrapper table thead th {
   position: -webkit-sticky !important;
   position: sticky !important;
-  top: var(--sticky-table-top, 126px) !important;
+  top: 0 !important;
   z-index: 20 !important;
   background-color: #0b1120 !important;
   border-bottom: 2px solid #1e293b !important;
@@ -1365,18 +1365,26 @@ html.light #preview-pane > div:last-child {
   background-color: #f8fafc !important;
   border-color: #e2e8f0 !important;
 }
+html.light #preview-pane .preview-pane-title {
+  color: #0f172a !important;
+}
 html.light #preview-pane-stage {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
   color: #475569 !important;
 }
 html.light #preview-pane-stage.has-media {
-  background-color: #111827 !important;
-  color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+html.light #preview-pane-stage .preview-media-frame {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px;
 }
 html.light #preview-pane-badge {
-  background-color: #dbeafe !important;
+  background-color: #eff6ff !important;
   color: #1d4ed8 !important;
-  border-color: #93c5fd !important;
+  border-color: #bfdbfe !important;
 }
 html.light #preview-pane-name {
   color: #0f172a !important;

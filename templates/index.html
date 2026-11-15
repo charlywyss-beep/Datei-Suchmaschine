@@ -43,6 +43,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/static/css/style.css?v={{ asset_v or version or 'v1.7.20' }}">
+  <script src="/static/vendor/pdfjs/pdf.min.js"></script>
 </head>
 <body class="bg-[#0f172a] text-slate-100 font-['Inter'] antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
 
@@ -576,11 +577,11 @@
 
       <!-- Ergebnis-Tabelle / Grid + Seiten-Vorschau Container -->
       <div id="results-container" class="space-y-4">
-        <div id="results-split-layout" class="flex items-start gap-3">
-          <div class="flex-1 min-w-0">
-            <!-- Tabelle (Default, identische Spalten & Trennlinien wie 7-Ordner-Pro, eigener Scroll-Container damit sie niemals die rechte Vorschau überlappt) -->
-            <div id="view-table-wrapper" class="hidden glass-card rounded-2xl border border-slate-800/80 shadow-xl bg-slate-900/50 overflow-hidden">
-              <div class="overflow-x-auto overflow-y-auto" style="max-height: calc(100vh - 190px);">
+        <div id="results-split-layout" class="flex items-stretch">
+          <div id="results-left-col" class="flex-1 min-w-[260px]">
+            <!-- Tabelle (Default, identische Spalten & Trennlinien wie 7-Ordner-Pro) -->
+            <div id="view-table-wrapper" class="hidden glass-card rounded-2xl border border-slate-800/80 shadow-xl bg-slate-900/50 overflow-hidden" style="height: calc(100vh - 190px); min-height: 440px;">
+              <div class="h-full overflow-x-auto overflow-y-auto">
                 <table class="w-full text-left text-xs seven-parity-table" style="border-collapse: separate; border-spacing: 0; table-layout: fixed;">
                   <colgroup id="results-colgroup"></colgroup>
                   <thead id="results-thead" class="sticky top-0 z-20">
@@ -599,19 +600,24 @@
             </div>
           </div>
 
+          <!-- Ziehbarer Trenner (wie PanedWindow in 7-Ordner-Pro) -->
+          <div id="preview-splitter" class="hidden w-2.5 shrink-0 cursor-col-resize flex items-center justify-center select-none group" title="Vorschau-Breite ziehen">
+            <div class="w-1 h-12 rounded-full bg-slate-300/80 group-hover:bg-blue-500 transition"></div>
+          </div>
+
           <!-- Rechte Seiten-Vorschau (einzige Dateivorschau, identisch zu 7-Ordner-Pro) -->
-          <aside id="preview-pane" class="hidden w-[340px] xl:w-[370px] shrink-0 sticky rounded-2xl border border-slate-800/80 bg-slate-900/70 shadow-xl overflow-hidden flex flex-col" style="top: 16px; max-height: calc(100vh - 190px);">
-            <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-800/80 bg-slate-950/60">
+          <aside id="preview-pane" class="hidden shrink-0 rounded-2xl border border-slate-800/80 bg-slate-900/70 shadow-xl overflow-hidden flex flex-col" style="width: clamp(380px, 44vw, 680px); height: calc(100vh - 190px); min-height: 440px;">
+            <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-800/80 bg-slate-950/60 shrink-0">
               <div class="flex items-center gap-2 min-w-0">
-                <i class="fa-regular fa-eye text-blue-400 text-xs"></i>
-                <span class="text-xs font-bold text-slate-100">Dateivorschau</span>
+                <i class="fa-regular fa-eye text-blue-500 text-xs shrink-0"></i>
+                <span class="preview-pane-title text-xs font-bold text-slate-100 whitespace-nowrap">Dateivorschau</span>
                 <span id="preview-pane-badge" class="hidden px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-semibold border border-blue-500/30 truncate"></span>
               </div>
-              <button type="button" onclick="togglePreviewPane(false)" class="text-slate-400 hover:text-white p-1 rounded" title="Vorschau schließen">
+              <button type="button" onclick="togglePreviewPane(false)" class="text-slate-400 hover:text-white p-1 rounded shrink-0" title="Vorschau schließen">
                 <i class="fa-solid fa-xmark text-xs"></i>
               </button>
             </div>
-            <div id="preview-pane-stage" class="p-3 bg-slate-950/40 flex-1 min-h-[280px] flex items-center justify-center overflow-auto text-center text-xs text-slate-400">
+            <div id="preview-pane-stage" class="p-3 bg-slate-950/40 flex-1 min-h-0 flex items-center justify-center overflow-hidden text-center text-xs text-slate-400">
               Klicken Sie eine Zeile in der Tabelle an, um eine direkte Vorschau zu sehen.
             </div>
             <div class="p-3 border-t border-slate-800/80 space-y-1.5 text-[11px] bg-slate-900/80">
