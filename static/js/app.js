@@ -155,6 +155,8 @@ function startBridgePollLoop() {
         if (d.command.open_path) {
           setLocation(d.command.open_path, 'custom');
           showToast(`Ordner aus 7-Ordner-Pro geladen: ${d.command.open_path}`, 'info');
+        } else if (d.command.focus) {
+          showToast('ℹ️ Datei-Suchmaschine ist bereits geöffnet.', 'info');
         }
         try { window.focus(); } catch (_e) {}
       }
@@ -2333,8 +2335,10 @@ function escapeJs(str) {
 // ==========================================
 function applyGitInfoToModal(data) {
   state.gitInfo = data;
-  const appVer = data.version || 'v1.7.15';
+  const appVer = data.version || 'v1.7.16';
 
+  const topTagEl = document.getElementById('app-version-tag');
+  if (topTagEl) topTagEl.textContent = appVer;
   const modalVerEl = document.getElementById('git-modal-version');
   if (modalVerEl) modalVerEl.textContent = appVer;
   const appVerEl = document.getElementById('git-app-version');

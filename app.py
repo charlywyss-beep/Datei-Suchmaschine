@@ -556,7 +556,7 @@ def _focus_existing_suchmaschine_window() -> bool:
             tbuf = ctypes.create_unicode_buffer(ln + 1)
             user32.GetWindowTextW(hwnd, tbuf, ln + 1)
             title = tbuf.value
-            if "Datei-Suchmaschine Pro" in title:
+            if "datei-suchmaschine" in title.lower():
                 cbuf = ctypes.create_unicode_buffer(128)
                 user32.GetClassNameW(hwnd, cbuf, 128)
                 if cbuf.value not in ("CabinetWClass", "ConsoleWindowClass", "CASCADIA_HOSTING_WINDOW_CLASS"):
@@ -573,6 +573,59 @@ def _focus_existing_suchmaschine_window() -> bool:
     except Exception:
         pass
     return False
+
+
+def _find_msedge_exe() -> str:
+    """Sucht Microsoft Edge (msedge.exe) fuer den tabfreien App-Modus."""
+    import shutil
+    found = shutil.which("msedge") or shutil.which("msedge.exe")
+    if found and os.path.isfile(found):
+        return found
+    candidates = [
+        os.path.join(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"), "Microsoft", "Edge", "Application", "msedge.exe"),
+        os.path.join(os.environ.get("PROGRAMFILES", r"C:\Program Files"), "Microsoft", "Edge", "Application", "msedge.exe"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Edge", "Application", "msedge.exe"),
+    ]
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    return ""
+
+
+def _open_suchmaschine_app_window(url: str):
+    """Oeffnet die Suchmaschine als eigenstaendiges Edge-App-Fenster (ohne Browser-Tabs) mit Fallback."""
+    import subprocess
+    import webbrowser
+    edge = _find_msedge_exe() if os.name == "nt" else ""
+    if edge:
+        try:
+            flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            subprocess.Popen([edge, f"--app={url}"], creationflags=flags)
+            return
+        except Exception:
+            pass
+    webbrowser.open(url)
+
+
+def _activate_running_suchmaschine(port: int) -> bool:
+    """Prueft ueber Bridge-API und Win32-Fenster, ob bereits ein Tab/Fenster offen ist und holt es nach vorn."""
+    import json
+    import urllib.request
+    reused = False
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/bridge/open-in-active",
+            data=json.dumps({"path": "", "focus": True}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=1.2) as resp:
+            body = json.loads(resp.read().decode("utf-8") or "{}")
+            reused = bool(body.get("reused_existing"))
+    except Exception:
+        reused = False
+    focused = _focus_existing_suchmaschine_window()
+    return reused or focused
 
 
 @app.route("/api/bridge/poll", methods=["GET"])
@@ -652,8 +705,8 @@ if __name__ == "__main__":
         # Server läuft bereits: Bestehende Edge-App/Browser-Instanz fokussieren statt zweites Tab zu öffnen
         if "--no-browser" not in sys.argv:
             try:
-                if not _focus_existing_suchmaschine_window():
-                    webbrowser.open(f"http://localhost:{port}")
+                if not _activate_running_suchmaschine(port):
+                    _open_suchmaschine_app_window(f"http://localhost:{port}")
             except Exception:
                 pass
         sys.exit(0)
@@ -664,7 +717,7 @@ if __name__ == "__main__":
     print(f"  - iPad / iPhone: http://{local_ip}:{port}")
     try:
         if "--no-browser" not in sys.argv:
-            webbrowser.open(f"http://localhost:{port}")
+            _open_suchmaschine_app_window(f"http://localhost:{port}")
     except Exception:
         pass
     # Auf 0.0.0.0 lauschen für Zugriff von iPad, iPhone & Heim/Geschäftsnetzwerk

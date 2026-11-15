@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.15"
+APP_VERSION = "v1.7.16"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -1287,6 +1287,45 @@ def _parse_version_tuple(ver_str):
     return tuple(int(x) for x in m.groups())
 
 
+def _bump_patch_version(ver_str):
+    maj, min_v, pat = _parse_version_tuple(ver_str or APP_VERSION)
+    if (maj, min_v, pat) == (0, 0, 0):
+        return "v1.7.16"
+    return f"v{maj}.{min_v}.{pat + 1}"
+
+
+def _auto_bump_version_in_repo(repo_dir, old_ver):
+    """Erhöht die Patch-Version (+1) im Code, falls neue Änderungen committet werden und old_ver <= HEAD."""
+    global APP_VERSION
+    new_ver = _bump_patch_version(old_ver)
+    targets = [
+        ("file_service.py", r'^(APP_VERSION\s*=\s*["\'])v\d+\.\d+\.\d+(["\'])', re.MULTILINE),
+        (os.path.join("templates", "index.html"), r"(v\d+\.\d+\.\d+)(?='|\")", 0),
+        (os.path.join("static", "js", "app.js"), r"(')v\d+\.\d+\.\d+(')", 0),
+    ]
+    changed_files = []
+    for rel_path, pat, flags in targets:
+        fpath = os.path.join(repo_dir, rel_path)
+        if not os.path.isfile(fpath):
+            continue
+        try:
+            content = open(fpath, "r", encoding="utf-8").read()
+            if rel_path == "file_service.py":
+                updated = re.sub(pat, rf"\g<1>{new_ver}\g<2>", content, count=1, flags=flags)
+            elif rel_path.endswith("app.js"):
+                updated = content.replace(f"'{old_ver}'", f"'{new_ver}'")
+            else:
+                updated = content.replace(f"'{old_ver}'", f"'{new_ver}'")
+            if updated != content:
+                with open(fpath, "w", encoding="utf-8") as f:
+                    f.write(updated)
+                changed_files.append(rel_path)
+        except Exception:
+            pass
+    APP_VERSION = new_ver
+    return new_ver, changed_files
+
+
 def _filter_meaningful_git_dirty_lines(porcelain_output):
     """Ignoriert Laufzeit-Dateien wie config.json oder __pycache__ für die Sync-Anzeige."""
     ignored_prefixes = ("__pycache__/", "build/", "dist/")
@@ -1521,6 +1560,13 @@ def git_push_upload():
 
         diff_res = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo_dir, capture_output=True)
         if diff_res.returncode != 0:
+            head_res = subprocess.run(["git", "log", "-1", "--pretty=%s"], cwd=repo_dir, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            head_ver = _extract_version_tag(head_res.stdout or "")
+            if head_ver and _parse_version_tuple(APP_VERSION) <= _parse_version_tuple(head_ver):
+                new_ver, bumped_files = _auto_bump_version_in_repo(repo_dir, APP_VERSION)
+                if bumped_files:
+                    subprocess.run(["git", "add", "--"] + bumped_files, cwd=repo_dir, capture_output=True, text=True)
+                    logs.append(f"Version automatisch erhöht: {new_ver}")
             commit_msg = f"{APP_VERSION}: Sync & Build nach GitHub ({datetime.now().strftime('%d.%m.%Y %H:%M')})"
             c_res = subprocess.run(
                 ["git", "commit", "-m", commit_msg],
