@@ -1142,3 +1142,270 @@ html.light #badge-seven-folder-count {
   background-color: #a7f3d0 !important;
   color: #064e3b !important;
 }
+
+/* ========================================== */
+/* FLUENT SCHNELLFILTER & 7-ORDNER TABELLE    */
+/* ========================================== */
+.fluent-pill-btn {
+  height: 34px;
+  min-width: 108px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background-color: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+.fluent-pill-btn:hover {
+  background-color: rgba(30, 41, 59, 0.95);
+  border-color: #475569;
+  color: #ffffff;
+}
+.fluent-pill-btn.active {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.fluent-filter-input,
+.fluent-date-box {
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background-color: rgba(2, 6, 23, 0.8);
+  color: #e2e8f0;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  transition: border-color 0.14s ease, box-shadow 0.14s ease;
+}
+.fluent-filter-input {
+  padding: 0 11px;
+}
+.fluent-filter-input:focus,
+.fluent-date-box:focus-within {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22);
+}
+.fluent-inline-prefix {
+  padding-left: 11px;
+  padding-right: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  user-select: none;
+  flex-shrink: 0;
+}
+.fluent-date-text {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 12px;
+  padding: 0 6px 0 0;
+}
+.fluent-date-text:focus {
+  outline: none;
+}
+.fluent-cal-btn {
+  height: 100%;
+  padding: 0 9px;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid rgba(148, 163, 184, 0.18);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.14s ease, background-color 0.14s ease;
+}
+.fluent-cal-btn:hover {
+  color: #60a5fa;
+  background-color: rgba(37, 99, 235, 0.12);
+  border-top-right-radius: 7px;
+  border-bottom-right-radius: 7px;
+}
+
+/* Exakte 7-Ordner-Pro Spalten-Trennstriche im Tabellenkopf */
+.seven-parity-table thead th.th-cell {
+  border-right: 1px solid #334155;
+  border-bottom: 1px solid #334155;
+}
+.seven-parity-table thead th.th-cell-last {
+  border-bottom: 1px solid #334155;
+}
+
+/* Light Mode Fluent Design Overrides */
+html.light #fluent-quick-filters {
+  border-color: #e2e8f0 !important;
+}
+html.light #fluent-quick-filters > div > span {
+  color: #0f172a !important;
+}
+html.light .fluent-pill-btn {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html.light .fluent-pill-btn:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+html.light .fluent-pill-btn.active {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+html.light .fluent-filter-input,
+html.light .fluent-date-box {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html.light .fluent-inline-prefix {
+  color: #64748b !important;
+}
+html.light .fluent-date-text::placeholder,
+html.light .fluent-filter-input::placeholder {
+  color: #94a3b8 !important;
+}
+html.light .fluent-cal-btn {
+  color: #475569 !important;
+  border-left-color: #e2e8f0 !important;
+}
+html.light .fluent-cal-btn:hover {
+  color: #2563eb !important;
+  background-color: #eff6ff !important;
+}
+
+/* Light Mode Tabelle exakt wie 7-Ordner-Pro */
+html.light .seven-parity-table thead th.th-cell {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-right: 1px solid #cbd5e1 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: 12px !important;
+}
+html.light .seven-parity-table thead th.th-cell-last {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: 12px !important;
+}
+html.light .seven-parity-table tbody tr {
+  background-color: #ffffff;
+}
+html.light .seven-parity-table tbody tr:hover {
+  background-color: #f1f5f9 !important;
+}
+html.light .seven-parity-table tbody tr.row-dup-highlight {
+  background-color: #fff7ed !important;
+}
+html.light .seven-parity-table tbody tr.selected,
+html.light .seven-parity-table tbody tr.active-preview-row {
+  background-color: #dbeafe !important;
+}
+html.light .seven-parity-table tbody tr.active-preview-row td {
+  color: #0f172a !important;
+}
+
+html.light #btn-choose-target-folder {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+html.light #btn-choose-target-folder:hover {
+  background-color: #dbeafe !important;
+  border-color: #60a5fa !important;
+}
+html.light #btn-choose-target-folder i {
+  color: #2563eb !important;
+}
+html.light #badge-target-folder-count {
+  background-color: #bfdbfe !important;
+  color: #1e3a8a !important;
+}
+html.light #btn-toggle-preview {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+html.light #btn-toggle-preview.active {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+html.light #preview-pane {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+html.light #preview-pane > div:first-child,
+html.light #preview-pane > div:last-child {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+html.light #preview-pane-stage {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+html.light #preview-pane-name {
+  color: #0f172a !important;
+}
+html.light #preview-pane-typesize,
+html.light #preview-pane-date,
+html.light #preview-pane-cat,
+html.light #preview-pane-folder {
+  color: #334155 !important;
+}
+html.light #btn-preview-open-app {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+html.light #btn-preview-open-exp {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+/* Light Mode für Modal Speicher-Ordner */
+html.light #modal-target-folder .tf-mode-btn {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+html.light #modal-target-folder .tf-mode-btn.active {
+  background-color: #eff6ff !important;
+  border-color: #2563eb !important;
+  color: #1d4ed8 !important;
+}
+html.light #modal-target-folder .tf-preset-btn {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+html.light #modal-target-folder .tf-preset-btn:hover {
+  background-color: #eff6ff !important;
+  border-color: #2563eb !important;
+}

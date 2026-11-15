@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.20"
+APP_VERSION = "v1.7.21"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -459,6 +459,215 @@ def get_file_category(ext):
             return cat
     return "other"
 
+
+# ==========================================
+# 7-ORDNER-SYSTEM KLASSIFIKATION & FILTER-HELFER
+# ==========================================
+SEVEN_IMAGE_EXTS = {
+    ".jpg", ".jpeg", ".jpe", ".jfif", ".png", ".bmp", ".gif",
+    ".tif", ".tiff", ".webp", ".heic", ".heif", ".avif", ".svg", ".ico",
+    ".raw", ".cr2", ".nef", ".arw", ".dng"
+}
+SEVEN_INSTALLER_EXTS = {".exe", ".msi", ".msix", ".appx", ".appxbundle"}
+SEVEN_MEDIA_EXTS = {
+    ".ts", ".mts", ".m2ts", ".mpeg", ".mpg", ".mpe", ".mp4", ".m4v",
+    ".mkv", ".avi", ".mov", ".wmv", ".webm", ".flv", ".vob", ".3gp",
+    ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma"
+}
+
+SEVEN_FOLDER_RULES = [
+    ("02_Finanzen_Steuern\\01_Bank_Kontoauszuege", "Bank / Kontoauszug",
+     ["kontoauszug", "sparkasse", "dkb", "ing", "comdirect", "bank", "visa", "mastercard", "paypal", "ueberweisung"]),
+    ("02_Finanzen_Steuern\\02_Steuererklaerung", "Steuern / Finanzamt",
+     ["steuern", "steuererklaerung", "steuererklärung", "finanzamt", "elster", "lohnsteuer", "einkommensteuer", "steuerbescheid"]),
+    ("02_Finanzen_Steuern\\03_Geldanlage_Vorsorge", "Depot / Vorsorge / Boerse",
+     ["depot", "trade_republic", "scalable", "aktien", "etf", "fonds", "bauspar", "rente", "altersvorsorge", "börse", "boerse", "investor", "pitchdeck", "inventur"]),
+    ("02_Finanzen_Steuern\\04_Kredite_Darlehen", "Kredite & Darlehen",
+     ["kredit", "darlehen", "tilgung", "zinsen", "finanzierung", "schufa"]),
+    ("02_Finanzen_Steuern\\05_Quittungen_Belege", "Quittungen & Barbelege",
+     ["quittung", "barzahlung", "bewirtung"]),
+    ("03_Vertraege_Versicherungen\\01_Versicherungen", "Versicherungen",
+     ["haftpflicht", "hausrat", "versicherung", "allianz", "huk", "ergo", "devk", "unfallversicherung", "rechtsschutz", "versicherungsbestaetigung"]),
+    ("03_Vertraege_Versicherungen\\02_Vertraege_Mobilfunk_Internet", "Mobilfunk & Internet",
+     ["telekom", "vodafone", "o2", "1und1", "mobilfunk", "internet", "router", "handy", "dsl", "simkarte"]),
+    ("03_Vertraege_Versicherungen\\03_Fahrzeuge_Kfz", "Kfz & Fahrzeuge",
+     ["kfz", "auto", "tuev", "tüv", "adac", "zulassung", "fahrzeugschein", "strafzettel", "bußgeld", "fahrzeug"]),
+    ("03_Vertraege_Versicherungen\\04_Mitgliedschaften_Abos", "Mitgliedschaften & Abos",
+     ["mitglied", "verein", "fitnessstudio", "abonnement", "abo", "bahncard"]),
+    ("03_Vertraege_Versicherungen\\05_Vollmachten_Verfuegungen", "Vollmachten & Verfügungen",
+     ["vollmacht", "patientenverfuegung", "vorsorgevollmacht", "testament", "notar"]),
+    ("04_Beruf_Bildung\\01_Gehaltsabrechnungen", "Gehalt / Lohn",
+     ["gehalt", "entgelt", "lohn", "lohnabrechnung", "gehaltsabrechnung", "bezuegemitteilung"]),
+    ("04_Beruf_Bildung\\02_Arbeitsvertraege", "Arbeitsverträge / Aufträge",
+     ["arbeitsvertrag", "anstellungsvertrag", "kuendigung", "aufhebungsvertrag", "abmahnung", "aufträge", "auftraege"]),
+    ("04_Beruf_Bildung\\03_Zeugnisse_Zertifikate", "Technik & Dokumente",
+     ["zeugnis", "zertifikat", "diplom", "bachelor", "master", "weiterbildung", "schulzeugnis"]),
+    ("04_Beruf_Bildung\\04_Bewerbungen_Lebenslauf", "Bewerbungen & Lebenslauf",
+     ["lebenslauf", "bewerbung", "anschreiben", "motivationsschreiben"]),
+    ("05_Gesundheit_Familie\\01_Krankenkasse", "Krankenkasse",
+     ["aok", "tk", "techniker", "barmer", "krankenkasse", "erstattung", "krankengeld", "bonusprogramm"]),
+    ("05_Gesundheit_Familie\\02_Aerzte_Befunde", "Gesundheit & Ernährung",
+     ["arzt", "befund", "rezept", "krankenhaus", "labor", "impfung", "zahnarzt", "patientenakte", "diagnose", "ernaehrung"]),
+    ("05_Gesundheit_Familie\\03_Familienurkunden", "Familienurkunden",
+     ["geburtsurkunde", "heiratsurkunde", "stammbuch", "taufschein", "sterbeurkunde"]),
+    ("05_Gesundheit_Familie\\04_Impfungen_Vorsorge", "Impfungen & Vorsorge",
+     ["impfpass", "impfbuch", "vorsorgepass", "mutterpass"]),
+    ("06_Wohnen_Eigentum\\01_Miete_Nebenkosten", "Miete & Umzug",
+     ["miete", "mietvertrag", "nebenkosten", "betriebskosten", "heizkosten", "vermieter", "strom", "gas", "wasser", "umzug"]),
+    ("06_Wohnen_Eigentum\\02_Geraete_Garantien_Belege", "Belege, Rechnungen & Einkäufe",
+     ["garantie", "rechnung", "kassenbon", "mediamarkt", "amazon", "saturn", "otto", "beleg", "lieferschein", "kaufbeleg", "coop", "ricardo"]),
+    ("06_Wohnen_Eigentum\\03_Handwerker_Renovierung", "Handwerker & Installationen",
+     ["handwerker", "renovierung", "maler", "sanitaer", "wartung", "schornsteinfeger", "installation", "sicherheitsnachweis"]),
+    ("06_Wohnen_Eigentum\\04_Hausverwaltung_Grundbuch", "Hausverwaltung & Grundbuch",
+     ["grundbuch", "hausverwaltung", "eigentuemer", "wohnungseigentum", "wirtschaftsplan"]),
+    ("07_Archiv_Historie\\01_Ausweise_Reisepaesse", "Ausweise & Pässe",
+     ["ausweis", "reisepass", "fuehrerschein", "personalausweis", "meldebescheinigung", "pass"]),
+    ("07_Archiv_Historie\\02_Buecher_Medien", "Bücher & Medien",
+     ["epub", "roman", "buch"]),
+    ("07_Archiv_Historie\\03_Abgeschlossenes", "Archiv & Alt",
+     ["archiv", "historisch", "abgeschlossen"]),
+]
+
+
+def get_seven_folder_options():
+    """Gibt alle 7-Ordner-Standardziele (target_sub, label) für die UI zurück."""
+    opts = [("01_Eingang_Inbox", "Unbekannt -> Inbox")]
+    seen = {"01_Eingang_Inbox"}
+    for tgt, lbl, _ in SEVEN_FOLDER_RULES:
+        if tgt not in seen:
+            seen.add(tgt)
+            opts.append((tgt, lbl))
+    for tgt, lbl in [
+        ("07_Bilder", "Bilder & Fotos"),
+        ("08_Programme_Installer", "Programme & Installer"),
+        ("09_Videos_Medien", "Videos & Medien"),
+        ("10_Ordner_Projekte", "Ordner & Projekte"),
+    ]:
+        if tgt not in seen:
+            seen.add(tgt)
+            opts.append((tgt, lbl))
+    return opts
+
+
+def classify_for_seven_folder(filename: str, ext: str = "", is_dir: bool = False):
+    """Bestimmt Zielordner & Kategorie exakt passend zum 7-Ordner-System."""
+    if is_dir:
+        return "10_Ordner_Projekte", "Ordner & Projekte"
+    ext_low = (ext or "").lower()
+    if ext_low and not ext_low.startswith("."):
+        ext_low = f".{ext_low}"
+    if ext_low in SEVEN_IMAGE_EXTS:
+        return "07_Bilder", "Bilder & Fotos"
+    if ext_low in SEVEN_INSTALLER_EXTS:
+        return "08_Programme_Installer", "Programme & Installer"
+    if ext_low in SEVEN_MEDIA_EXTS:
+        return "09_Videos_Medien", "Videos & Medien"
+    name_low = (filename or "").lower()
+    for target_sub, label, kws in SEVEN_FOLDER_RULES:
+        for kw in kws:
+            if kw in name_low:
+                return target_sub, label
+    return "01_Eingang_Inbox", "Unbekannt -> Inbox"
+
+
+def annotate_search_results_duplicates(results: list):
+    """Markiert blitzschnell Original / Duplikat anhand identischer (Name, Größe > 0) ohne Plattenzugriff."""
+    groups = {}
+    for item in results:
+        if item.get("is_dir"):
+            item["dup_status"] = "—"
+            item["dup_group"] = ""
+            continue
+        sz = int(item.get("size") or 0)
+        key_name = (item.get("name") or "").strip().lower()
+        if sz > 0 and key_name:
+            groups.setdefault((key_name, sz), []).append(item)
+
+    for (key_name, sz), members in groups.items():
+        if len(members) > 1:
+            # Kürzester Pfad / ältestes Datum bekommt 'Original', Rest 'Duplikat'
+            ordered = sorted(
+                members,
+                key=lambda x: (len(x.get("path") or ""), float(x.get("modified_ts") or 0))
+            )
+            grp_id = f"{key_name}|{sz}"
+            ordered[0]["dup_status"] = "Original"
+            ordered[0]["dup_group"] = grp_id
+            for m in ordered[1:]:
+                m["dup_status"] = "Duplikat"
+                m["dup_group"] = grp_id
+
+    for item in results:
+        if "dup_status" not in item:
+            if item.get("is_icloud") or item.get("is_gdrive") or item.get("is_onedrive"):
+                item["dup_status"] = "☁ Cloud"
+            else:
+                item["dup_status"] = "—"
+            item["dup_group"] = ""
+    return results
+
+
+def parse_size_to_bytes(val, default_unit="bytes"):
+    """Parst z. B. '500 KB', '1.5 MB', '2 GB' oder reine Zahl in Bytes."""
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        v = float(val)
+        if v < 0:
+            return None
+        if default_unit == "mb":
+            return int(v * 1024 * 1024)
+        if default_unit == "kb":
+            return int(v * 1024)
+        return int(v)
+    s = str(val).strip()
+    if not s:
+        return None
+    m = re.match(r"^(?:ab\s+|>\s*|min\s+)?([\d.,]+)\s*(b|bytes?|kb|k|mb|m|gb|g)?$", s, re.IGNORECASE)
+    if not m:
+        return None
+    try:
+        num = float(m.group(1).replace(",", "."))
+    except ValueError:
+        return None
+    if num < 0:
+        return None
+    unit = (m.group(2) or "").lower()
+    if not unit:
+        unit = default_unit
+    if unit.startswith("g"):
+        return int(num * 1024 * 1024 * 1024)
+    if unit.startswith("m"):
+        return int(num * 1024 * 1024)
+    if unit.startswith("k"):
+        return int(num * 1024)
+    return int(num)
+
+
+def parse_filter_datetime(val, end_of_day=False):
+    """Parst ISO (YYYY-MM-DD) und deutsches Datum (TT.MM.JJJJ) robust in einen Timestamp."""
+    if not val:
+        return None
+    s = str(val).strip()
+    if not s:
+        return None
+    has_time = ("T" in s) or (":" in s)
+    dt = None
+    for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d.%m.%y"):
+        try:
+            dt = datetime.strptime(s, fmt)
+            break
+        except ValueError:
+            continue
+    if dt is None:
+        try:
+            dt = datetime.fromisoformat(s)
+        except Exception:
+            return None
+    if end_of_day and not has_time:
+        dt = dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+    return dt.timestamp()
+
 def fast_search(
     root_dir,
     query="",
@@ -618,17 +827,21 @@ def fast_search(
                                     continue
 
                             mtime_dt = datetime.fromtimestamp(mtime)
+                            target_sub, cat_label = classify_for_seven_folder(dirname, "", is_dir=True)
                             results.append({
                                 "name": dirname,
                                 "path": entry.path,
                                 "folder": to_german_display_path(os.path.dirname(entry.path)),
                                 "ext": "ORDNER",
                                 "category": "folder",
+                                "category_label": cat_label,
+                                "target_sub": target_sub,
                                 "is_dir": True,
                                 "size": 0,
                                 "size_formatted": "Ordner",
                                 "modified": mtime_dt.isoformat(),
-                                "modified_formatted": mtime_dt.strftime("%d.%m.%y %H:%M"),
+                                "modified_ts": mtime,
+                                "modified_formatted": mtime_dt.strftime("%d.%m.%Y %H:%M"),
                                 "is_onedrive": bool(is_onedrive_type),
                                 "onedrive_type": is_onedrive_type,
                                 "cloud_type": cloud_type,
@@ -698,6 +911,7 @@ def fast_search(
 
                         cat = get_file_category(ext)
                         mtime_dt = datetime.fromtimestamp(mtime)
+                        target_sub, cat_label = classify_for_seven_folder(filename, ext, is_dir=False)
 
                         results.append({
                             "name": filename,
@@ -705,10 +919,13 @@ def fast_search(
                             "folder": to_german_display_path(os.path.dirname(entry.path)),
                             "ext": ext.replace(".", "").upper() or "DATEI",
                             "category": cat,
+                            "category_label": cat_label,
+                            "target_sub": target_sub,
                             "size": size,
                             "size_formatted": format_size(size),
                             "modified": mtime_dt.isoformat(),
-                            "modified_formatted": mtime_dt.strftime("%d.%m.%y %H:%M"),
+                            "modified_ts": mtime,
+                            "modified_formatted": mtime_dt.strftime("%d.%m.%Y %H:%M"),
                             "is_onedrive": bool(is_onedrive_type),
                             "onedrive_type": is_onedrive_type,
                             "cloud_type": cloud_type,
@@ -719,6 +936,7 @@ def fast_search(
         except (PermissionError, OSError):
             continue
 
+    annotate_search_results_duplicates(results)
     return results
 
 def compute_file_hash(filepath, block_size=65536, partial=False):
@@ -2883,3 +3101,259 @@ def send_to_seven_folder(paths=None, folder_path: str | None = None, target_dir:
         "app_cmd": base_cmd[0],
         "launched": True,
     }
+
+
+def _unique_dest_path(dest_dir: str, filename: str) -> str:
+    """Erzeugt einen kollisionsfreien Zielpfad ('Datei (1).ext'), falls Zieldatei existiert."""
+    candidate = os.path.join(dest_dir, filename)
+    if not os.path.exists(candidate):
+        return candidate
+    stem, ext = os.path.splitext(filename)
+    idx = 1
+    while idx < 10000:
+        cand = os.path.join(dest_dir, f"{stem} ({idx}){ext}")
+        if not os.path.exists(cand):
+            return cand
+        idx += 1
+    return candidate
+
+
+def _check_dir_writable(target_dir: str) -> tuple:
+    """Prüft Schreibrechte im Zielordner ohne Dateien zu hinterlassen."""
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+        probe = os.path.join(target_dir, f".__write_test_{os.getpid()}_{int(time.time() * 1000)}.tmp")
+        with open(probe, "w", encoding="utf-8") as f:
+            f.write("ok")
+        os.remove(probe)
+        return True, ""
+    except Exception as exc:
+        return False, str(exc)
+
+
+def browse_folder_dialog(initial_dir: str = "") -> str:
+    """Öffnet den nativen Windows-Ordnerauswahl-Dialog sauber ohne Konsole."""
+    if os.name != "nt":
+        return ""
+    init_dir = resolve_german_alias_path(initial_dir or "")
+    if not init_dir or not os.path.isdir(init_dir):
+        init_dir = find_usb_stick_data_dir() or os.path.expanduser("~")
+    init_escaped = init_dir.replace("'", "''")
+    ps_script = (
+        "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms') | Out-Null; "
+        "$f = New-Object System.Windows.Forms.FolderBrowserDialog; "
+        "$f.Description = 'Speicher-Ordner für ausgewählte Dateien wählen'; "
+        "$f.UseDescriptionForTitle = $true; "
+        "$f.ShowNewFolderButton = $true; "
+        f"if (Test-Path '{init_escaped}') {{ $f.SelectedPath = '{init_escaped}' }}; "
+        "$owner = New-Object System.Windows.Forms.Form; "
+        "$owner.TopMost = $true; $owner.StartPosition = 'Manual'; $owner.Location = New-Object System.Drawing.Point(-32000,-32000); "
+        "if ($f.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($f.SelectedPath) }; "
+        "$owner.Dispose()"
+    )
+    try:
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        res = subprocess.run(
+            ["powershell", "-NoProfile", "-STA", "-Command", ps_script],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            creationflags=flags,
+            timeout=180,
+        )
+        chosen = (res.stdout or "").strip()
+        if chosen and os.path.isdir(chosen):
+            return os.path.normpath(chosen)
+    except Exception as exc:
+        logger.warning("Ordnerauswahl fehlgeschlagen: %s", exc)
+    return ""
+
+
+def copy_or_move_files(
+    items: list,
+    target_base_dir: str,
+    mode: str = "copy",
+    use_category_subfolder: bool = False,
+) -> dict:
+    """Kopiert oder verschiebt ausgewählte Dateien/Ordner sicher in den gewählten Speicher-Ordner."""
+    base_dir = resolve_german_alias_path((target_base_dir or "").strip())
+    if not base_dir:
+        return {"success": False, "error": "Kein Zielordner angegeben.", "processed": [], "errors": []}
+
+    abs_base = os.path.abspath(base_dir)
+    ok_write, err_write = _check_dir_writable(abs_base)
+    if not ok_write:
+        return {
+            "success": False,
+            "error": f"Keine Schreibrechte im Zielordner '{abs_base}': {err_write}",
+            "processed": [],
+            "errors": [],
+        }
+
+    op_mode = "move" if str(mode).lower() == "move" else "copy"
+    processed = []
+    errors = []
+
+    for entry in (items or []):
+        if isinstance(entry, str):
+            src_path = entry
+            target_sub = ""
+        elif isinstance(entry, dict):
+            src_path = entry.get("path") or ""
+            target_sub = (entry.get("target_sub") or "").strip().strip("\\/")
+        else:
+            continue
+
+        if not src_path or not os.path.exists(src_path):
+            errors.append({"path": src_path, "error": "Quelldatei nicht gefunden"})
+            continue
+
+        try:
+            src_abs = os.path.abspath(src_path)
+            # Wenn target_sub selbst ein absoluter Pfad ist (benutzerdefinierter Ordner pro Zeile), diesen nutzen
+            if target_sub and os.path.isabs(target_sub):
+                dest_dir = target_sub
+            elif use_category_subfolder and target_sub:
+                dest_dir = os.path.join(abs_base, target_sub.replace("/", os.sep))
+            else:
+                dest_dir = abs_base
+
+            os.makedirs(dest_dir, exist_ok=True)
+            base_name = os.path.basename(src_abs.rstrip("\\/"))
+            dest_path = _unique_dest_path(dest_dir, base_name)
+
+            if os.path.normcase(os.path.dirname(src_abs)) == os.path.normcase(os.path.abspath(dest_dir)) and op_mode == "move":
+                # Bereits genau in diesem Zielordner
+                processed.append({"src": src_abs, "dest": src_abs, "unchanged": True})
+                continue
+
+            if os.path.isdir(src_abs):
+                if op_mode == "move":
+                    shutil.move(src_abs, dest_path)
+                else:
+                    shutil.copytree(src_abs, dest_path, dirs_exist_ok=False)
+            else:
+                if op_mode == "move":
+                    shutil.move(src_abs, dest_path)
+                else:
+                    shutil.copy2(src_abs, dest_path)
+
+            processed.append({"src": src_abs, "dest": dest_path})
+        except Exception as exc:
+            errors.append({"path": src_path, "error": str(exc)})
+
+    return {
+        "success": len(processed) > 0 or len(errors) == 0,
+        "mode": op_mode,
+        "target_dir": abs_base,
+        "processed_count": len(processed),
+        "error_count": len(errors),
+        "processed": processed,
+        "errors": errors,
+    }
+
+
+def get_rich_file_preview_info(path: str) -> dict:
+    """Liefert schnelle, strukturierte Metadaten & Vorschau-Inhalte für die Seiten-Vorschau."""
+    if not path or not os.path.exists(path):
+        return {"success": False, "error": "Datei nicht gefunden"}
+
+    is_dir = os.path.isdir(path)
+    name = os.path.basename(path.rstrip("\\/")) or path
+    _, ext = os.path.splitext(name.lower())
+    target_sub, cat_label = classify_for_seven_folder(name, ext, is_dir=is_dir)
+    try:
+        st = os.stat(path, follow_symlinks=False)
+        size_fmt = "Ordner" if is_dir else format_size(st.st_size)
+        mod_fmt = datetime.fromtimestamp(st.st_mtime).strftime("%d.%m.%Y %H:%M")
+    except Exception:
+        size_fmt = "—"
+        mod_fmt = "—"
+
+    info = {
+        "success": True,
+        "name": name,
+        "path": path,
+        "folder": to_german_display_path(os.path.dirname(path)),
+        "ext": "ORDNER" if is_dir else (ext.lstrip(".").upper() or "DATEI"),
+        "size_formatted": size_fmt,
+        "modified_formatted": mod_fmt,
+        "category_label": cat_label,
+        "target_sub": target_sub,
+        "kind": "info",
+        "badge": "Ordner" if is_dir else (ext.lstrip(".").upper() or "DATEI"),
+        "text": "",
+        "dimensions": "",
+    }
+
+    if is_dir:
+        try:
+            entries = sorted(os.listdir(path))[:40]
+            info["kind"] = "text"
+            info["badge"] = f"Ordner ({len(entries)}+ Einträge)"
+            info["text"] = "\n".join(f"• {e}" for e in entries) or "Leerer Ordner."
+        except Exception:
+            info["text"] = "Ordnerinhalt konnte nicht gelesen werden."
+        return info
+
+    if ext in {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".ico", ".svg"}:
+        info["kind"] = "image"
+        try:
+            if ext != ".svg":
+                from PIL import Image
+                with Image.open(path) as im:
+                    w, h = im.size
+                    info["dimensions"] = f"{w} × {h} px"
+                    info["badge"] = f"{w} × {h} px"
+        except Exception:
+            pass
+        return info
+
+    if ext == ".pdf":
+        info["kind"] = "pdf"
+        info["badge"] = "PDF-Dokument"
+        return info
+
+    if ext in {".txt", ".log", ".py", ".js", ".ts", ".json", ".html", ".css", ".md", ".csv", ".xml", ".yaml", ".yml", ".bat", ".ps1", ".ini", ".cfg"}:
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                info["text"] = f.read(16000)
+            info["kind"] = "text"
+            info["badge"] = f"Text ({ext.lstrip('.').upper()})"
+        except Exception as exc:
+            info["text"] = f"Vorschau nicht lesbar: {exc}"
+        return info
+
+    if ext in {".docx", ".xlsx", ".pptx", ".zip"}:
+        try:
+            import zipfile
+            import xml.etree.ElementTree as ET
+            if ext == ".zip":
+                with zipfile.ZipFile(path, "r") as zf:
+                    names = zf.namelist()
+                info["kind"] = "text"
+                info["badge"] = f"ZIP ({len(names)} Einträge)"
+                info["text"] = "\n".join(f"• {n}" for n in names[:35])
+                return info
+            if ext == ".docx":
+                with zipfile.ZipFile(path, "r") as zf:
+                    if "word/document.xml" in zf.namelist():
+                        root = ET.fromstring(zf.read("word/document.xml"))
+                        paras = []
+                        for p in root.iter():
+                            if p.tag.endswith("}p"):
+                                txt = "".join(t.text for t in p.iter() if t.tag.endswith("}t") and t.text)
+                                if txt.strip():
+                                    paras.append(txt.strip())
+                                if len(paras) >= 45:
+                                    break
+                        info["kind"] = "text"
+                        info["badge"] = "Word-Dokument (DOCX)"
+                        info["text"] = "\n\n".join(paras)[:6000] or "Leeres Word-Dokument."
+                        return info
+        except Exception:
+            pass
+
+    info["text"] = f"Dateityp: {info['ext']}\nGröße: {size_fmt}\n\nUnten auf „Standard-App“ klicken, um die Datei vollständig zu öffnen."
+    return info

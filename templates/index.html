@@ -377,30 +377,101 @@
               <!-- Dynamisch via renderLocationShortcuts() -->
             </div>
           </div>
+
+          <!-- Fluent Schnellfilter-Raster (Zeitraum, Suchfilter + Von/Bis, Dateigröße — Vorlage: 7-Ordner-Pro) -->
+          <div id="fluent-quick-filters" class="pt-3 border-t border-slate-800/70 space-y-2 text-xs">
+            <!-- Zeile 1: Zeitraum -->
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="w-[82px] shrink-0 font-bold text-slate-300">Zeitraum:</span>
+              <button type="button" data-zeitraum="today" onclick="setQuickTimeframe('today')" class="fluent-pill-btn">Heute</button>
+              <button type="button" data-zeitraum="week" onclick="setQuickTimeframe('week')" class="fluent-pill-btn">Diese Woche</button>
+              <button type="button" data-zeitraum="month" onclick="setQuickTimeframe('month')" class="fluent-pill-btn">Dieser Monat</button>
+              <button type="button" data-zeitraum="year" onclick="setQuickTimeframe('year')" class="fluent-pill-btn">Dieses Jahr</button>
+            </div>
+
+            <!-- Zeile 2: Suchfilter + Von/Bis + Filter leeren -->
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="w-[82px] shrink-0 font-bold text-slate-300">Suchfilter:</span>
+              <input
+                type="text"
+                id="live-filter-query"
+                oninput="onLiveFilterInput()"
+                placeholder="z. B. Berge, Alm"
+                class="fluent-filter-input w-[180px]"
+              >
+
+              <!-- Von Datum -->
+              <div class="fluent-date-box w-[176px]">
+                <span class="fluent-inline-prefix">Von</span>
+                <input
+                  type="text"
+                  id="filter-date-from"
+                  placeholder="TT.MM.JJJJ"
+                  maxlength="10"
+                  oninput="onDateTextChanged()"
+                  class="fluent-date-text"
+                >
+                <input type="date" id="native-date-from" class="sr-only" tabindex="-1" onchange="syncFromNativeDate('from', this.value)">
+                <button type="button" onclick="openNativeDatePicker('from')" class="fluent-cal-btn" title="Datumsauswahl anzeigen">
+                  <i class="fa-regular fa-calendar"></i>
+                </button>
+              </div>
+
+              <!-- Bis Datum -->
+              <div class="fluent-date-box w-[176px]">
+                <span class="fluent-inline-prefix">Bis</span>
+                <input
+                  type="text"
+                  id="filter-date-to"
+                  placeholder="TT.MM.JJJJ"
+                  maxlength="10"
+                  oninput="onDateTextChanged()"
+                  class="fluent-date-text"
+                >
+                <input type="date" id="native-date-to" class="sr-only" tabindex="-1" onchange="syncFromNativeDate('to', this.value)">
+                <button type="button" onclick="openNativeDatePicker('to')" class="fluent-cal-btn" title="Datumsauswahl anzeigen">
+                  <i class="fa-regular fa-calendar"></i>
+                </button>
+              </div>
+
+              <button type="button" onclick="clearAllQuickFilters()" class="fluent-pill-btn">
+                Filter leeren
+              </button>
+            </div>
+
+            <!-- Zeile 3: Dateigröße -->
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="w-[82px] shrink-0 font-bold text-slate-300">Dateigröße:</span>
+              <div class="fluent-date-box w-[180px]">
+                <span class="fluent-inline-prefix">Ab</span>
+                <input
+                  type="text"
+                  id="filter-min-size"
+                  placeholder="z. B. 500 KB"
+                  oninput="onMinSizeInput()"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
+                  class="fluent-date-text"
+                >
+              </div>
+              <button type="button" data-size-preset="100 KB" onclick="toggleMinSizePreset('100 KB')" class="fluent-pill-btn">&gt; 100 KB</button>
+              <button type="button" data-size-preset="500 KB" onclick="toggleMinSizePreset('500 KB')" class="fluent-pill-btn">&gt; 500 KB</button>
+              <button type="button" data-size-preset="1 MB" onclick="toggleMinSizePreset('1 MB')" class="fluent-pill-btn">&gt; 1 MB</button>
+            </div>
+          </div>
         </div>
 
-        <!-- Ausklappbare Erweiterte Filter (Größe, Datum, Eigene Endungen) -->
-        <div id="advanced-filters" class="hidden pt-4 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <!-- Ausklappbare Zusätzliche Filter (Eigene Endungen, Max Größe) -->
+        <div id="advanced-filters" class="hidden pt-4 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <!-- Eigene Dateiendungen -->
           <div class="space-y-1.5">
             <label class="text-slate-400 font-medium">Benutzerdefinierte Endungen (Kommagetrennt):</label>
             <input type="text" id="custom-extensions" placeholder="z.B. .pdf, .docx, .png" class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
           </div>
-          
-          <!-- Dateigröße (Min/Max MB) -->
-          <div class="space-y-1.5">
-            <label class="text-slate-400 font-medium">Dateigröße (in MB):</label>
-            <div class="flex items-center gap-2">
-              <input type="number" id="min-size-mb" placeholder="Min MB" class="w-1/2 px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
-              <span class="text-slate-500">-</span>
-              <input type="number" id="max-size-mb" placeholder="Max MB" class="w-1/2 px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
-            </div>
-          </div>
 
-          <!-- Änderungsdatum -->
+          <!-- Maximale Dateigröße -->
           <div class="space-y-1.5">
-            <label class="text-slate-400 font-medium">Geändert nach Datum:</label>
-            <input type="date" id="modified-after" class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
+            <label class="text-slate-400 font-medium">Maximale Dateigröße (z. B. 50 MB):</label>
+            <input type="text" id="max-size-input" placeholder="z. B. 50 MB (leer = unbegrenzt)" class="w-full px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-200">
           </div>
         </div>
       </div>
@@ -423,6 +494,18 @@
 
         <!-- Massen-Aktionen Buttons -->
         <div class="flex flex-wrap items-center gap-2">
+          <!-- Speicher-Ordner wählen / ändern & Kopieren/Verschieben -->
+          <button
+            id="btn-choose-target-folder"
+            onclick="openTargetFolderModal()"
+            class="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold transition flex items-center gap-1.5"
+            title="Speicher-Ordner für ausgewählte Dateien wählen (kopieren, verschieben oder Zielordner ändern)"
+          >
+            <i class="fa-solid fa-folder-plus text-blue-400"></i>
+            <span>Speicher-Ordner wählen…</span>
+            <span id="badge-target-folder-count" class="hidden px-1.5 py-0.5 rounded-full bg-blue-500/30 text-blue-100 text-[10px] font-bold">0</span>
+          </button>
+
           <!-- Brücke: Treffer an 7-Ordner-Pro übergeben (links eingeordnet) -->
           <button
             id="btn-handoff-seven-folder"
@@ -453,6 +536,17 @@
             <span>Doppel-Eliminierung</span>
           </button>
 
+          <!-- Dateivorschau rechts ein-/ausblenden -->
+          <button
+            id="btn-toggle-preview"
+            onclick="togglePreviewPane()"
+            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+            title="Rechte Dateivorschau ein- oder ausblenden"
+          >
+            <i class="fa-regular fa-eye"></i>
+            <span>Vorschau</span>
+          </button>
+
           <!-- Ansichts-Umschaltung: Liste / Kacheln -->
           <div class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
             <button onclick="setViewMode('table')" id="btn-view-table" class="px-2.5 py-1 rounded-md text-xs transition bg-slate-700 text-white" title="Tabellenansicht">
@@ -472,45 +566,95 @@
         <p class="text-xs text-slate-500" id="search-spinner-path"></p>
       </div>
 
-      <!-- Ergebnis-Tabelle / Grid Container -->
+      <!-- Ergebnis-Tabelle / Grid + Seiten-Vorschau Container -->
       <div id="results-container" class="space-y-4">
-        <!-- Tabelle (Default) -->
-        <div id="view-table-wrapper" class="hidden glass-card rounded-2xl border border-slate-800/80 shadow-xl bg-slate-900/50">
-          <div class="overflow-visible">
-            <table class="w-full text-left text-xs" style="border-collapse: separate; border-spacing: 0;">
-              <thead class="sticky z-20" style="top: var(--sticky-table-top, 126px)">
-                <tr class="border-b border-slate-800 bg-slate-950/95 backdrop-blur-md text-slate-400 uppercase font-semibold text-[11px] tracking-wider select-none">
-                  <th class="py-3 px-4 w-10 text-center sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">
-                    <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
-                  </th>
-                  <th class="py-3 px-4 w-28 text-left cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('ext')" title="Nach Dateityp sortieren">
-                    Typ <i class="fa-solid fa-sort ml-1"></i>
-                  </th>
-                  <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('name')">
-                    Dateiname <i class="fa-solid fa-sort ml-1"></i>
-                  </th>
-                  <th class="py-3 px-4 cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('folder')">
-                    Ordner-Pfad <i class="fa-solid fa-sort ml-1"></i>
-                  </th>
-                  <th class="py-3 px-4 w-28 text-right cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('size')">
-                    Größe <i class="fa-solid fa-sort ml-1"></i>
-                  </th>
-                  <th class="py-3 px-4 w-36 cursor-pointer hover:text-slate-200 transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('modified')">
-                    Geändert am <i class="fa-solid fa-sort ml-1"></i>
-                  </th>
-                  <th class="py-3 px-4 w-60 text-right sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody id="results-tbody" class="divide-y divide-slate-800/60 text-slate-300">
-                <!-- Dynamische Zeilen via JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <div id="results-split-layout" class="flex items-start gap-3">
+          <div class="flex-1 min-w-0">
+            <!-- Tabelle (Default, identische Spalten & Trennlinien wie 7-Ordner-Pro) -->
+            <div id="view-table-wrapper" class="hidden glass-card rounded-2xl border border-slate-800/80 shadow-xl bg-slate-900/50">
+              <div class="overflow-visible">
+                <table class="w-full text-left text-xs seven-parity-table" style="border-collapse: separate; border-spacing: 0;">
+                  <thead class="sticky z-20" style="top: var(--sticky-table-top, 126px)">
+                    <tr class="bg-slate-950/95 backdrop-blur-md text-slate-300 font-semibold text-[11px] select-none">
+                      <th class="th-cell py-2.5 px-2.5 w-9 text-center sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">
+                        <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
+                      </th>
+                      <th class="th-cell py-2.5 px-3 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 min-w-[180px]" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('name')">
+                        Dateiname <i class="fa-solid fa-sort ml-1 opacity-60"></i>
+                      </th>
+                      <th class="th-cell py-2.5 px-2.5 w-16 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('ext')" title="Nach Dateityp sortieren">
+                        Typ <i class="fa-solid fa-sort ml-1 opacity-60"></i>
+                      </th>
+                      <th class="th-cell py-2.5 px-2.5 w-24 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('size')">
+                        Dateigröße <i class="fa-solid fa-sort ml-1 opacity-60"></i>
+                      </th>
+                      <th class="th-cell py-2.5 px-2.5 w-32 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('dup_status')">
+                        Original / Duplikat <i class="fa-solid fa-sort ml-1 opacity-60"></i>
+                      </th>
+                      <th class="th-cell py-2.5 px-3 w-40 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('category_label')">
+                        Erkannte Kategorie <i class="fa-solid fa-sort ml-1 opacity-60"></i>
+                      </th>
+                      <th class="th-cell py-2.5 px-3 w-44 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('target_sub')">
+                        Zielordner <i class="fa-solid fa-sort ml-1 opacity-60"></i>
+                      </th>
+                      <th class="th-cell py-2.5 px-2.5 w-32 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 whitespace-nowrap" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('modified')">
+                        Änderungsdatum <i class="fa-solid fa-sort ml-1 opacity-60"></i>
+                      </th>
+                      <th class="th-cell py-2.5 px-3 text-center cursor-pointer hover:text-white transition sticky z-20 bg-slate-950/95 min-w-[200px]" style="top: var(--sticky-table-top, 126px)" onclick="sortResults('folder')">
+                        Gefunden in (Pfad) <i class="fa-solid fa-sort ml-1 opacity-60"></i>
+                      </th>
+                      <th class="th-cell-last py-2.5 px-3 w-44 text-center sticky z-20 bg-slate-950/95" style="top: var(--sticky-table-top, 126px)">
+                        Aktion
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody id="results-tbody" class="divide-y divide-slate-800/60 text-slate-300">
+                    <!-- Dynamische Zeilen via JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-        <!-- Kachel-Ansicht (Grid) -->
-        <div id="view-grid-wrapper" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          <!-- Dynamische Kacheln via JS -->
+            <!-- Kachel-Ansicht (Grid) -->
+            <div id="view-grid-wrapper" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              <!-- Dynamische Kacheln via JS -->
+            </div>
+          </div>
+
+          <!-- Rechte Seiten-Vorschau (wie 7-Ordner-Pro) -->
+          <aside id="preview-pane" class="hidden w-[310px] xl:w-[340px] shrink-0 sticky rounded-2xl border border-slate-800/80 bg-slate-900/70 shadow-xl overflow-hidden flex flex-col" style="top: var(--sticky-table-top, 126px); max-height: calc(100vh - 150px);">
+            <div class="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-800/80 bg-slate-950/60">
+              <div class="flex items-center gap-2 min-w-0">
+                <i class="fa-regular fa-eye text-blue-400 text-xs"></i>
+                <span class="text-xs font-bold text-slate-100">Dateivorschau</span>
+                <span id="preview-pane-badge" class="hidden px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-semibold border border-blue-500/30 truncate"></span>
+              </div>
+              <button type="button" onclick="togglePreviewPane(false)" class="text-slate-400 hover:text-white p-1 rounded" title="Vorschau schließen">
+                <i class="fa-solid fa-xmark text-xs"></i>
+              </button>
+            </div>
+            <div id="preview-pane-stage" class="p-3 bg-slate-950/40 flex-1 min-h-[210px] flex items-center justify-center overflow-auto text-center text-xs text-slate-400">
+              Klicken Sie eine Zeile in der Tabelle an, um eine direkte Vorschau zu sehen.
+            </div>
+            <div class="p-3 border-t border-slate-800/80 space-y-1.5 text-[11px] bg-slate-900/80">
+              <div id="preview-pane-name" class="font-bold text-slate-100 truncate">Keine Datei ausgewählt</div>
+              <div class="grid grid-cols-[84px_1fr] gap-y-0.5 text-slate-400">
+                <span>Typ &amp; Größe:</span><span id="preview-pane-typesize" class="text-slate-200 truncate">—</span>
+                <span>Geändert am:</span><span id="preview-pane-date" class="text-slate-200 truncate">—</span>
+                <span>Kategorie:</span><span id="preview-pane-cat" class="text-slate-200 truncate">—</span>
+                <span>Zielordner:</span><span id="preview-pane-target" class="text-blue-400 font-medium truncate">—</span>
+                <span>Quellpfad:</span><span id="preview-pane-folder" class="text-slate-300 font-mono truncate">—</span>
+              </div>
+              <div class="pt-2 flex items-center gap-2">
+                <button type="button" id="btn-preview-open-app" onclick="previewPaneOpenApp()" disabled class="flex-1 px-2.5 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 disabled:opacity-40 text-blue-300 border border-blue-500/30 font-semibold transition flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-up-right-from-square"></i><span>Standard-App</span>
+                </button>
+                <button type="button" id="btn-preview-open-exp" onclick="previewPaneOpenExplorer()" disabled class="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 font-semibold transition flex items-center justify-center gap-1.5">
+                  <i class="fa-regular fa-folder-open"></i><span>Im Explorer</span>
+                </button>
+              </div>
+            </div>
+          </aside>
         </div>
 
         <!-- Keine Ergebnisse / Start-State -->
@@ -813,6 +957,84 @@
       <!-- Modal Body (Preview Content) -->
       <div id="preview-modal-body" class="flex-1 overflow-auto p-4 flex items-center justify-center min-h-[350px] bg-slate-950/80">
         <!-- Dynamischer Inhalt (Bild, Textbox, PDF Viewer) -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: SPEICHER-ORDNER WÄHLEN / ÄNDERN    -->
+  <!-- ========================================== -->
+  <div id="modal-target-folder" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-folder-plus text-blue-400"></i>
+            <span>Speicher-Ordner wählen &amp; zuordnen</span>
+          </h3>
+          <p id="target-folder-modal-subtitle" class="text-xs text-slate-400 mt-1">
+            Zielordner für ausgewählte Datei(en) bestimmen, direkt kopieren oder verschieben.
+          </p>
+        </div>
+        <button type="button" onclick="closeTargetFolderModal()" class="text-slate-400 hover:text-white transition p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Gewünschte Aktion -->
+      <div class="space-y-1.5 text-xs">
+        <span class="font-semibold text-slate-300 block">Aktion:</span>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <button type="button" data-tf-mode="copy" onclick="setTargetFolderModalMode('copy')" class="tf-mode-btn px-3 py-2 rounded-lg border text-left font-semibold transition flex items-center gap-2">
+            <i class="fa-regular fa-copy"></i><span>Direkt kopieren</span>
+          </button>
+          <button type="button" data-tf-mode="move" onclick="setTargetFolderModalMode('move')" class="tf-mode-btn px-3 py-2 rounded-lg border text-left font-semibold transition flex items-center gap-2">
+            <i class="fa-solid fa-file-export"></i><span>Direkt verschieben</span>
+          </button>
+          <button type="button" data-tf-mode="assign" onclick="setTargetFolderModalMode('assign')" class="tf-mode-btn px-3 py-2 rounded-lg border text-left font-semibold transition flex items-center gap-2">
+            <i class="fa-solid fa-tag"></i><span>Nur in Tabelle merken</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Speicher-Ordner Pfad + Durchsuchen + USB_Stick -->
+      <div id="target-folder-dest-section" class="space-y-2 text-xs">
+        <label class="font-semibold text-slate-300 block">Speicher-Ordner (Ziel):</label>
+        <div class="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            id="target-folder-modal-path"
+            placeholder="z. B. E:\USB_Stick oder C:\Users\..."
+            class="flex-1 min-w-[210px] px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+          <button type="button" onclick="browseTargetFolderInModal()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 font-semibold transition flex items-center gap-1.5" title="Windows-Ordnerauswahl öffnen">
+            <i class="fa-regular fa-folder-open text-amber-400"></i><span>Ordner wählen…</span>
+          </button>
+          <button type="button" id="btn-tf-usb-quick" onclick="pickUsbStickInTargetModal()" class="hidden px-3 py-2 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-200 border border-cyan-500/40 font-semibold transition flex items-center gap-1.5" title="USB-Stick Datenordner (USB_Stick) als Ziel verwenden">
+            <i class="fa-solid fa-hard-drive text-cyan-400"></i><span id="lbl-tf-usb-quick">USB_Stick</span>
+          </button>
+        </div>
+        <label class="inline-flex items-center gap-2 text-[11px] text-slate-400 cursor-pointer pt-1">
+          <input type="checkbox" id="target-folder-use-sub" class="rounded border-slate-600 text-blue-600 focus:ring-blue-500">
+          <span>Dateien dort automatisch in 7-Ordner-Unterordner (z. B. <code class="text-slate-300">07_Bilder</code>) ablegen</span>
+        </label>
+      </div>
+
+      <!-- Schnellauswahl 7-Ordner Kategorie / Zielordner -->
+      <div class="space-y-1.5 text-xs">
+        <span class="font-semibold text-slate-300 block">Oder 7-Ordner Ziel-Kategorie schnell wählen:</span>
+        <div id="target-folder-presets" class="max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 pr-1">
+          <!-- Dynamisch befüllt aus state.sevenFolderOptions -->
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+        <button type="button" onclick="closeTargetFolderModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Abbrechen
+        </button>
+        <button type="button" id="btn-tf-confirm" onclick="confirmTargetFolderModal()" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-check"></i><span>Dateien hierher kopieren</span>
+        </button>
       </div>
     </div>
   </div>

@@ -72,6 +72,7 @@ def system_info():
         "email_client": file_service.get_email_client(),
         "usb_stick_dir": file_service.find_usb_stick_data_dir(),
         "usb_drives": file_service.list_usb_drives(),
+        "seven_folder_options": file_service.get_seven_folder_options(),
     })
 
 @app.route("/api/network-paths", methods=["GET"])
@@ -275,29 +276,22 @@ def search():
     custom_exts = data.get("extensions", "")
     only_onedrive = data.get("only_onedrive", False)
     
-    # Parse sizes
-    min_size_mb = data.get("min_size_mb")
-    max_size_mb = data.get("max_size_mb")
-    min_bytes = int(float(min_size_mb) * 1024 * 1024) if min_size_mb not in (None, "") else None
-    max_bytes = int(float(max_size_mb) * 1024 * 1024) if max_size_mb not in (None, "") else None
+    # Parse sizes (bytes, human text e.g. '500 KB' / '1 MB', or legacy MB numbers)
+    min_bytes = file_service.parse_size_to_bytes(data.get("min_size_bytes"), default_unit="bytes")
+    if min_bytes is None and data.get("min_size_text") not in (None, ""):
+        min_bytes = file_service.parse_size_to_bytes(data.get("min_size_text"), default_unit="kb")
+    if min_bytes is None and data.get("min_size_mb") not in (None, ""):
+        min_bytes = file_service.parse_size_to_bytes(data.get("min_size_mb"), default_unit="mb")
 
-    # Date filter
-    modified_after = data.get("modified_after")
-    modified_before = data.get("modified_before")
-    mod_after_ts = None
-    mod_before_ts = None
-    if modified_after:
-        try:
-            from datetime import datetime
-            mod_after_ts = datetime.fromisoformat(modified_after).timestamp()
-        except Exception:
-            pass
-    if modified_before:
-        try:
-            from datetime import datetime
-            mod_before_ts = datetime.fromisoformat(modified_before).timestamp()
-        except Exception:
-            pass
+    max_bytes = file_service.parse_size_to_bytes(data.get("max_size_bytes"), default_unit="bytes")
+    if max_bytes is None and data.get("max_size_text") not in (None, ""):
+        max_bytes = file_service.parse_size_to_bytes(data.get("max_size_text"), default_unit="mb")
+    if max_bytes is None and data.get("max_size_mb") not in (None, ""):
+        max_bytes = file_service.parse_size_to_bytes(data.get("max_size_mb"), default_unit="mb")
+
+    # Date filter (ISO oder TT.MM.JJJJ)
+    mod_after_ts = file_service.parse_filter_datetime(data.get("modified_after"), end_of_day=False)
+    mod_before_ts = file_service.parse_filter_datetime(data.get("modified_before"), end_of_day=True)
 
     max_results = int(data.get("max_results", 3000))
 
@@ -522,6 +516,53 @@ def file_preview():
         "size": file_service.format_size(stat.st_size),
         "mimetype": mime_type or "application/octet-stream"
     })
+
+
+@app.route("/api/preview-info", methods=["GET"])
+def api_preview_info():
+    path = request.args.get("path") or ""
+    return jsonify(file_service.get_rich_file_preview_info(path))
+
+
+@app.route("/api/browse-folder", methods=["POST"])
+def api_browse_folder():
+    data = request.get_json(silent=True) or {}
+    initial_dir = (data.get("initial_dir") or "").strip()
+    chosen = ""
+    try:
+        import webview
+        wins = getattr(webview, "windows", None) or []
+        if wins:
+            dlg_type = getattr(getattr(webview, "FileDialog", None), "FOLDER", getattr(webview, "FOLDER_DIALOG", 20))
+            init_resolved = file_service.resolve_german_alias_path(initial_dir) if initial_dir else ""
+            kwargs = {"directory": init_resolved} if init_resolved and os.path.isdir(init_resolved) else {}
+            res = wins[0].create_file_dialog(dlg_type, **kwargs)
+            if res and len(res) > 0:
+                chosen = os.path.normpath(str(res[0]))
+    except Exception:
+        chosen = ""
+
+    if not chosen:
+        chosen = file_service.browse_folder_dialog(initial_dir)
+
+    return jsonify({"success": bool(chosen), "path": chosen})
+
+
+@app.route("/api/copy-or-move-files", methods=["POST"])
+def api_copy_or_move_files():
+    data = request.get_json(silent=True) or {}
+    items = data.get("items") or data.get("paths") or []
+    target_dir = (data.get("target_dir") or "").strip()
+    mode = data.get("mode", "copy")
+    use_category_subfolder = bool(data.get("use_category_subfolder", False))
+    res = file_service.copy_or_move_files(
+        items=items,
+        target_base_dir=target_dir,
+        mode=mode,
+        use_category_subfolder=use_category_subfolder,
+    )
+    status_code = 200 if res.get("success") else 400
+    return jsonify(res), status_code
 
 
 @app.route("/api/handoff-seven-folder", methods=["POST"])

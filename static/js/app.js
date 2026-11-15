@@ -28,7 +28,14 @@ let state = {
   renamePreview: [],
   searchHistory: [],
   savedSearches: [],
-  emailClient: 'thunderbird'
+  emailClient: 'thunderbird',
+  sevenFolderOptions: [],
+  activeTimeframe: '',
+  activeSizePreset: '',
+  previewVisible: false,
+  activePreviewPath: '',
+  targetModalPaths: [],
+  targetModalMode: 'copy'
 };
 
 // Initialisierung bei DOM-Ready
@@ -63,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof closeSettingsModal === 'function') closeSettingsModal();
       if (typeof closeGdriveSettingsModal === 'function') closeGdriveSettingsModal();
       if (typeof closeShareModal === 'function') closeShareModal();
+      if (typeof closeTargetFolderModal === 'function') closeTargetFolderModal();
       if (typeof closeGitModal === 'function') closeGitModal();
       if (typeof closeMobileModal === 'function') closeMobileModal();
     }
@@ -110,6 +118,7 @@ async function initSystemInfo() {
     state.emailClient = data.email_client || 'thunderbird';
     state.usbStickDir = data.usb_stick_dir || '';
     state.usbDrives = data.usb_drives || [];
+    state.sevenFolderOptions = data.seven_folder_options || [];
 
     // Version im Header aktualisieren
     const vTag = document.getElementById('header-version-tag');
@@ -611,6 +620,22 @@ function applyClientCategoryFilter() {
     state.currentFiles = state.allRawFiles.filter(f => f.category === cat);
   }
 
+  // Live-Suchfilter (wie in 7-Ordner-Pro: z. B. "Berge, Alm" oder Leerzeichen/Komma-getrennte Begriffe)
+  const liveRaw = (document.getElementById('live-filter-query')?.value || '').trim().toLowerCase();
+  if (liveRaw) {
+    const tokens = liveRaw.split(/[\s,;]+/).filter(Boolean);
+    if (tokens.length > 0) {
+      state.currentFiles = state.currentFiles.filter(f => {
+        const hay = `${f.name || ''} ${f.folder || ''} ${f.category_label || ''} ${f.target_sub || ''} ${f.ext || ''}`.toLowerCase();
+        // Wenn Komma benutzt wurde -> ODER-Suche (z. B. "Berge, Alm"); bei reinem Leerzeichen -> UND-Suche
+        if (liveRaw.includes(',')) {
+          return tokens.some(t => hay.includes(t));
+        }
+        return tokens.every(t => hay.includes(t));
+      });
+    }
+  }
+
   // Zähler sofort aktualisieren
   const statCount = document.getElementById('stat-count');
   if (statCount) statCount.textContent = state.currentFiles.length;
@@ -635,6 +660,134 @@ function applyClientCategoryFilter() {
     if (resultsToolbar) resultsToolbar.classList.remove('hidden');
     applySorting();
     renderResults();
+  }
+}
+
+// ==========================================
+// FLUENT SCHNELLFILTER (ZEITRAUM, DATUM, GRÖSSE)
+// ==========================================
+function _formatDateDE(d) {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}.${mm}.${yyyy}`;
+}
+
+function _formatDateISO(d) {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function _updateQuickFilterPillsUI() {
+  document.querySelectorAll('#fluent-quick-filters [data-zeitraum]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.zeitraum === state.activeTimeframe);
+  });
+  const minVal = (document.getElementById('filter-min-size')?.value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  document.querySelectorAll('#fluent-quick-filters [data-size-preset]').forEach(btn => {
+    const p = (btn.dataset.sizePreset || '').trim().toUpperCase();
+    btn.classList.toggle('active', minVal !== '' && (minVal === p || state.activeSizePreset === p));
+  });
+}
+
+function setQuickTimeframe(key) {
+  const fromEl = document.getElementById('filter-date-from');
+  const toEl = document.getElementById('filter-date-to');
+  const natFrom = document.getElementById('native-date-from');
+  const natTo = document.getElementById('native-date-to');
+
+  if (state.activeTimeframe === key) {
+    state.activeTimeframe = '';
+    if (fromEl) fromEl.value = '';
+    if (toEl) toEl.value = '';
+    if (natFrom) natFrom.value = '';
+    if (natTo) natTo.value = '';
+  } else {
+    state.activeTimeframe = key;
+    const now = new Date();
+    let start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (key === 'week') {
+      const day = (now.getDay() + 6) % 7; // Montag = 0
+      start.setDate(start.getDate() - day);
+    } else if (key === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (key === 'year') {
+      start = new Date(now.getFullYear(), 0, 1);
+    }
+    if (fromEl) fromEl.value = _formatDateDE(start);
+    if (toEl) toEl.value = _formatDateDE(now);
+    if (natFrom) natFrom.value = _formatDateISO(start);
+    if (natTo) natTo.value = _formatDateISO(now);
+  }
+  _updateQuickFilterPillsUI();
+  executeSearch();
+}
+
+function openNativeDatePicker(which) {
+  const el = document.getElementById(which === 'from' ? 'native-date-from' : 'native-date-to');
+  if (!el) return;
+  try {
+    if (typeof el.showPicker === 'function') {
+      el.showPicker();
+      return;
+    }
+  } catch (_e) {}
+  el.click();
+}
+
+function syncFromNativeDate(which, isoVal) {
+  if (!isoVal) return;
+  const parts = isoVal.split('-');
+  if (parts.length !== 3) return;
+  const de = `${parts[2]}.${parts[1]}.${parts[0]}`;
+  const target = document.getElementById(which === 'from' ? 'filter-date-from' : 'filter-date-to');
+  if (target) target.value = de;
+  state.activeTimeframe = '';
+  _updateQuickFilterPillsUI();
+  executeSearch();
+}
+
+function onDateTextChanged() {
+  state.activeTimeframe = '';
+  _updateQuickFilterPillsUI();
+}
+
+function onMinSizeInput() {
+  state.activeSizePreset = '';
+  _updateQuickFilterPillsUI();
+}
+
+function toggleMinSizePreset(preset) {
+  const input = document.getElementById('filter-min-size');
+  const normP = preset.trim().toUpperCase();
+  if (state.activeSizePreset === normP) {
+    state.activeSizePreset = '';
+    if (input) input.value = '';
+  } else {
+    state.activeSizePreset = normP;
+    if (input) input.value = preset;
+  }
+  _updateQuickFilterPillsUI();
+  executeSearch();
+}
+
+function onLiveFilterInput() {
+  if (state.allRawFiles && state.allRawFiles.length > 0) {
+    applyClientCategoryFilter();
+  }
+}
+
+function clearAllQuickFilters() {
+  state.activeTimeframe = '';
+  state.activeSizePreset = '';
+  ['live-filter-query', 'filter-date-from', 'filter-date-to', 'native-date-from', 'native-date-to', 'filter-min-size', 'max-size-input', 'custom-extensions'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  _updateQuickFilterPillsUI();
+  if (state.allRawFiles && state.allRawFiles.length > 0) {
+    executeSearch();
   }
 }
 
@@ -709,9 +862,10 @@ async function executeSearch() {
   const directory = document.getElementById('target-directory')?.value.trim() || '';
   const onlyOneDrive = (state.searchScope === 'onedrive') || (document.getElementById('toggle-only-onedrive')?.checked ?? false);
   const customExts = document.getElementById('custom-extensions')?.value.trim() || '';
-  const minSizeMb = document.getElementById('min-size-mb')?.value || null;
-  const maxSizeMb = document.getElementById('max-size-mb')?.value || null;
-  const modifiedAfter = document.getElementById('modified-after')?.value || null;
+  const minSizeText = document.getElementById('filter-min-size')?.value.trim() || '';
+  const maxSizeText = document.getElementById('max-size-input')?.value.trim() || '';
+  const modifiedAfter = document.getElementById('filter-date-from')?.value.trim() || null;
+  const modifiedBefore = document.getElementById('filter-date-to')?.value.trim() || null;
 
   if (!directory) {
     showToast('Bitte ein Suchverzeichnis angeben!', 'error');
@@ -738,9 +892,10 @@ async function executeSearch() {
         query: query,
         category: state.currentCategory,
         extensions: customExts,
-        min_size_mb: minSizeMb,
-        max_size_mb: maxSizeMb,
+        min_size_text: minSizeText,
+        max_size_text: maxSizeText,
         modified_after: modifiedAfter,
+        modified_before: modifiedBefore,
         only_onedrive: onlyOneDrive,
         max_results: 3000
       })
@@ -753,7 +908,8 @@ async function executeSearch() {
     renderSearchHistoryAndSaved();
 
     state.allRawFiles = data.results || [];
-    if (state.currentCategory && state.currentCategory !== 'all') {
+    const hasLiveText = Boolean((document.getElementById('live-filter-query')?.value || '').trim());
+    if ((state.currentCategory && state.currentCategory !== 'all') || hasLiveText) {
       applyClientCategoryFilter();
     } else {
       state.currentFiles = [...state.allRawFiles];
@@ -761,7 +917,9 @@ async function executeSearch() {
 
     // Stats aktualisieren
     document.getElementById('stat-count').textContent = state.currentFiles.length;
-    document.getElementById('stat-size').textContent = data.total_size_formatted || '0 B';
+    if (!hasLiveText) {
+      document.getElementById('stat-size').textContent = data.total_size_formatted || '0 B';
+    }
     document.getElementById('stat-time').textContent = `${data.elapsed_seconds || 0}s`;
 
     if (state.currentFiles.length === 0) {
@@ -1046,70 +1204,97 @@ function renderResults() {
     gridWrapper.classList.add('hidden');
     tbody.innerHTML = '';
 
-    state.currentFiles.forEach((file, index) => {
+    state.currentFiles.forEach((file) => {
       const isSelected = state.selectedFilePaths.has(file.path);
+      const isPreviewActive = state.activePreviewPath === file.path;
+      const isDup = file.dup_status === 'Duplikat';
       const row = document.createElement('tr');
-      row.className = `result-row transition cursor-pointer select-none ${isSelected ? 'selected' : ''}`;
+      row.className = `result-row transition cursor-pointer select-none ${isSelected ? 'selected' : ''} ${isPreviewActive ? 'active-preview-row' : ''} ${isDup && !isSelected && !isPreviewActive ? 'row-dup-highlight' : ''}`;
+      row.onclick = () => selectPreviewRow(file);
       row.ondblclick = () => openFile(file.path);
-      
+
       const fileIcon = getCategoryIconHtml(file.category, file.ext);
-      let onedriveBadge = '';
+      let cloudTag = '';
       if (file.is_gdrive || file.cloud_type === 'gdrive' || (file.path && (file.path.toLowerCase().includes('google drive') || file.path.toLowerCase().includes('meine ablage')))) {
-        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30 ml-2 font-semibold" title="In Google Drive gesichert"><i class="fa-brands fa-google-drive mr-1"></i>Google Drive</span>`;
+        cloudTag = `<span class="inline-flex items-center text-[10px] text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30 ml-1.5 font-semibold" title="In Google Drive gesichert"><i class="fa-brands fa-google-drive mr-1"></i>Drive</span>`;
       } else if (file.is_icloud || file.cloud_type === 'icloud' || (file.path && file.path.toLowerCase().includes('\\iclouddrive'))) {
-        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-500/30 ml-2 font-semibold" title="In iCloud Drive gesichert"><i class="fa-brands fa-apple mr-1"></i>iCloud</span>`;
+        cloudTag = `<span class="inline-flex items-center text-[10px] text-sky-300 bg-sky-500/15 px-1.5 py-0.5 rounded border border-sky-500/30 ml-1.5 font-semibold" title="In iCloud Drive gesichert"><i class="fa-brands fa-apple mr-1"></i>iCloud</span>`;
       } else if (file.onedrive_type === 'personal') {
-        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-2" title="In OneDrive Privat gesichert"><i class="fa-solid fa-cloud mr-1"></i>Privat</span>`;
+        cloudTag = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-1.5" title="In OneDrive Privat gesichert"><i class="fa-solid fa-cloud mr-1"></i>Privat</span>`;
       } else if (file.onedrive_type === 'business') {
-        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 ml-2" title="In OneDrive Geschäft gesichert"><i class="fa-solid fa-building mr-1"></i>Geschäft</span>`;
+        cloudTag = `<span class="inline-flex items-center text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 ml-1.5" title="In OneDrive Geschäft gesichert"><i class="fa-solid fa-building mr-1"></i>Geschäft</span>`;
       } else if (file.is_onedrive) {
-        onedriveBadge = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-2" title="OneDrive"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>`;
+        cloudTag = `<span class="inline-flex items-center text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20 ml-1.5" title="OneDrive"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>`;
       }
 
+      const dupStatus = file.dup_status || '—';
+      let dupCellHtml = `<span class="text-slate-400">—</span>`;
+      if (dupStatus === 'Original') {
+        dupCellHtml = `<span class="text-blue-500 font-semibold">Original</span>`;
+      } else if (dupStatus === 'Duplikat') {
+        dupCellHtml = `<span class="text-amber-500 font-semibold">Duplikat</span>`;
+      } else if (dupStatus.includes('Cloud')) {
+        dupCellHtml = `<span class="text-sky-500 font-medium whitespace-nowrap"><i class="fa-solid fa-cloud mr-1 text-[10px]"></i>Cloud</span>`;
+      }
+
+      const catLabel = file.category_label || 'Unbekannt -> Inbox';
+      const targetSub = file.target_sub || '01_Eingang_Inbox';
+
       row.innerHTML = `
-        <td class="py-2.5 px-4 text-center" onclick="event.stopPropagation()">
+        <td class="py-1.5 px-2.5 text-center" onclick="event.stopPropagation()">
           <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
         </td>
-        <td class="py-2.5 px-4 text-left whitespace-nowrap">
-          <div class="inline-flex items-center gap-1.5" title="Dateityp: ${file.ext || 'DATEI'} (${getAppLabelForExt(file.ext)})">
+        <td class="py-1.5 px-3 font-medium text-slate-100 max-w-[230px] truncate" title="${file.name} (Doppelklick: öffnen · Klick: Vorschau)">
+          <span class="inline-flex items-center gap-1.5 max-w-full truncate">
             ${fileIcon}
-            <span class="ext-badge text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${file.ext || 'DATEI'}</span>
-          </div>
-        </td>
-        <td class="py-2.5 px-4 font-medium text-slate-100 max-w-xs md:max-w-md truncate" onclick="openFile('${escapeJs(file.path)}')">
-          <span class="hover:text-indigo-400 transition underline-offset-2 hover:underline cursor-pointer" title="In ${getAppLabelForExt(file.ext)} öffnen: ${file.name}">
-            ${file.name}
+            <span class="truncate">${file.name}</span>
           </span>
-          ${onedriveBadge}
+          ${cloudTag}
         </td>
-        <td class="py-2.5 px-4 text-slate-300 font-mono text-[11px] truncate max-w-xs cursor-pointer hover:text-yellow-400 transition" onclick="event.stopPropagation(); openFolder('${escapeJs(file.path)}')" title="Im Windows Explorer öffnen: ${toGermanDisplayPath(file.folder)}">
-          ${toGermanDisplayPath(file.folder)}
+        <td class="py-1.5 px-2.5 text-center whitespace-nowrap">
+          <span class="ext-badge text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/70">${file.ext || 'DATEI'}</span>
         </td>
-        <td class="py-2.5 px-4 text-right text-slate-400 font-mono text-[11px] whitespace-nowrap">
+        <td class="py-1.5 px-2.5 text-right text-slate-300 font-mono text-[11px] whitespace-nowrap">
           ${file.size_formatted}
         </td>
-        <td class="py-2.5 px-4 text-slate-400 whitespace-nowrap text-[11px]">
+        <td class="py-1.5 px-2.5 text-center text-[11px] whitespace-nowrap">
+          ${dupCellHtml}
+        </td>
+        <td class="py-1.5 px-3 text-[11px] text-slate-300 truncate max-w-[175px]" title="${catLabel}">
+          ${catLabel}
+        </td>
+        <td class="py-1.5 px-3 text-[11px] truncate max-w-[185px]" onclick="event.stopPropagation(); openTargetFolderModal(['${escapeJs(file.path)}'])" title="Klicken zum Ändern oder direkt dorthin kopieren: ${targetSub}">
+          <span class="cursor-pointer hover:underline text-blue-400 font-medium">${targetSub}</span>
+        </td>
+        <td class="py-1.5 px-2.5 text-center text-slate-400 whitespace-nowrap text-[11px]">
           ${file.modified_formatted}
         </td>
-        <td class="py-2.5 px-4 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
-          <div class="flex items-center justify-end gap-1">
-            <!-- Direktes Öffnen in Standard-App (Blau / Play) -->
+        <td class="py-1.5 px-3 text-slate-300 font-mono text-[11px] truncate max-w-[220px] cursor-pointer hover:text-yellow-400 transition" onclick="event.stopPropagation(); openFolder('${escapeJs(file.path)}')" title="Im Windows Explorer öffnen: ${toGermanDisplayPath(file.folder)}">
+          ${toGermanDisplayPath(file.folder)}
+        </td>
+        <td class="py-1.5 px-3 text-right action-cell whitespace-nowrap" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-end gap-0.5">
+            <!-- Direktes Öffnen in Standard-App -->
             <button onclick="openFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition" title="In ${getAppLabelForExt(file.ext)} öffnen">
               <i class="fa-solid fa-play text-xs"></i>
             </button>
-            <!-- In Explorer zeigen (Gelb / Ordner) -->
+            <!-- Speicher-Ordner wählen / kopieren -->
+            <button onclick="openTargetFolderModal(['${escapeJs(file.path)}'])" class="p-1.5 rounded-lg text-sky-400 hover:text-sky-300 hover:bg-sky-500/20 transition" title="Speicher-Ordner wählen & kopieren/verschieben">
+              <i class="fa-solid fa-folder-plus text-xs"></i>
+            </button>
+            <!-- In Explorer zeigen -->
             <button onclick="openFolder('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20 transition" title="Im Windows Explorer anzeigen">
               <i class="fa-solid fa-folder-open text-xs"></i>
             </button>
-            <!-- Teams / Mail Teilen (Violett / Teams) -->
+            <!-- Teams / Mail Teilen -->
             <button onclick="openShareModal('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-violet-400 hover:text-violet-300 hover:bg-violet-500/20 transition" title="Per Teams oder E-Mail senden">
               <i class="fa-solid fa-paper-plane text-xs"></i>
             </button>
-            <!-- Umbenennen (Cyan / Türkis) -->
+            <!-- Umbenennen -->
             <button onclick="openSingleRename('${escapeJs(file.path)}', '${escapeJs(file.name)}')" class="p-1.5 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/20 transition" title="Umbenennen">
               <i class="fa-solid fa-pen text-xs"></i>
             </button>
-            <!-- In Papierkorb (Rot / Rose) -->
+            <!-- In Papierkorb -->
             <button onclick="deleteSingleFile('${escapeJs(file.path)}')" class="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition" title="In Windows-Papierkorb löschen">
               <i class="fa-solid fa-trash-can text-xs"></i>
             </button>
@@ -1288,6 +1473,11 @@ function updateSelectedCounter() {
     sevenBadge.textContent = count;
     sevenBadge.classList.toggle('hidden', count === 0);
   }
+  const tfBadge = document.getElementById('badge-target-folder-count');
+  if (tfBadge) {
+    tfBadge.textContent = count;
+    tfBadge.classList.toggle('hidden', count === 0);
+  }
   const deleteBtn = document.getElementById('btn-delete-selected');
   const deleteCountEl = document.getElementById('delete-selected-count');
   if (deleteBtn) {
@@ -1312,9 +1502,12 @@ function sortResults(column) {
   const colNames = {
     ext: 'Dateityp',
     name: 'Dateiname',
-    folder: 'Ordner-Pfad',
-    size: 'Größe',
-    modified: 'Änderungsdatum'
+    folder: 'Gefunden in (Pfad)',
+    size: 'Dateigröße',
+    modified: 'Änderungsdatum',
+    dup_status: 'Original / Duplikat',
+    category_label: 'Erkannte Kategorie',
+    target_sub: 'Zielordner'
   };
   const dirLabel = state.sortAsc ? 'aufsteigend ▲' : 'absteigend ▼';
   showToast(`Sortiert nach ${colNames[column] || column} (${dirLabel})`, 'info');
@@ -1327,16 +1520,38 @@ function applySorting() {
       const extB = ((b.ext && b.ext !== 'DATEI') ? b.ext : 'ZZZ_DATEI').toLowerCase();
       if (extA < extB) return state.sortAsc ? -1 : 1;
       if (extA > extB) return state.sortAsc ? 1 : -1;
-      // Sekundäre Sortierung nach Dateiname innerhalb desselben Dateityps
       const nameA = (a.name || '').toLowerCase();
       const nameB = (b.name || '').toLowerCase();
       return nameA.localeCompare(nameB, 'de');
     }
 
-    let valA = a[state.sortCol];
-    let valB = b[state.sortCol];
-    if (typeof valA === 'string') valA = valA.toLowerCase();
-    if (typeof valB === 'string') valB = valB.toLowerCase();
+    if (state.sortCol === 'dup_status') {
+      const rank = s => (s === 'Original' ? 0 : s === 'Duplikat' ? 1 : (s && s.includes('Cloud') ? 2 : 3));
+      const rA = rank(a.dup_status);
+      const rB = rank(b.dup_status);
+      if (rA !== rB) return state.sortAsc ? (rA - rB) : (rB - rA);
+      const gA = (a.dup_group || a.name || '').toLowerCase();
+      const gB = (b.dup_group || b.name || '').toLowerCase();
+      return gA.localeCompare(gB, 'de');
+    }
+
+    if (state.sortCol === 'size') {
+      const sA = Number(a.size || 0);
+      const sB = Number(b.size || 0);
+      return state.sortAsc ? (sA - sB) : (sB - sA);
+    }
+
+    let valA = a[state.sortCol] ?? '';
+    let valB = b[state.sortCol] ?? '';
+    if (typeof valA === 'string' && typeof valB === 'string') {
+      const cmp = valA.localeCompare(valB, 'de', { sensitivity: 'base' });
+      if (cmp !== 0) return state.sortAsc ? cmp : -cmp;
+      if (state.sortCol === 'name') {
+        const dRank = s => (s === 'Original' ? 0 : s === 'Duplikat' ? 1 : 2);
+        return dRank(a.dup_status) - dRank(b.dup_status);
+      }
+      return 0;
+    }
     if (valA < valB) return state.sortAsc ? -1 : 1;
     if (valA > valB) return state.sortAsc ? 1 : -1;
     return 0;
@@ -3055,5 +3270,357 @@ async function sendFolderToSevenFolder() {
     }
   } catch (err) {
     showToast(`Fehler beim Start: ${err.message}`, 'error');
+  }
+}
+
+// ==========================================
+// RECHTE DATEIVORSCHAU-SEITENLEISTE (7-ORDNER-PRO)
+// ==========================================
+function togglePreviewPane(forceState = null) {
+  const next = forceState === null ? !state.previewVisible : Boolean(forceState);
+  state.previewVisible = next;
+  const pane = document.getElementById('preview-pane');
+  const btn = document.getElementById('btn-toggle-preview');
+  if (pane) pane.classList.toggle('hidden', !next);
+  if (btn) btn.classList.toggle('active', next);
+  if (next && state.activePreviewPath) {
+    loadPreviewPaneForPath(state.activePreviewPath);
+  }
+}
+
+function selectPreviewRow(file) {
+  if (!file || !file.path) return;
+  state.activePreviewPath = file.path;
+  // Zeilen-Highlight schnell aktualisieren ohne DOM komplett neu aufzubauen
+  const rows = document.querySelectorAll('#results-tbody tr.result-row');
+  state.currentFiles.forEach((f, idx) => {
+    if (rows[idx]) {
+      rows[idx].classList.toggle('active-preview-row', f.path === file.path);
+    }
+  });
+  if (state.previewVisible) {
+    loadPreviewPaneForPath(file.path, file);
+  }
+}
+
+async function loadPreviewPaneForPath(path, fileHint = null) {
+  const stage = document.getElementById('preview-pane-stage');
+  const badgeEl = document.getElementById('preview-pane-badge');
+  const nameEl = document.getElementById('preview-pane-name');
+  const typeSizeEl = document.getElementById('preview-pane-typesize');
+  const dateEl = document.getElementById('preview-pane-date');
+  const catEl = document.getElementById('preview-pane-cat');
+  const targetEl = document.getElementById('preview-pane-target');
+  const folderEl = document.getElementById('preview-pane-folder');
+  const appBtn = document.getElementById('btn-preview-open-app');
+  const expBtn = document.getElementById('btn-preview-open-exp');
+
+  if (!stage) return;
+  if (appBtn) appBtn.disabled = !path;
+  if (expBtn) expBtn.disabled = !path;
+
+  const fileObj = fileHint || state.currentFiles.find(f => f.path === path);
+  if (fileObj) {
+    if (nameEl) nameEl.textContent = fileObj.name || '';
+    if (typeSizeEl) typeSizeEl.textContent = `${fileObj.ext || 'DATEI'} · ${fileObj.size_formatted || '—'}`;
+    if (dateEl) dateEl.textContent = fileObj.modified_formatted || '—';
+    if (catEl) catEl.textContent = fileObj.category_label || '—';
+    if (targetEl) targetEl.textContent = fileObj.target_sub || '—';
+    if (folderEl) folderEl.textContent = toGermanDisplayPath(fileObj.folder || '');
+  }
+
+  stage.innerHTML = `<div class="text-xs text-slate-400 py-8"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Lade Vorschau...</div>`;
+
+  try {
+    const res = await fetch('/api/preview-info?path=' + encodeURIComponent(path));
+    const info = await res.json();
+    if (!info || !info.success) {
+      stage.textContent = info?.error || 'Vorschau nicht verfügbar.';
+      return;
+    }
+    if (badgeEl) {
+      badgeEl.textContent = info.badge || '';
+      badgeEl.classList.toggle('hidden', !info.badge);
+    }
+    if (nameEl) nameEl.textContent = info.name || '';
+    if (typeSizeEl) typeSizeEl.textContent = `${info.ext} · ${info.size_formatted}`;
+    if (dateEl) dateEl.textContent = info.modified_formatted;
+    if (catEl) catEl.textContent = info.category_label;
+    if (targetEl) targetEl.textContent = (fileObj?.target_sub) || info.target_sub || '—';
+    if (folderEl) folderEl.textContent = toGermanDisplayPath(info.folder || '');
+
+    if (info.kind === 'image') {
+      const imgUrl = '/api/preview?path=' + encodeURIComponent(path);
+      stage.innerHTML = `<img src="${imgUrl}" alt="${escapeHtml(info.name)}" class="max-w-full max-h-[340px] object-contain rounded-lg shadow-sm mx-auto">`;
+    } else if (info.kind === 'pdf') {
+      const pdfUrl = '/api/preview?path=' + encodeURIComponent(path) + '#toolbar=0&navpanes=0';
+      stage.innerHTML = `<iframe src="${pdfUrl}" class="w-full h-[320px] rounded-lg border border-slate-700/50 bg-white"></iframe>`;
+    } else if (info.kind === 'text') {
+      stage.innerHTML = `<pre class="w-full h-full max-h-[320px] overflow-auto text-left text-[11px] font-mono whitespace-pre-wrap break-words p-2">${escapeHtml(info.text || '')}</pre>`;
+    } else {
+      stage.innerHTML = `<div class="p-4 text-xs text-slate-400 whitespace-pre-line">${escapeHtml(info.text || 'Keine direkte Vorschau.')}</div>`;
+    }
+  } catch (err) {
+    stage.textContent = `Vorschau-Fehler: ${err.message}`;
+  }
+}
+
+function previewPaneOpenApp() {
+  if (state.activePreviewPath) openFile(state.activePreviewPath);
+}
+
+function previewPaneOpenExplorer() {
+  if (state.activePreviewPath) openFolder(state.activePreviewPath);
+}
+
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ==========================================
+// SPEICHER-ORDNER WÄHLEN & DATEIEN KOPIEREN / VERSCHIEBEN
+// ==========================================
+function openTargetFolderModal(explicitPaths = null) {
+  let targetPaths = [];
+  if (Array.isArray(explicitPaths) && explicitPaths.length > 0) {
+    targetPaths = explicitPaths;
+  } else if (state.selectedFilePaths.size > 0) {
+    targetPaths = Array.from(state.selectedFilePaths);
+  } else if (state.currentFiles && state.currentFiles.length > 0) {
+    targetPaths = state.currentFiles.map(f => f.path);
+  }
+
+  if (targetPaths.length === 0) {
+    showToast('Bitte zuerst Dateien suchen oder markieren.', 'warning');
+    return;
+  }
+
+  state.targetModalPaths = targetPaths;
+  const firstFile = state.currentFiles.find(f => f.path === targetPaths[0]);
+  const subEl = document.getElementById('target-folder-modal-subtitle');
+  if (subEl) {
+    if (targetPaths.length === 1 && firstFile) {
+      subEl.textContent = `Auswahl: „${firstFile.name}“ (${state.selectedFilePaths.size === 0 ? 'einzelne Zeile' : '1 Datei'})`;
+    } else {
+      const scopeHint = state.selectedFilePaths.size > 0 ? 'ausgewählte Dateien' : 'sichtbare Treffer';
+      subEl.textContent = `${targetPaths.length} ${scopeHint} bearbeiten`;
+    }
+  }
+
+  // USB_Stick Quick-Button aktualisieren
+  const usbBtn = document.getElementById('btn-tf-usb-quick');
+  const usbLbl = document.getElementById('lbl-tf-usb-quick');
+  if (usbBtn) {
+    usbBtn.classList.toggle('hidden', !state.usbStickDir);
+    if (usbLbl && state.usbStickDir) {
+      const drv = state.usbStickDir.slice(0, 2);
+      usbLbl.textContent = `USB_Stick (${drv})`;
+    }
+  }
+
+  // Standardpfad vorbelegen (z. B. USB_Stick falls vorhanden, sonst Desktop)
+  const pathInput = document.getElementById('target-folder-modal-path');
+  if (pathInput && !pathInput.value.trim()) {
+    pathInput.value = state.usbStickDir || '';
+  }
+
+  // 7-Ordner Schnellziele rendern
+  const presetsEl = document.getElementById('target-folder-presets');
+  if (presetsEl) {
+    const opts = state.sevenFolderOptions && state.sevenFolderOptions.length > 0
+      ? state.sevenFolderOptions
+      : [
+          ['01_Eingang_Inbox', 'Unbekannt -> Inbox'],
+          ['07_Bilder', 'Bilder & Fotos'],
+          ['08_Programme_Installer', 'Programme & Installer'],
+          ['09_Videos_Medien', 'Videos & Medien'],
+          ['10_Ordner_Projekte', 'Ordner & Projekte']
+        ];
+    presetsEl.innerHTML = opts.map(([sub, lbl]) => `
+      <button
+        type="button"
+        onclick="pickSevenPresetInModal('${escapeJs(sub)}', '${escapeJs(lbl)}')"
+        class="tf-preset-btn px-2.5 py-1.5 rounded-lg border border-slate-700/80 bg-slate-950/60 hover:border-blue-500 text-left transition flex flex-col"
+      >
+        <span class="font-semibold text-[11px] truncate">${escapeHtml(lbl)}</span>
+        <span class="text-[10px] opacity-70 font-mono truncate">${escapeHtml(sub)}</span>
+      </button>
+    `).join('');
+  }
+
+  setTargetFolderModalMode(state.targetModalMode || 'copy');
+  document.getElementById('modal-target-folder')?.classList.remove('hidden');
+}
+
+function closeTargetFolderModal() {
+  document.getElementById('modal-target-folder')?.classList.add('hidden');
+}
+
+function setTargetFolderModalMode(mode) {
+  state.targetModalMode = mode;
+  document.querySelectorAll('#modal-target-folder .tf-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tfMode === mode);
+    const active = btn.dataset.tfMode === mode;
+    btn.classList.toggle('border-blue-500', active);
+    btn.classList.toggle('bg-blue-600/20', active);
+    btn.classList.toggle('text-blue-200', active);
+    btn.classList.toggle('border-slate-700', !active);
+    btn.classList.toggle('bg-slate-950/50', !active);
+    btn.classList.toggle('text-slate-300', !active);
+  });
+
+  const destSection = document.getElementById('target-folder-dest-section');
+  const confirmBtn = document.getElementById('btn-tf-confirm');
+  if (destSection) destSection.classList.toggle('opacity-50', mode === 'assign');
+  if (confirmBtn) {
+    const span = confirmBtn.querySelector('span');
+    if (span) {
+      if (mode === 'move') span.textContent = 'Dateien dorthin verschieben';
+      else if (mode === 'assign') span.textContent = 'Zielordner in Tabelle übernehmen';
+      else span.textContent = 'Dateien hierher kopieren';
+    }
+  }
+}
+
+async function browseTargetFolderInModal() {
+  const pathInput = document.getElementById('target-folder-modal-path');
+  const initialDir = (pathInput?.value || '').trim() || state.usbStickDir || '';
+  try {
+    const res = await fetch('/api/browse-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initial_dir: initialDir })
+    });
+    const d = await res.json();
+    if (d.success && d.path && pathInput) {
+      pathInput.value = d.path;
+    }
+  } catch (err) {
+    showToast(`Ordnerauswahl fehlgeschlagen: ${err.message}`, 'error');
+  }
+}
+
+async function pickUsbStickInTargetModal() {
+  await refreshUsbStickShortcut();
+  const pathInput = document.getElementById('target-folder-modal-path');
+  if (state.usbStickDir && pathInput) {
+    pathInput.value = state.usbStickDir;
+    showToast(`Zielordner gesetzt: ${state.usbStickDir}`, 'info');
+  } else {
+    showToast('Kein USB-Stick mit Ordner USB_Stick erkannt.', 'warning');
+  }
+}
+
+function pickSevenPresetInModal(sub, lbl) {
+  const pathSet = new Set(state.targetModalPaths || []);
+  const applySub = (arr) => {
+    (arr || []).forEach(f => {
+      if (pathSet.has(f.path)) {
+        f.target_sub = sub;
+        if (lbl) f.category_label = lbl;
+      }
+    });
+  };
+  applySub(state.currentFiles);
+  applySub(state.allRawFiles);
+
+  if (state.targetModalMode === 'assign') {
+    renderResults();
+    if (state.previewVisible && state.activePreviewPath && pathSet.has(state.activePreviewPath)) {
+      const f = state.currentFiles.find(x => x.path === state.activePreviewPath);
+      if (f) document.getElementById('preview-pane-target').textContent = f.target_sub;
+    }
+    closeTargetFolderModal();
+    showToast(`✅ Zielordner auf „${sub}“ gesetzt (${pathSet.size} Dateien).`, 'success');
+  } else {
+    const baseInput = document.getElementById('target-folder-modal-path');
+    const subCheck = document.getElementById('target-folder-use-sub');
+    if (subCheck) subCheck.checked = true;
+    const baseVal = (baseInput?.value || '').trim();
+    if (!baseVal && state.usbStickDir && baseInput) {
+      baseInput.value = state.usbStickDir;
+    }
+    showToast(`Kategorie-Unterordner „${sub}“ ausgewählt – jetzt Zielordner prüfen & bestätigen.`, 'info');
+  }
+}
+
+async function confirmTargetFolderModal() {
+  const paths = state.targetModalPaths || [];
+  if (paths.length === 0) return;
+
+  const targetDir = (document.getElementById('target-folder-modal-path')?.value || '').trim();
+  const mode = state.targetModalMode || 'copy';
+  const useSub = Boolean(document.getElementById('target-folder-use-sub')?.checked);
+
+  if (mode === 'assign') {
+    if (!targetDir) {
+      showToast('Bitte zuerst einen Zielordner angeben oder oben eine 7-Ordner-Kategorie wählen.', 'warning');
+      return;
+    }
+    const pathSet = new Set(paths);
+    [state.currentFiles, state.allRawFiles].forEach(list => {
+      (list || []).forEach(f => {
+        if (pathSet.has(f.path)) f.target_sub = targetDir;
+      });
+    });
+    renderResults();
+    closeTargetFolderModal();
+    showToast(`✅ Zielordner „${targetDir}“ für ${paths.length} Datei(en) vorgemerkt.`, 'success');
+    return;
+  }
+
+  if (!targetDir) {
+    showToast('Bitte einen Speicher-Ordner angeben oder über „Ordner wählen…“ auswählen.', 'warning');
+    return;
+  }
+
+  if (mode === 'move') {
+    const ok = await showConfirmDialog({
+      title: `${paths.length} Datei${paths.length > 1 ? 'en' : ''} verschieben`,
+      message: `Sollen ${paths.length} ausgewählte Datei(en) wirklich nach „${targetDir}“ verschoben werden?`,
+      detail: 'Die Originaldateien werden am Quellort entfernt und im gewählten Speicher-Ordner abgelegt.',
+      confirmText: 'Jetzt verschieben',
+      cancelText: 'Abbrechen',
+      type: 'warning'
+    });
+    if (!ok) return;
+  }
+
+  const items = paths.map(p => {
+    const f = state.currentFiles.find(x => x.path === p);
+    return { path: p, target_sub: f?.target_sub || '' };
+  });
+
+  try {
+    const res = await fetch('/api/copy-or-move-files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items,
+        target_dir: targetDir,
+        mode,
+        use_category_subfolder: useSub
+      })
+    });
+    const d = await res.json();
+    closeTargetFolderModal();
+    if (d.success) {
+      const verb = mode === 'move' ? 'verschoben' : 'kopiert';
+      showToast(`✅ ${d.processed_count} Datei(en) erfolgreich nach „${d.target_dir}“ ${verb}!`, 'success');
+      if (mode === 'move' && Array.isArray(d.processed)) {
+        const movedMap = new Map(d.processed.filter(x => !x.unchanged).map(x => [x.src, x.dest]));
+        if (movedMap.size > 0) {
+          executeSearch();
+        }
+      }
+    } else {
+      showToast(d.error || 'Kopieren/Verschieben fehlgeschlagen', 'error');
+    }
+  } catch (err) {
+    showToast(`Fehler beim Kopieren/Verschieben: ${err.message}`, 'error');
   }
 }
