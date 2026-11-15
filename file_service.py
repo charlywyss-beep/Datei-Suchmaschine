@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.19"
+APP_VERSION = "v1.7.20"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -2097,14 +2097,18 @@ def protect_usb_tools_tree(target_dir: str) -> bool:
     if os.path.isdir(tools_root):
         ok = _run_icacls([tools_root, "/inheritance:r", "/Q"]) and ok
         ok = _run_icacls([tools_root, "/grant", "*S-1-1-0:(OI)(CI)RX", "*S-1-5-32-544:(OI)(CI)F", "/Q"]) and ok
-        ok = _run_icacls([tools_root, "/deny", "*S-1-1-0:(OI)(CI)(DE,DC,WD,AD)", "/Q"]) and ok
-        for rdir, _dirs, fnames in os.walk(tools_root):
+        for rdir, dirs, fnames in os.walk(tools_root):
+            for dn in dirs:
+                _run_icacls([os.path.join(rdir, dn), "/reset", "/Q"])
             for fn in fnames:
+                fp = os.path.join(rdir, fn)
                 if fn.lower().endswith(".json"):
-                    jp = os.path.join(rdir, fn)
-                    _run_icacls([jp, "/inheritance:r", "/Q"])
-                    _run_icacls([jp, "/grant", "*S-1-1-0:(R,W)", "*S-1-5-32-544:F", "/Q"])
-                    _run_icacls([jp, "/deny", "*S-1-1-0:(DE)", "/Q"])
+                    _run_icacls([fp, "/inheritance:r", "/Q"])
+                    _run_icacls([fp, "/grant", "*S-1-1-0:(R,W)", "*S-1-5-32-544:F", "/Q"])
+                    _run_icacls([fp, "/deny", "*S-1-1-0:(DE)", "/Q"])
+                else:
+                    _run_icacls([fp, "/reset", "/Q"])
+        ok = _run_icacls([tools_root, "/deny", "*S-1-1-0:(OI)(CI)(DE,DC,WD,AD)", "/Q"]) and ok
 
     if drive_root:
         usb_stick_dir = os.path.join(drive_root, "USB_Stick")
