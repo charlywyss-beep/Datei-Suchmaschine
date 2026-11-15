@@ -378,30 +378,23 @@
             </div>
           </div>
 
-          <!-- Fluent Schnellfilter-Raster (Zeitraum, Suchfilter + Von/Bis, Dateigröße — Vorlage: 7-Ordner-Pro) -->
+          <!-- Fluent Schnellfilter-Raster (Zeitraum, Änderungsdatum Von/Bis, Dateigröße) -->
           <div id="fluent-quick-filters" class="pt-3 border-t border-slate-800/70 space-y-2 text-xs">
             <!-- Zeile 1: Zeitraum -->
             <div class="flex flex-wrap items-center gap-2">
-              <span class="w-[82px] shrink-0 font-bold text-slate-300">Zeitraum:</span>
+              <span class="w-[104px] shrink-0 font-bold text-slate-300">Zeitraum:</span>
               <button type="button" data-zeitraum="today" onclick="setQuickTimeframe('today')" class="fluent-pill-btn">Heute</button>
               <button type="button" data-zeitraum="week" onclick="setQuickTimeframe('week')" class="fluent-pill-btn">Diese Woche</button>
               <button type="button" data-zeitraum="month" onclick="setQuickTimeframe('month')" class="fluent-pill-btn">Dieser Monat</button>
               <button type="button" data-zeitraum="year" onclick="setQuickTimeframe('year')" class="fluent-pill-btn">Dieses Jahr</button>
             </div>
 
-            <!-- Zeile 2: Suchfilter + Von/Bis + Filter leeren -->
+            <!-- Zeile 2: Änderungsdatum (Von/Bis + Filter leeren) -->
             <div class="flex flex-wrap items-center gap-2">
-              <span class="w-[82px] shrink-0 font-bold text-slate-300">Suchfilter:</span>
-              <input
-                type="text"
-                id="live-filter-query"
-                oninput="onLiveFilterInput()"
-                placeholder="z. B. Berge, Alm"
-                class="fluent-filter-input w-[180px]"
-              >
+              <span class="w-[104px] shrink-0 font-bold text-slate-300">Änderungsdatum:</span>
 
               <!-- Von Datum -->
-              <div class="fluent-date-box w-[176px]">
+              <div class="fluent-date-box w-[180px]">
                 <span class="fluent-inline-prefix">Von</span>
                 <input
                   type="text"
@@ -409,6 +402,7 @@
                   placeholder="TT.MM.JJJJ"
                   maxlength="10"
                   oninput="onDateTextChanged()"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
                   class="fluent-date-text"
                 >
                 <input type="date" id="native-date-from" class="sr-only" tabindex="-1" onchange="syncFromNativeDate('from', this.value)">
@@ -418,7 +412,7 @@
               </div>
 
               <!-- Bis Datum -->
-              <div class="fluent-date-box w-[176px]">
+              <div class="fluent-date-box w-[180px]">
                 <span class="fluent-inline-prefix">Bis</span>
                 <input
                   type="text"
@@ -426,6 +420,7 @@
                   placeholder="TT.MM.JJJJ"
                   maxlength="10"
                   oninput="onDateTextChanged()"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
                   class="fluent-date-text"
                 >
                 <input type="date" id="native-date-to" class="sr-only" tabindex="-1" onchange="syncFromNativeDate('to', this.value)">
@@ -434,14 +429,14 @@
                 </button>
               </div>
 
-              <button type="button" onclick="clearAllQuickFilters()" class="fluent-pill-btn">
+              <button type="button" onclick="clearAllQuickFilters()" class="fluent-pill-btn" title="Alle Datums-, Größen- und Zusatzfilter zurücksetzen">
                 Filter leeren
               </button>
             </div>
 
             <!-- Zeile 3: Dateigröße -->
             <div class="flex flex-wrap items-center gap-2">
-              <span class="w-[82px] shrink-0 font-bold text-slate-300">Dateigröße:</span>
+              <span class="w-[104px] shrink-0 font-bold text-slate-300">Dateigröße:</span>
               <div class="fluent-date-box w-[180px]">
                 <span class="fluent-inline-prefix">Ab</span>
                 <input
@@ -480,9 +475,10 @@
       <div id="results-toolbar" class="hidden sticky top-[68px] z-30 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900/95 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-800 shadow-xl transition-all">
         <!-- Result Stats -->
         <div class="flex items-center space-x-3 text-xs text-slate-300">
-          <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
-            <i class="fa-solid fa-list-check mr-1.5"></i>
-            <span id="stat-count">0</span> Treffer
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+            <i class="fa-solid fa-list-check mr-0.5"></i>
+            <span id="stat-count">0</span>
+            <span>Treffer</span>
           </span>
           <span class="text-slate-400">&bull;</span>
           <span id="stat-size" class="font-medium text-slate-200">0 MB</span>

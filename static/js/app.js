@@ -620,22 +620,6 @@ function applyClientCategoryFilter() {
     state.currentFiles = state.allRawFiles.filter(f => f.category === cat);
   }
 
-  // Live-Suchfilter (wie in 7-Ordner-Pro: z. B. "Berge, Alm" oder Leerzeichen/Komma-getrennte Begriffe)
-  const liveRaw = (document.getElementById('live-filter-query')?.value || '').trim().toLowerCase();
-  if (liveRaw) {
-    const tokens = liveRaw.split(/[\s,;]+/).filter(Boolean);
-    if (tokens.length > 0) {
-      state.currentFiles = state.currentFiles.filter(f => {
-        const hay = `${f.name || ''} ${f.folder || ''} ${f.category_label || ''} ${f.target_sub || ''} ${f.ext || ''}`.toLowerCase();
-        // Wenn Komma benutzt wurde -> ODER-Suche (z. B. "Berge, Alm"); bei reinem Leerzeichen -> UND-Suche
-        if (liveRaw.includes(',')) {
-          return tokens.some(t => hay.includes(t));
-        }
-        return tokens.every(t => hay.includes(t));
-      });
-    }
-  }
-
   // Zähler sofort aktualisieren
   const statCount = document.getElementById('stat-count');
   if (statCount) statCount.textContent = state.currentFiles.length;
@@ -772,16 +756,10 @@ function toggleMinSizePreset(preset) {
   executeSearch();
 }
 
-function onLiveFilterInput() {
-  if (state.allRawFiles && state.allRawFiles.length > 0) {
-    applyClientCategoryFilter();
-  }
-}
-
 function clearAllQuickFilters() {
   state.activeTimeframe = '';
   state.activeSizePreset = '';
-  ['live-filter-query', 'filter-date-from', 'filter-date-to', 'native-date-from', 'native-date-to', 'filter-min-size', 'max-size-input', 'custom-extensions'].forEach(id => {
+  ['filter-date-from', 'filter-date-to', 'native-date-from', 'native-date-to', 'filter-min-size', 'max-size-input', 'custom-extensions'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -908,8 +886,7 @@ async function executeSearch() {
     renderSearchHistoryAndSaved();
 
     state.allRawFiles = data.results || [];
-    const hasLiveText = Boolean((document.getElementById('live-filter-query')?.value || '').trim());
-    if ((state.currentCategory && state.currentCategory !== 'all') || hasLiveText) {
+    if (state.currentCategory && state.currentCategory !== 'all') {
       applyClientCategoryFilter();
     } else {
       state.currentFiles = [...state.allRawFiles];
@@ -917,9 +894,7 @@ async function executeSearch() {
 
     // Stats aktualisieren
     document.getElementById('stat-count').textContent = state.currentFiles.length;
-    if (!hasLiveText) {
-      document.getElementById('stat-size').textContent = data.total_size_formatted || '0 B';
-    }
+    document.getElementById('stat-size').textContent = data.total_size_formatted || '0 B';
     document.getElementById('stat-time').textContent = `${data.elapsed_seconds || 0}s`;
 
     if (state.currentFiles.length === 0) {
