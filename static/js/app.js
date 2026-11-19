@@ -6,6 +6,7 @@ let state = {
   currentFiles: [],
   allRawFiles: [],
   selectedFilePaths: new Set(),
+  lastSelectedPath: null,
   currentCategory: 'all',
   activeTab: 'search',
   viewMode: 'table',
@@ -23,6 +24,7 @@ let state = {
   localIp: '',
   duplicateData: null,
   duplicateSelectedPaths: new Set(),
+  lastDuplicateSelectedPath: null,
   renameFiles: [],
   currentRenameRule: 'replace',
   renamePreview: [],
@@ -1313,7 +1315,7 @@ function renderTableHeader() {
   thead.innerHTML = `
     <tr class="bg-slate-950/95 backdrop-blur-md text-slate-300 font-semibold text-[11px] select-none">
       <th class="th-cell py-2.5 px-2 text-center sticky z-20 bg-slate-950/95" style="top: 0">
-        <input type="checkbox" id="select-all-checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen">
+        <input type="checkbox" id="select-all-checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Alle auswählen / abwählen (Tipp: Umschalt+Klick wählt ganze Bereiche)">
       </th>
       ${thCells}
     </tr>
@@ -1509,7 +1511,7 @@ function renderResults() {
       const isDup = file.dup_status === 'Duplikat';
       const row = document.createElement('tr');
       row.className = `result-row transition cursor-pointer select-none ${isSelected ? 'selected' : ''} ${isPreviewActive ? 'active-preview-row' : ''} ${isDup && !isSelected && !isPreviewActive ? 'row-dup-highlight' : ''}`;
-      row.onclick = () => selectPreviewRow(file);
+      row.onclick = (e) => handleResultRowClick(e, file);
       row.ondblclick = () => openFile(file.path);
 
       const fileIcon = getCategoryIconHtml(file.category, file.ext);
@@ -1547,7 +1549,7 @@ function renderResults() {
 
       const checkboxTd = `
         <td class="py-1.5 px-2 text-center" onclick="event.stopPropagation()">
-          <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${ctx.escPath}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+          <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); handleFileCheckboxClick(event, '${ctx.escPath}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Auswählen (Umschalt+Klick für Bereich)">
         </td>
       `;
       row.innerHTML = checkboxTd + order.map(k => _renderFileCellByKey(k, file, ctx)).join('');
@@ -1569,7 +1571,7 @@ function renderResults() {
 
       card.innerHTML = `
         <div class="flex items-start justify-between">
-          <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectFile('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" onclick="event.stopPropagation()">
+          <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); handleFileCheckboxClick(event, '${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" title="Auswählen (Umschalt+Klick für Bereich)">
           ${(file.is_icloud || file.cloud_type === 'icloud' || (file.path && file.path.toLowerCase().includes('\\iclouddrive'))) ? '<span class="text-[11px] text-sky-300 bg-sky-500/15 px-2 py-0.5 rounded border border-sky-500/30 font-semibold"><i class="fa-brands fa-apple mr-1"></i>iCloud</span>' : (file.is_onedrive ? '<span class="text-[11px] text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 font-medium"><i class="fa-solid fa-cloud mr-1"></i>OneDrive</span>' : '')}
         </div>
         <div class="flex flex-col items-center text-center py-2 space-y-2" onclick="openFile('${escapeJs(file.path)}')">
@@ -1687,14 +1689,87 @@ function getCategoryIconHtml(category, ext, large = false) {
 // ==========================================
 // AUSWAHL & SORTIERUNG
 // ==========================================
-function toggleSelectFile(path, checkbox) {
-  if (checkbox.checked) {
-    state.selectedFilePaths.add(path);
+function handleFileCheckboxClick(event, path, checkbox) {
+  const shouldSelect = !!checkbox.checked;
+  if (event && event.shiftKey && state.lastSelectedPath) {
+    const anchorIdx = state.currentFiles.findIndex(f => f.path === state.lastSelectedPath);
+    const currIdx = state.currentFiles.findIndex(f => f.path === path);
+    if (anchorIdx >= 0 && currIdx >= 0) {
+      const start = Math.min(anchorIdx, currIdx);
+      const end = Math.max(anchorIdx, currIdx);
+      for (let i = start; i <= end; i++) {
+        if (shouldSelect) {
+          state.selectedFilePaths.add(state.currentFiles[i].path);
+        } else {
+          state.selectedFilePaths.delete(state.currentFiles[i].path);
+        }
+      }
+      if (window.getSelection) {
+        try { window.getSelection().removeAllRanges(); } catch (_) {}
+      }
+    } else if (shouldSelect) {
+      state.selectedFilePaths.add(path);
+    } else {
+      state.selectedFilePaths.delete(path);
+    }
   } else {
-    state.selectedFilePaths.delete(path);
+    if (shouldSelect) {
+      state.selectedFilePaths.add(path);
+    } else {
+      state.selectedFilePaths.delete(path);
+    }
   }
+  state.lastSelectedPath = path;
   updateSelectedCounter();
   renderResults();
+}
+
+function handleResultRowClick(event, file) {
+  if (event && event.shiftKey) {
+    event.preventDefault();
+    if (window.getSelection) {
+      try { window.getSelection().removeAllRanges(); } catch (_) {}
+    }
+    const anchorPath = state.lastSelectedPath || state.activePreviewPath;
+    const anchorIdx = anchorPath ? state.currentFiles.findIndex(f => f.path === anchorPath) : -1;
+    const currIdx = state.currentFiles.findIndex(f => f.path === file.path);
+    if (anchorIdx >= 0 && currIdx >= 0) {
+      const start = Math.min(anchorIdx, currIdx);
+      const end = Math.max(anchorIdx, currIdx);
+      for (let i = start; i <= end; i++) {
+        state.selectedFilePaths.add(state.currentFiles[i].path);
+      }
+    } else {
+      state.selectedFilePaths.add(file.path);
+    }
+    state.lastSelectedPath = file.path;
+    updateSelectedCounter();
+    renderResults();
+    return;
+  }
+
+  if (event && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault();
+    if (window.getSelection) {
+      try { window.getSelection().removeAllRanges(); } catch (_) {}
+    }
+    if (state.selectedFilePaths.has(file.path)) {
+      state.selectedFilePaths.delete(file.path);
+    } else {
+      state.selectedFilePaths.add(file.path);
+    }
+    state.lastSelectedPath = file.path;
+    updateSelectedCounter();
+    renderResults();
+    return;
+  }
+
+  state.lastSelectedPath = file.path;
+  selectPreviewRow(file);
+}
+
+function toggleSelectFile(path, checkbox) {
+  handleFileCheckboxClick(null, path, checkbox);
 }
 
 function toggleSelectAll(masterCheckbox) {
@@ -1703,6 +1778,7 @@ function toggleSelectAll(masterCheckbox) {
   } else {
     state.selectedFilePaths.clear();
   }
+  state.lastSelectedPath = null;
   updateSelectedCounter();
   renderResults();
 }
@@ -2442,7 +2518,7 @@ function renderDuplicateGroups() {
       filesHtml += `
         <div class="flex items-center justify-between p-2.5 rounded-xl ${isMarked ? 'bg-red-500/10 border border-red-500/30' : 'bg-slate-950/60 border border-slate-800'} transition">
           <div class="flex items-center gap-3 flex-1 min-w-0 pr-4">
-            <input type="checkbox" ${isMarked ? 'checked' : ''} onchange="toggleDuplicateSelection('${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-red-600 focus:ring-red-500 cursor-pointer">
+            <input type="checkbox" ${isMarked ? 'checked' : ''} onclick="handleDuplicateCheckboxClick(event, '${escapeJs(file.path)}', this)" class="rounded border-slate-700 text-red-600 focus:ring-red-500 cursor-pointer" title="Auswählen (Umschalt+Klick für Bereich)">
             <div class="min-w-0">
               <div class="flex items-center gap-2">
                 <span class="text-xs font-semibold text-slate-200 truncate" title="${file.name}">${file.name}</span>
@@ -2488,13 +2564,42 @@ function renderDuplicateGroups() {
   }
 }
 
-function toggleDuplicateSelection(path, checkbox) {
-  if (checkbox.checked) {
+function handleDuplicateCheckboxClick(event, path, checkbox) {
+  const shouldSelect = !!checkbox.checked;
+  if (event && event.shiftKey && state.lastDuplicateSelectedPath && state.duplicateData && Array.isArray(state.duplicateData.groups)) {
+    const flatPaths = [];
+    state.duplicateData.groups.forEach(g => (g.files || []).forEach(f => flatPaths.push(f.path)));
+    const anchorIdx = flatPaths.indexOf(state.lastDuplicateSelectedPath);
+    const currIdx = flatPaths.indexOf(path);
+    if (anchorIdx >= 0 && currIdx >= 0) {
+      const start = Math.min(anchorIdx, currIdx);
+      const end = Math.max(anchorIdx, currIdx);
+      for (let i = start; i <= end; i++) {
+        if (shouldSelect) {
+          state.duplicateSelectedPaths.add(flatPaths[i]);
+        } else {
+          state.duplicateSelectedPaths.delete(flatPaths[i]);
+        }
+      }
+      if (window.getSelection) {
+        try { window.getSelection().removeAllRanges(); } catch (_) {}
+      }
+    } else if (shouldSelect) {
+      state.duplicateSelectedPaths.add(path);
+    } else {
+      state.duplicateSelectedPaths.delete(path);
+    }
+  } else if (shouldSelect) {
     state.duplicateSelectedPaths.add(path);
   } else {
     state.duplicateSelectedPaths.delete(path);
   }
+  state.lastDuplicateSelectedPath = path;
   renderDuplicateGroups();
+}
+
+function toggleDuplicateSelection(path, checkbox) {
+  handleDuplicateCheckboxClick(null, path, checkbox);
 }
 
 async function deleteSelectedDuplicates() {
