@@ -146,19 +146,7 @@
             </button>
           </div>
 
-          <!-- Suche speichern Button -->
-          <button 
-            id="btn-save-search" 
-            type="button"
-            onclick="saveCurrentSearch()" 
-            class="ui-action-btn px-5 py-3.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-sm font-semibold flex items-center justify-center gap-2 transition active:scale-95 shrink-0"
-            title="Aktuellen Suchbegriff für wiederkehrende Dateisuche dauerhaft speichern"
-          >
-            <i class="fa-solid fa-star text-amber-400"></i>
-            <span>Suche speichern</span>
-          </button>
-
-          <!-- Suchen Button -->
+          <!-- Suchen Button (direkt neben Suchfeld) -->
           <button 
             id="btn-search" 
             type="button"
@@ -168,14 +156,26 @@
             <i class="fa-solid fa-bolt"></i>
             <span>Dateien Suchen</span>
           </button>
+
+          <!-- Suche speichern Button -->
+          <button 
+            id="btn-save-search" 
+            type="button"
+            onclick="saveCurrentSearch()" 
+            class="ui-action-btn px-5 py-3.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 text-sm font-semibold flex items-center justify-center gap-2 transition active:scale-95 shrink-0"
+            title="Aktuellen Suchbegriff für wiederkehrende Dateisuche dauerhaft speichern"
+          >
+            <i class="fa-solid fa-star text-sky-400"></i>
+            <span>Suche speichern</span>
+          </button>
         </div>
 
         <!-- Gespeicherte Suchen & Such-History -->
         <div id="search-history-panel" class="hidden pt-3 space-y-2.5 border-t border-slate-800/60">
           <!-- Gespeicherte Suchen (Wiederkehrende Datei-Suche) -->
           <div id="saved-searches-row" class="hidden flex flex-wrap items-center gap-2">
-            <span class="ui-readout-label text-[11px] font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 mr-1">
-              <i class="fa-solid fa-star text-amber-400"></i>
+            <span class="ui-readout-label text-[11px] font-semibold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5 mr-1">
+              <i class="fa-solid fa-star text-indigo-400"></i>
               <span>Gespeicherte Suchen:</span>
             </span>
             <div id="saved-searches-list" class="flex flex-wrap items-center gap-1.5"></div>
@@ -314,10 +314,10 @@
             <button 
               type="button" 
               onclick="openSavePathModal()" 
-              class="ui-action-btn px-4 py-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-sm"
+              class="ui-action-btn px-4 py-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-300 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-sm"
               title="Diesen Pfad als eigenen Schnell-Button dauerhaft speichern"
             >
-              <i class="fa-solid fa-star text-amber-400"></i>
+              <i class="fa-solid fa-star text-sky-400"></i>
               <span>Pfad speichern</span>
             </button>
 
@@ -555,7 +555,7 @@
           </button>
           
           <!-- Massen-Aktion: Duplikate analysieren -->
-          <button onclick="analyzeDuplicatesFromSearch()" class="ui-action-btn px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-medium transition flex items-center gap-1.5">
+          <button onclick="analyzeDuplicatesFromSearch()" class="ui-action-btn px-3 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 text-xs font-medium transition flex items-center gap-1.5">
             <i class="fa-solid fa-clone"></i>
             <span>Doppel-Eliminierung</span>
           </button>
