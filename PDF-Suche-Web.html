@@ -595,10 +595,15 @@
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
     }
+    .basepath-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
     .basepath-input {
       height: 30px;
-      width: 240px;
-      padding: 0 9px;
+      width: 245px;
+      padding: 0 26px 0 9px;
       border-radius: 7px;
       border: 1px solid var(--border-input);
       background: #ffffff;
@@ -606,6 +611,75 @@
       font-family: inherit;
       font-size: 12px;
       font-weight: 600;
+    }
+    .basepath-clear {
+      position: absolute;
+      right: 4px;
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+    .basepath-clear:hover {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+    .saved-folders-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .saved-folder-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 8px;
+      border: 1px solid #a5b4fc;
+      background: #eef2ff;
+      color: #3730a3;
+      overflow: hidden;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .saved-folder-pill.active {
+      border-color: var(--accent);
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    .saved-folder-btn {
+      border: none;
+      background: transparent;
+      color: inherit;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .saved-folder-btn:hover { background: rgba(37, 99, 235, 0.08); }
+    .saved-folder-del {
+      border: none;
+      border-left: 1px solid rgba(99, 102, 241, 0.25);
+      background: transparent;
+      color: #4f46e5;
+      padding: 4px 7px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .saved-folder-del:hover {
+      background: #fee2e2;
+      color: var(--danger);
     }
     .basepath-input::placeholder {
       color: var(--text-muted);
@@ -788,7 +862,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.6</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.7</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -846,18 +920,24 @@
         </div>
       </div>
 
+      <!-- Gemerkte Ordner (bleiben bestehen bis manuell per × gelöscht) -->
+      <div id="saved-folders-row" class="saved-folders-row hidden"></div>
+
       <!-- Aktueller Pfad & Unterordner-Auswahl -->
       <div id="path-bar" class="path-bar hidden" style="margin-bottom: 8px;">
         <div class="path-breadcrumbs" id="path-breadcrumbs"></div>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <input
-            id="base-path-prefix"
-            type="text"
-            class="basepath-input"
-            placeholder="Optionaler Basis-Pfad (z. B. C:\Users\01\…)"
-            title="Browser verbirgt den Laufwerksbuchstaben – hier einmalig den Windows-Basis-Pfad eintragen (wird gespeichert), dann zeigt und kopiert die App den kompletten Pfad!"
-            oninput="onBasePathPrefixChanged(this.value)"
-          >
+          <div class="basepath-wrap">
+            <input
+              id="base-path-prefix"
+              type="text"
+              class="basepath-input"
+              placeholder="Basis-Pfad (z. B. C:\Users\01\…)"
+              title="Windows-Basis-Pfad eintragen – bleibt dauerhaft gespeichert, bis du ihn manuell per × löschst"
+              oninput="onBasePathPrefixChanged(this.value)"
+            >
+            <button type="button" class="basepath-clear" title="Gespeicherten Basis-Pfad löschen" onclick="clearBasePathPrefix()">✕</button>
+          </div>
           <label for="subfolder-filter" style="font-size:12px; font-weight:700; color:#475569; cursor:default;">Unterordner:</label>
           <select id="subfolder-filter" class="subfolder-select" onchange="onSubfolderChanged(this.value)">
             <option value="">Alle Unterordner</option>
@@ -1085,6 +1165,7 @@
     const IDB_NAME = 'pdf_suche_pro_web_v1';
     const IDB_STORE = 'handles';
     let savedLastHandle = null;
+    let savedFoldersList = []; // [{ id, name, handle }]
 
     function openHandleDb() {
       return new Promise((resolve, reject) => {
@@ -1099,6 +1180,92 @@
       });
     }
 
+    async function saveSavedFoldersList() {
+      try {
+        const db = await openHandleDb();
+        if (!db) return;
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put(savedFoldersList, 'saved_dirs');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (_) {}
+    }
+
+    async function loadSavedFoldersList() {
+      try {
+        const db = await openHandleDb();
+        if (!db) return [];
+        return await new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get('saved_dirs');
+          req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+          req.onerror = () => resolve([]);
+        });
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function renderSavedFoldersRow() {
+      const row = document.getElementById('saved-folders-row');
+      if (!row) return;
+      if (!savedFoldersList.length) {
+        row.classList.add('hidden');
+        row.innerHTML = '';
+        return;
+      }
+      row.classList.remove('hidden');
+      row.innerHTML = '<span style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em; margin-right:4px; cursor:default;">Gemerkte Ordner:</span>';
+      savedFoldersList.forEach(entry => {
+        const pill = document.createElement('div');
+        const isCur = state.rootName && entry.name.toLowerCase() === state.rootName.toLowerCase();
+        pill.className = 'saved-folder-pill' + (isCur ? ' active' : '');
+
+        const btnOpen = document.createElement('button');
+        btnOpen.type = 'button';
+        btnOpen.className = 'saved-folder-btn';
+        let savedPref = '';
+        try { savedPref = localStorage.getItem(getBasePathStorageKey(entry.name)) || ''; } catch (_) {}
+        const labelTxt = savedPref || entry.name;
+        btnOpen.title = `Gespeicherten Ordner öffnen: ${labelTxt}`;
+        btnOpen.textContent = `📂 ${labelTxt}`;
+        btnOpen.onclick = () => openSavedFolderById(entry.id);
+
+        const btnDel = document.createElement('button');
+        btnDel.type = 'button';
+        btnDel.className = 'saved-folder-del';
+        btnDel.title = `„${labelTxt}“ aus gemerkten Ordnern entfernen`;
+        btnDel.textContent = '✕';
+        btnDel.onclick = e => { e.stopPropagation(); removeSavedFolderById(entry.id); };
+
+        pill.append(btnOpen, btnDel);
+        row.appendChild(pill);
+      });
+    }
+
+    async function openSavedFolderById(id) {
+      const entry = savedFoldersList.find(x => x.id === id);
+      if (!entry || !entry.handle) return;
+      try {
+        const ok = await activateDirectoryHandle(entry.handle, true);
+        if (!ok) toast('Ordner-Freigabe wurde abgebrochen.', 'err');
+      } catch (err) {
+        toast(`Ordner konnte nicht geöffnet werden: ${err.message}`, 'err');
+      }
+    }
+
+    async function removeSavedFolderById(id) {
+      const entry = savedFoldersList.find(x => x.id === id);
+      savedFoldersList = savedFoldersList.filter(x => x.id !== id);
+      await saveSavedFoldersList();
+      if (entry) {
+        try { localStorage.removeItem(getBasePathStorageKey(entry.name)); } catch (_) {}
+      }
+      renderSavedFoldersRow();
+    }
+
     async function saveLastDirectoryHandle(handle, displayName) {
       try {
         const db = await openHandleDb();
@@ -1111,6 +1278,15 @@
         });
         savedLastHandle = handle;
         localStorage.setItem('pdf_suche_last_folder_name', displayName || '');
+
+        const existing = savedFoldersList.find(x => x.name.toLowerCase() === (displayName || '').toLowerCase());
+        if (existing) {
+          existing.handle = handle;
+        } else {
+          savedFoldersList.push({ id: `dir_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, name: displayName, handle });
+        }
+        await saveSavedFoldersList();
+        renderSavedFoldersRow();
       } catch (_) {}
     }
 
@@ -1180,6 +1356,8 @@
 
     async function initLastDirectoryOnStartup() {
       if (!window.showDirectoryPicker || !window.isSecureContext) return;
+      savedFoldersList = await loadSavedFoldersList();
+      renderSavedFoldersRow();
       const rec = await loadLastDirectoryHandle();
       if (!rec || !rec.handle) return;
       savedLastHandle = rec.handle;
@@ -1477,11 +1655,18 @@
         try { localStorage.setItem(getBasePathStorageKey(state.rootName), state.basePathPrefix); } catch (_) {}
       }
       updatePathBar();
+      renderSavedFoldersRow();
       const actItem = state.allPdfs.find(x => x.id === state.activeId);
       const sp = document.getElementById('preview-subpath');
       if (sp && actItem) {
         sp.textContent = `📂 ${formatFullFolderPath(actItem.dir)}`;
       }
+    }
+
+    function clearBasePathPrefix() {
+      const inp = document.getElementById('base-path-prefix');
+      if (inp) inp.value = '';
+      onBasePathPrefixChanged('');
     }
 
     function formatRootDisplayPath() {
