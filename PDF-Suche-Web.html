@@ -464,7 +464,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.2</span></h1>
+        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.3</span></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1108,12 +1108,18 @@
     async function pickDirectory() {
       if (window.showDirectoryPicker && window.isSecureContext) {
         try {
+          const baseOpts = state.rootHandle ? { startIn: state.rootHandle } : {};
           let handle;
           try {
-            handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            handle = await window.showDirectoryPicker({ mode: 'readwrite', ...baseOpts });
           } catch (e) {
             if (e && e.name === 'AbortError') return;
-            handle = await window.showDirectoryPicker({ mode: 'read' });
+            try {
+              handle = await window.showDirectoryPicker({ mode: 'read', ...baseOpts });
+            } catch (e2) {
+              if (e2 && e2.name === 'AbortError') return;
+              handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            }
           }
           await activateDirectoryHandle(handle, true);
           return;
