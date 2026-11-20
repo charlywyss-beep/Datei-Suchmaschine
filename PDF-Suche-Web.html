@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF-Suche Pro (Web Standalone)</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --border: #cbd5e1;
+      --border-input: #94a3b8;
+      --divider: #e2e8f0;
+      --text: #0f172a;
+      --text-sec: #334155;
+      --text-muted: #64748b;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-soft: #eff6ff;
+      --accent-border: #93c5fd;
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+      --danger-border: #fca5a5;
+      --ok: #047857;
+      --ok-soft: #ecfdf5;
+      --ok-border: #6ee7b7;
+      --radius: 10px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-hover);
+      border: 1px solid var(--accent-border);
+      cursor: default;
+    }
+    .brand-sub {
+      margin: 1px 0 0;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+    .privacy-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--divider);
+      color: var(--text-sec);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: default;
+    }
+
+    main {
+      padding: 14px 18px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Klar abgegrenzte Bereichs-Karten */
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    }
+    .section-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 9px;
+      margin-bottom: 11px;
+      border-bottom: 1px solid var(--divider);
+      user-select: none;
+    }
+    .section-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: default;
+    }
+    .section-hint {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      cursor: default;
+    }
+
+    /* Eingabefelder */
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: stretch;
+    }
+    .input-wrap {
+      position: relative;
+      flex: 1 1 280px;
+      display: flex;
+      align-items: center;
+    }
+    .input-icon {
+      position: absolute;
+      left: 13px;
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+    }
+    .main-input {
+      width: 100%;
+      height: 44px;
+      padding: 0 36px 0 40px;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border-input);
+      background: #ffffff;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+      transition: border-color 0.14s ease, box-shadow 0.14s ease;
+    }
+    .main-input::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .main-input:focus::placeholder {
+      color: var(--text);
+      font-weight: 500;
+    }
+    .main-input:hover { border-color: #64748b; }
+    .main-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04), 0 0 0 3px rgba(37, 99, 235, 0.16);
+    }
+    .input-clear {
+      position: absolute;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .input-clear:hover {
+      background: #f1f5f9;
+      color: var(--text);
+    }
+
+    /* Buttons (klar als klickbar erkennbar) */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 34px;
+      padding: 0 13px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-input);
+      background: #ffffff;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), inset 0 -1px 0 rgba(15, 23, 42, 0.06);
+      transition: background-color 0.14s ease, border-color 0.14s ease, transform 0.08s ease, box-shadow 0.14s ease;
+      white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) {
+      background: var(--accent-soft);
+      border-color: #3b82f6;
+      color: var(--accent-hover);
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.10);
+    }
+    .btn:active:not(:disabled) { transform: translateY(1px); }
+    .btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .btn-lg {
+      height: 44px;
+      padding: 0 18px;
+      border-radius: var(--radius);
+      font-size: 13.5px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border-color: #1d4ed8;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border-color: #1d4ed8;
+      color: #ffffff;
+    }
+    .btn-soft {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent-hover);
+    }
+    .btn-soft:hover:not(:disabled) {
+      background: #dbeafe;
+      border-color: #60a5fa;
+      color: #1e40af;
+    }
+    .btn-active {
+      background: var(--accent) !important;
+      border-color: var(--accent-hover) !important;
+      color: #ffffff !important;
+    }
+
+    /* Filter-Zeilen */
+    .filter-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .filter-label {
+      width: 112px;
+      flex-shrink: 0;
+      font-weight: 700;
+      color: var(--text-sec);
+      font-size: 12.5px;
+      cursor: default;
+    }
+    .date-box {
+      display: inline-flex;
+      align-items: center;
+      height: 34px;
+      width: 184px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border-input);
+      background: #ffffff;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+      padding: 0 8px 0 10px;
+      gap: 6px;
+    }
+    .date-box:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+    }
+    .inline-prefix {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .date-box input {
+      border: none;
+      outline: none;
+      background: transparent;
+      width: 100%;
+      font-family: inherit;
+      font-size: 12.5px;
+      color: var(--text);
+    }
+
+    /* Ergebnis-Toolbar: Anzeige links vs. Buttons rechts */
+    .results-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    }
+    .status-readout {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--divider);
+      color: var(--text-sec);
+      font-size: 12.5px;
+      cursor: default;
+      user-select: none;
+    }
+    .status-readout strong { color: var(--text); }
+    .status-sep { color: #cbd5e1; }
+    .status-mode {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--ok);
+    }
+    .status-mode.readonly { color: var(--text-muted); }
+
+    /* Hauptbereich: Tabelle links + PDF-Vorschau rechts */
+    .workspace-split {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .workspace-split.with-preview {
+      grid-template-columns: minmax(420px, 1.15fr) minmax(360px, 0.85fr);
+    }
+    @media (max-width: 1040px) {
+      .workspace-split.with-preview {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .table-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    }
+    .table-scroll {
+      max-height: 62vh;
+      overflow: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #f8fafc;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: left;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--divider);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    thead th:last-child { border-right: none; cursor: default; }
+    thead th:hover:not(:first-child):not(:last-child) { background: #eff6ff; color: var(--accent-hover); }
+    tbody tr {
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      transition: background-color 0.1s ease;
+    }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr.selected { background: #dbeafe; }
+    tbody tr.active-row { background: #eff6ff; outline: 1px solid #93c5fd; outline-offset: -1px; }
+    tbody td {
+      padding: 8px 10px;
+      font-size: 12.5px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .col-check { width: 38px; text-align: center; }
+    .col-name { width: 36%; font-weight: 600; }
+    .col-dir { width: 32%; color: var(--text-muted); }
+    .col-size { width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+    .col-date { width: 136px; text-align: center; font-variant-numeric: tabular-nums; color: var(--text-sec); }
+    .col-act { width: 92px; text-align: right; }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text-sec);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-left: 4px;
+      transition: all 0.12s ease;
+    }
+    .icon-btn:hover:not(:disabled) {
+      background: var(--accent-soft);
+      border-color: #3b82f6;
+      color: var(--accent-hover);
+    }
+    .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* PDF-Vorschau rechts */
+    .preview-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 62vh;
+      min-height: 420px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    }
+    .preview-head {
+      padding: 10px 14px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .preview-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .preview-body {
+      flex: 1;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .preview-body iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #ffffff;
+    }
+    .empty-box {
+      padding: 42px 24px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .empty-box h3 {
+      margin: 10px 0 6px;
+      font-size: 15px;
+      color: var(--text);
+    }
+
+    /* Info-Banner */
+    .info-banner {
+      padding: 9px 12px;
+      border-radius: 8px;
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      color: #0369a1;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hidden { display: none !important; }
+
+    /* Modal (Einzel- & Massen-Umbenennung) */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.42);
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-card {
+      width: 100%;
+      max-width: 680px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: 86vh;
+    }
+    .modal-head {
+      padding: 14px 18px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-head h2 {
+      margin: 0;
+      font-size: 15px;
+      color: var(--text);
+    }
+    .modal-body {
+      padding: 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .modal-foot {
+      padding: 12px 18px;
+      background: #f8fafc;
+      border-top: 1px solid var(--divider);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-field label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-sec);
+    }
+    .form-field input, .form-field select {
+      height: 36px;
+      padding: 0 11px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border-input);
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .form-field input:focus, .form-field select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+    }
+    .rename-preview-list {
+      border: 1px solid var(--divider);
+      border-radius: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .rename-preview-item {
+      padding: 7px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    .rename-preview-item:last-child { border-bottom: none; }
+    .rename-old { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rename-new { color: var(--accent-hover); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Toast */
+    #toast-box {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 80;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 600;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.16);
+      max-width: 380px;
+    }
+    .toast.ok { background: var(--ok-soft); border-color: var(--ok-border); color: var(--ok); }
+    .toast.err { background: var(--danger-soft); border-color: var(--danger-border); color: var(--danger); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <circle cx="11.5" cy="14.5" r="2.5"/>
+          <line x1="13.5" y1="16.5" x2="16" y2="19"/>
+        </svg>
+      </div>
+      <div>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.0</span></h1>
+        <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
+      </div>
+    </div>
+    <div class="privacy-pill" title="Alle Dateien bleiben auf deinem PC und werden niemals hochgeladen">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <polyline points="9 12 11 14 15 10"/>
+      </svg>
+      <span>100 % lokal im Browser – kein Upload</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- BEREICH 1: Ordner wählen & PDF suchen -->
+    <section class="section-card">
+      <div class="section-header">
+        <span class="section-title">1. Ordner &amp; PDF-Suche</span>
+        <span id="folder-hint" class="section-hint">Wähle zuerst einen Ordner auf deinem PC oder Netzlaufwerk</span>
+      </div>
+
+      <div class="input-row" style="margin-bottom: 10px;">
+        <button id="btn-pick-folder" type="button" class="btn btn-primary btn-lg" onclick="pickDirectory()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>Ordner wählen…</span>
+        </button>
+
+        <button id="btn-rescan" type="button" class="btn btn-soft btn-lg hidden" onclick="rescanCurrentFolder()">
+          <span>↻ Aktualisieren</span>
+        </button>
+
+        <button id="btn-cancel-scan" type="button" class="btn btn-lg hidden" onclick="cancelScan()">
+          <span>✕ Scan stoppen</span>
+        </button>
+
+        <div class="input-wrap">
+          <span class="input-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </span>
+          <input
+            id="search-input"
+            type="text"
+            class="main-input"
+            placeholder="PDF-Name oder Unterordner filtern (z. B. Rechnung 2026)…"
+            oninput="applyFilters()"
+          >
+          <button type="button" class="input-clear" title="Suchfeld leeren" onclick="clearSearchInput()">✕</button>
+        </div>
+      </div>
+
+      <!-- Versteckter Fallback-Ordnerpicker für file:// oder ältere Browser -->
+      <input id="fallback-folder-input" type="file" webkitdirectory directory multiple class="hidden" onchange="handleFallbackFiles(this.files)">
+
+      <div id="mode-notice" class="info-banner hidden"></div>
+    </section>
+
+    <!-- BEREICH 2: Zeit- & Größenfilter -->
+    <section class="section-card">
+      <div class="section-header">
+        <span class="section-title">2. Zeit- &amp; Größenfilter</span>
+        <span class="section-hint">Filtert die gefundenen PDFs sofort live ohne neu zu scannen</span>
+      </div>
+
+      <div class="filter-grid">
+        <div class="filter-row">
+          <span class="filter-label">Zeitraum:</span>
+          <button type="button" class="btn" data-tf="today" onclick="toggleTimeframe('today')">Heute</button>
+          <button type="button" class="btn" data-tf="week" onclick="toggleTimeframe('week')">Diese Woche</button>
+          <button type="button" class="btn" data-tf="month" onclick="toggleTimeframe('month')">Dieser Monat</button>
+          <button type="button" class="btn" data-tf="year" onclick="toggleTimeframe('year')">Dieses Jahr</button>
+        </div>
+
+        <div class="filter-row">
+          <span class="filter-label">Änderungsdatum:</span>
+          <div class="date-box">
+            <span class="inline-prefix">Von</span>
+            <input id="date-from" type="date" onchange="onManualDateChange()">
+          </div>
+          <div class="date-box">
+            <span class="inline-prefix">Bis</span>
+            <input id="date-to" type="date" onchange="onManualDateChange()">
+          </div>
+          <button type="button" class="btn" onclick="clearAllFilters()">Filter leeren</button>
+        </div>
+
+        <div class="filter-row">
+          <span class="filter-label">Dateigröße:</span>
+          <div class="date-box">
+            <span class="inline-prefix">Ab</span>
+            <input id="min-size-input" type="text" placeholder="z. B. 500 KB" oninput="onMinSizeTyped()">
+          </div>
+          <button type="button" class="btn" data-sz="100 KB" onclick="toggleSizePreset('100 KB')">&gt; 100 KB</button>
+          <button type="button" class="btn" data-sz="500 KB" onclick="toggleSizePreset('500 KB')">&gt; 500 KB</button>
+          <button type="button" class="btn" data-sz="1 MB" onclick="toggleSizePreset('1 MB')">&gt; 1 MB</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- BEREICH 3: Ergebnis-Leiste (Anzeige links, Aktions-Buttons rechts) -->
+    <div class="results-toolbar">
+      <div class="status-readout" title="Ergebnis-Anzeige (nur Information)">
+        <span><strong id="stat-shown">0</strong> PDFs</span>
+        <span class="status-sep">|</span>
+        <span id="stat-size">0 KB</span>
+        <span class="status-sep">|</span>
+        <span id="stat-selected">0 ausgewählt</span>
+        <span class="status-sep">|</span>
+        <span id="stat-folder">Kein Ordner gewählt</span>
+        <span id="stat-mode" class="status-mode"></span>
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+        <button id="btn-batch-rename" type="button" class="btn btn-soft" disabled onclick="openBatchRenameModal()" title="Markierte PDFs in einem Schritt umbenennen">
+          <span>✏️ Massen-Umbenennung</span>
+        </button>
+        <button id="btn-toggle-preview" type="button" class="btn btn-active" onclick="togglePreviewPane()">
+          <span>👁 PDF-Vorschau</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- BEREICH 4: Tabelle + Rechte PDF-Vorschau -->
+    <div id="workspace-split" class="workspace-split with-preview">
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-check">
+                  <input id="select-all-cb" type="checkbox" onchange="toggleSelectAll(this)" title="Alle sichtbaren PDFs auswählen (Tipp: Umschalt+Klick für Bereich)">
+                </th>
+                <th class="col-name" onclick="setSort('name')">Dateiname <span id="sort-name">▲</span></th>
+                <th class="col-dir" onclick="setSort('dir')">Unterordner <span id="sort-dir"></span></th>
+                <th class="col-size" onclick="setSort('size')">Größe <span id="sort-size"></span></th>
+                <th class="col-date" onclick="setSort('mtime')">Geändert <span id="sort-mtime"></span></th>
+                <th class="col-act">Aktionen</th>
+              </tr>
+            </thead>
+            <tbody id="pdf-tbody">
+              <tr>
+                <td colspan="6">
+                  <div class="empty-box">
+                    <h3>Noch kein Ordner ausgewählt</h3>
+                    <div>Klicke oben links auf <strong>„Ordner wählen…“</strong>, um alle PDF-Dateien inklusive Unterordner einzulesen.</div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <aside id="preview-card" class="preview-card">
+        <div class="preview-head">
+          <div id="preview-title" class="preview-title">PDF-Vorschau</div>
+          <div style="display:flex; gap:6px; shrink:0;">
+            <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActivePdfInNewTab()">↗ Neuer Tab</button>
+            <button id="btn-preview-rename" type="button" class="btn" disabled onclick="openSingleRenameForActive()">✏️ Umbenennen</button>
+          </div>
+        </div>
+        <div id="preview-body" class="preview-body">
+          <div class="empty-box">
+            <div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Modal: Einzel-Umbenennung -->
+  <div id="modal-single-rename" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-single-rename')">
+    <div class="modal-card" style="max-width:500px;">
+      <div class="modal-head">
+        <h2>PDF umbenennen</h2>
+        <button type="button" class="btn" onclick="closeModal('modal-single-rename')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label for="single-rename-input">Neuer Dateiname (Endung .pdf bleibt erhalten):</label>
+          <input id="single-rename-input" type="text" onkeydown="if(event.key==='Enter') confirmSingleRename()">
+        </div>
+        <div id="single-rename-path" style="font-size:11.5px; color:#64748b;"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" onclick="closeModal('modal-single-rename')">Abbrechen</button>
+        <button type="button" class="btn btn-primary" onclick="confirmSingleRename()">✓ Umbenennen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Massen-Umbenennung -->
+  <div id="modal-batch-rename" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-batch-rename')">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Massen-Umbenennung (<span id="batch-count-lbl">0</span> PDFs)</h2>
+        <button type="button" class="btn" onclick="closeModal('modal-batch-rename')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label for="batch-rule">Regel wählen:</label>
+          <select id="batch-rule" onchange="updateBatchRuleUI()">
+            <option value="replace">Text suchen &amp; ersetzen</option>
+            <option value="prefix">Präfix voranstellen (z. B. 2026_)</option>
+            <option value="suffix">Suffix vor .pdf anhängen (z. B. _geprueft)</option>
+            <option value="number">Durchnummerieren (Basisname_01.pdf, _02.pdf…)</option>
+          </select>
+        </div>
+
+        <div id="batch-fields-replace" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div class="form-field">
+            <label for="batch-find">Suchen nach:</label>
+            <input id="batch-find" type="text" placeholder="z. B. Entwurf" oninput="updateBatchPreview()">
+          </div>
+          <div class="form-field">
+            <label for="batch-replace">Ersetzen durch:</label>
+            <input id="batch-replace" type="text" placeholder="z. B. Final" oninput="updateBatchPreview()">
+          </div>
+        </div>
+
+        <div id="batch-fields-single" class="form-field hidden">
+          <label id="batch-single-label" for="batch-single-val">Text:</label>
+          <input id="batch-single-val" type="text" placeholder="z. B. 2026_" oninput="updateBatchPreview()">
+        </div>
+
+        <div>
+          <div style="font-size:12px; font-weight:700; color:#334155; margin-bottom:6px;">Vorschau (Alt → Neu):</div>
+          <div id="batch-preview-list" class="rename-preview-list"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" onclick="closeModal('modal-batch-rename')">Abbrechen</button>
+        <button type="button" class="btn btn-primary" onclick="executeBatchRename()">✓ Jetzt umbenennen</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-box"></div>
+
+  <script>
+    const state = {
+      rootHandle: null,
+      rootName: '',
+      canWrite: false,
+      allPdfs: [],       // { id, name, dir, relPath, size, mtime, fileHandle, parentHandle, fileObj }
+      filteredPdfs: [],
+      selectedIds: new Set(),
+      lastSelectedId: null,
+      activeId: null,
+      activeBlobUrl: null,
+      previewVisible: true,
+      sortCol: 'name',
+      sortAsc: true,
+      timeframe: '',
+      sizePreset: '',
+      scanning: false,
+      cancelRequested: false,
+      singleRenameId: null,
+    };
+
+    const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information', 'node_modules', '.git', '__pycache__']);
+
+    function toast(msg, kind = 'info') {
+      const box = document.getElementById('toast-box');
+      const el = document.createElement('div');
+      el.className = 'toast' + (kind === 'ok' ? ' ok' : kind === 'err' ? ' err' : '');
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.25s'; setTimeout(() => el.remove(), 260); }, 3400);
+    }
+
+    function formatBytes(b) {
+      if (!b) return '0 B';
+      if (b < 1024) return `${b} B`;
+      if (b < 1024 * 1024) return `${Math.max(1, Math.round(b / 1024))} KB`;
+      if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+      return `${(b / (1024 * 1024 * 1024)).toFixed(2).replace('.', ',')} GB`;
+    }
+
+    function formatDate(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function parseSizeBytes(txt) {
+      const s = (txt || '').trim().toUpperCase().replace(',', '.');
+      if (!s) return null;
+      const m = s.match(/^([\d.]+)\s*(B|KB|K|MB|M|GB|G)?$/);
+      if (!m) return null;
+      const val = parseFloat(m[1]);
+      if (Number.isNaN(val)) return null;
+      const u = m[2] || 'KB';
+      if (u === 'B') return val;
+      if (u === 'KB' || u === 'K') return val * 1024;
+      if (u === 'MB' || u === 'M') return val * 1024 * 1024;
+      if (u === 'GB' || u === 'G') return val * 1024 * 1024 * 1024;
+      return val;
+    }
+
+    function showModeNotice(html) {
+      const el = document.getElementById('mode-notice');
+      if (!html) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+      el.innerHTML = html;
+      el.classList.remove('hidden');
+    }
+
+    async function pickDirectory() {
+      if (window.showDirectoryPicker && window.isSecureContext) {
+        try {
+          let handle;
+          let canWrite = true;
+          try {
+            handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+          } catch (e) {
+            if (e && e.name === 'AbortError') return;
+            // Fallback auf reinen Lesezugriff falls Firma Schreibzugriff blockiert
+            handle = await window.showDirectoryPicker({ mode: 'read' });
+            canWrite = false;
+          }
+          if (canWrite && handle.queryPermission) {
+            const perm = await handle.queryPermission({ mode: 'readwrite' });
+            if (perm !== 'granted' && handle.requestPermission) {
+              const req = await handle.requestPermission({ mode: 'readwrite' });
+              canWrite = (req === 'granted');
+            }
+          }
+          state.rootHandle = handle;
+          state.rootName = handle.name || 'Gewählter Ordner';
+          state.canWrite = canWrite;
+          document.getElementById('btn-rescan').classList.remove('hidden');
+          if (!canWrite) {
+            showModeNotice('ℹ️ Schreibfreigabe wurde nicht erteilt – PDFs können gesucht &amp; geöffnet werden, Umbenennen ist schreibgeschützt.');
+          } else {
+            showModeNotice('');
+          }
+          await scanDirectoryHandle(handle);
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+          toast(`Ordnerzugriff: ${err.message}`, 'err');
+        }
+      }
+      // Fallback (z. B. lokal per Doppelklick über file:// geöffnet)
+      document.getElementById('fallback-folder-input').value = '';
+      document.getElementById('fallback-folder-input').click();
+    }
+
+    async function rescanCurrentFolder() {
+      if (state.rootHandle) {
+        await scanDirectoryHandle(state.rootHandle);
+      }
+    }
+
+    function cancelScan() {
+      state.cancelRequested = true;
+    }
+
+    async function scanDirectoryHandle(rootHandle) {
+      state.scanning = true;
+      state.cancelRequested = false;
+      state.allPdfs = [];
+      state.selectedIds.clear();
+      state.lastSelectedId = null;
+      clearActivePreview();
+
+      const btnCancel = document.getElementById('btn-cancel-scan');
+      const hint = document.getElementById('folder-hint');
+      btnCancel.classList.remove('hidden');
+      hint.textContent = `Durchsuche „${rootHandle.name}“ nach PDFs…`;
+
+      const queue = [{ handle: rootHandle, relDir: '' }];
+      let counter = 0;
+      let lastPaint = performance.now();
+
+      try {
+        while (queue.length > 0 && !state.cancelRequested) {
+          const { handle, relDir } = queue.shift();
+          try {
+            for await (const [name, entry] of handle.entries()) {
+              if (state.cancelRequested) break;
+              if (entry.kind === 'directory') {
+                const low = name.toLowerCase();
+                if (low.startsWith('$') || SKIP_DIRS.has(low)) continue;
+                queue.push({ handle: entry, relDir: relDir ? `${relDir}\\${name}` : name });
+              } else if (entry.kind === 'file' && name.toLowerCase().endsWith('.pdf')) {
+                try {
+                  const file = await entry.getFile();
+                  counter += 1;
+                  const relPath = relDir ? `${relDir}\\${name}` : name;
+                  state.allPdfs.push({
+                    id: `pdf_${counter}`,
+                    name,
+                    dir: relDir || '(Hauptordner)',
+                    relPath,
+                    size: file.size || 0,
+                    mtime: file.lastModified || 0,
+                    fileHandle: entry,
+                    parentHandle: handle,
+                    fileObj: null,
+                  });
+                } catch (_) {}
+              }
+              const now = performance.now();
+              if (now - lastPaint > 120) {
+                lastPaint = now;
+                hint.textContent = `Durchsuche „${rootHandle.name}“… ${counter} PDFs gefunden`;
+              }
+            }
+          } catch (_) {}
+        }
+      } finally {
+        state.scanning = false;
+        btnCancel.classList.add('hidden');
+        hint.textContent = state.cancelRequested
+          ? `Scan gestoppt – ${state.allPdfs.length} PDFs aus „${rootHandle.name}“ geladen`
+          : `Ordner „${rootHandle.name}“ geladen (${state.allPdfs.length} PDFs)`;
+        updateModeBadge();
+        applyFilters();
+      }
+    }
+
+    function handleFallbackFiles(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      state.rootHandle = null;
+      state.canWrite = false;
+      state.allPdfs = [];
+      state.selectedIds.clear();
+      state.lastSelectedId = null;
+      clearActivePreview();
+      document.getElementById('btn-rescan').classList.add('hidden');
+
+      let firstRoot = 'Gewählter Ordner';
+      let counter = 0;
+      Array.from(fileList).forEach(file => {
+        if (!file.name.toLowerCase().endsWith('.pdf')) return;
+        counter += 1;
+        const rawRel = (file.webkitRelativePath || file.name).replace(/\//g, '\\');
+        const parts = rawRel.split('\\');
+        if (parts.length > 1) firstRoot = parts[0];
+        const dirParts = parts.slice(1, -1);
+        state.allPdfs.push({
+          id: `pdf_${counter}`,
+          name: file.name,
+          dir: dirParts.length ? dirParts.join('\\') : '(Hauptordner)',
+          relPath: rawRel,
+          size: file.size || 0,
+          mtime: file.lastModified || 0,
+          fileHandle: null,
+          parentHandle: null,
+          fileObj: file,
+        });
+      });
+
+      state.rootName = firstRoot;
+      document.getElementById('folder-hint').textContent = `Ordner „${firstRoot}“ geladen (${state.allPdfs.length} PDFs)`;
+      showModeNotice('ℹ️ Lese-Modus (lokal über file:// geöffnet): PDFs suchen &amp; öffnen funktioniert voll – für direktes Umbenennen bitte über <strong>GitHub Pages (https://)</strong> in Edge/Chrome öffnen.');
+      updateModeBadge();
+      applyFilters();
+    }
+
+    function updateModeBadge() {
+      const fEl = document.getElementById('stat-folder');
+      const mEl = document.getElementById('stat-mode');
+      fEl.textContent = state.rootName || 'Kein Ordner gewählt';
+      if (!state.rootName) {
+        mEl.textContent = '';
+      } else if (state.canWrite) {
+        mEl.textContent = '✓ Umbenennen aktiv';
+        mEl.className = 'status-mode';
+      } else {
+        mEl.textContent = 'Nur Lesen';
+        mEl.className = 'status-mode readonly';
+      }
+    }
+
+    function clearSearchInput() {
+      const inp = document.getElementById('search-input');
+      inp.value = '';
+      inp.focus();
+      applyFilters();
+    }
+
+    function toggleTimeframe(tf) {
+      state.timeframe = (state.timeframe === tf) ? '' : tf;
+      document.querySelectorAll('[data-tf]').forEach(b => b.classList.toggle('btn-active', b.dataset.tf === state.timeframe));
+      const now = new Date();
+      const toIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!state.timeframe) {
+        document.getElementById('date-from').value = '';
+        document.getElementById('date-to').value = '';
+      } else {
+        let from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (state.timeframe === 'week') from.setDate(from.getDate() - 7);
+        if (state.timeframe === 'month') from.setDate(from.getDate() - 30);
+        if (state.timeframe === 'year') from = new Date(now.getFullYear(), 0, 1);
+        document.getElementById('date-from').value = toIso(from);
+        document.getElementById('date-to').value = toIso(now);
+      }
+      applyFilters();
+    }
+
+    function onManualDateChange() {
+      state.timeframe = '';
+      document.querySelectorAll('[data-tf]').forEach(b => b.classList.remove('btn-active'));
+      applyFilters();
+    }
+
+    function toggleSizePreset(preset) {
+      state.sizePreset = (state.sizePreset === preset) ? '' : preset;
+      document.querySelectorAll('[data-sz]').forEach(b => b.classList.toggle('btn-active', b.dataset.sz === state.sizePreset));
+      document.getElementById('min-size-input').value = state.sizePreset;
+      applyFilters();
+    }
+
+    function onMinSizeTyped() {
+      state.sizePreset = '';
+      document.querySelectorAll('[data-sz]').forEach(b => b.classList.remove('btn-active'));
+      applyFilters();
+    }
+
+    function clearAllFilters() {
+      state.timeframe = '';
+      state.sizePreset = '';
+      document.querySelectorAll('[data-tf],[data-sz]').forEach(b => b.classList.remove('btn-active'));
+      document.getElementById('date-from').value = '';
+      document.getElementById('date-to').value = '';
+      document.getElementById('min-size-input').value = '';
+      document.getElementById('search-input').value = '';
+      applyFilters();
+    }
+
+    function setSort(col) {
+      if (state.sortCol === col) {
+        state.sortAsc = !state.sortAsc;
+      } else {
+        state.sortCol = col;
+        state.sortAsc = true;
+      }
+      ['name', 'dir', 'size', 'mtime'].forEach(c => {
+        const sp = document.getElementById(`sort-${c}`);
+        if (sp) sp.textContent = (c === state.sortCol) ? (state.sortAsc ? '▲' : '▼') : '';
+      });
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+      const terms = q ? q.split(/\s+/).filter(Boolean) : [];
+      const dFrom = document.getElementById('date-from').value;
+      const dTo = document.getElementById('date-to').value;
+      const fromTs = dFrom ? new Date(`${dFrom}T00:00:00`).getTime() : null;
+      const toTs = dTo ? new Date(`${dTo}T23:59:59.999`).getTime() : null;
+      const minBytes = parseSizeBytes(document.getElementById('min-size-input').value);
+
+      let list = state.allPdfs.filter(item => {
+        if (terms.length > 0) {
+          const hay = `${item.name} ${item.dir}`.toLowerCase();
+          if (!terms.every(t => hay.includes(t))) return false;
+        }
+        if (fromTs !== null && item.mtime < fromTs) return false;
+        if (toTs !== null && item.mtime > toTs) return false;
+        if (minBytes !== null && item.size < minBytes) return false;
+        return true;
+      });
+
+      const dir = state.sortAsc ? 1 : -1;
+      list.sort((a, b) => {
+        if (state.sortCol === 'size') return (a.size - b.size) * dir;
+        if (state.sortCol === 'mtime') return (a.mtime - b.mtime) * dir;
+        return String(a[state.sortCol] || '').localeCompare(String(b[state.sortCol] || ''), 'de', { sensitivity: 'base' }) * dir;
+      });
+
+      state.filteredPdfs = list;
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('pdf-tbody');
+      const totalSize = state.filteredPdfs.reduce((s, it) => s + (it.size || 0), 0);
+      document.getElementById('stat-shown').textContent = state.filteredPdfs.length;
+      document.getElementById('stat-size').textContent = formatBytes(totalSize);
+      updateSelectionUI();
+
+      if (state.allPdfs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-box"><h3>${state.rootName ? 'Keine PDF-Dateien gefunden' : 'Noch kein Ordner ausgewählt'}</h3><div>${state.rootName ? 'In diesem Ordner (inkl. Unterordner) wurden keine .pdf-Dateien gefunden.' : 'Klicke oben links auf <strong>„Ordner wählen…“</strong>, um alle PDF-Dateien einzulesen.'}</div></div></td></tr>`;
+        return;
+      }
+      if (state.filteredPdfs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-box"><h3>Keine Treffer für den aktuellen Filter</h3><div>Passe den Suchbegriff an oder klicke auf <strong>„Filter leeren“</strong>.</div></div></td></tr>`;
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+      state.filteredPdfs.forEach(item => {
+        const isSel = state.selectedIds.has(item.id);
+        const isAct = state.activeId === item.id;
+        const tr = document.createElement('tr');
+        tr.className = `${isSel ? 'selected' : ''} ${isAct ? 'active-row' : ''}`.trim();
+        tr.onclick = e => handleRowClick(e, item);
+        tr.ondblclick = () => openPdfInNewTab(item);
+
+        const tdCheck = document.createElement('td');
+        tdCheck.className = 'col-check';
+        tdCheck.onclick = e => e.stopPropagation();
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = isSel;
+        cb.title = 'Auswählen (Umschalt+Klick für Bereich)';
+        cb.onclick = e => { e.stopPropagation(); handleCheckboxClick(e, item, cb.checked); };
+        tdCheck.appendChild(cb);
+
+        const tdName = document.createElement('td');
+        tdName.className = 'col-name';
+        tdName.title = item.name;
+        tdName.textContent = item.name;
+
+        const tdDir = document.createElement('td');
+        tdDir.className = 'col-dir';
+        tdDir.title = item.dir;
+        tdDir.textContent = item.dir;
+
+        const tdSize = document.createElement('td');
+        tdSize.className = 'col-size';
+        tdSize.textContent = formatBytes(item.size);
+
+        const tdDate = document.createElement('td');
+        tdDate.className = 'col-date';
+        tdDate.textContent = formatDate(item.mtime);
+
+        const tdAct = document.createElement('td');
+        tdAct.className = 'col-act';
+        tdAct.onclick = e => e.stopPropagation();
+
+        const btnOpen = document.createElement('button');
+        btnOpen.type = 'button';
+        btnOpen.className = 'icon-btn';
+        btnOpen.title = 'PDF in neuem Tab öffnen';
+        btnOpen.textContent = '↗';
+        btnOpen.onclick = () => openPdfInNewTab(item);
+
+        const btnRen = document.createElement('button');
+        btnRen.type = 'button';
+        btnRen.className = 'icon-btn';
+        btnRen.title = state.canWrite ? 'PDF umbenennen' : 'Umbenennen nur mit Schreibfreigabe (https:// / GitHub Pages)';
+        btnRen.disabled = !state.canWrite;
+        btnRen.textContent = '✏️';
+        btnRen.onclick = () => openSingleRenameModal(item);
+
+        tdAct.appendChild(btnOpen);
+        tdAct.appendChild(btnRen);
+
+        tr.append(tdCheck, tdName, tdDir, tdSize, tdDate, tdAct);
+        frag.appendChild(tr);
+      });
+      tbody.innerHTML = '';
+      tbody.appendChild(frag);
+    }
+
+    function updateSelectionUI() {
+      const cnt = state.selectedIds.size;
+      document.getElementById('stat-selected').textContent = `${cnt} ausgewählt`;
+      const btnBatch = document.getElementById('btn-batch-rename');
+      btnBatch.disabled = !(state.canWrite && cnt > 0);
+      btnBatch.querySelector('span').textContent = cnt > 0 ? `✏️ Massen-Umbenennung (${cnt})` : '✏️ Massen-Umbenennung';
+      const master = document.getElementById('select-all-cb');
+      master.checked = state.filteredPdfs.length > 0 && state.filteredPdfs.every(it => state.selectedIds.has(it.id));
+    }
+
+    function handleCheckboxClick(e, item, checked) {
+      if (e && e.shiftKey && state.lastSelectedId) {
+        const a = state.filteredPdfs.findIndex(x => x.id === state.lastSelectedId);
+        const b = state.filteredPdfs.findIndex(x => x.id === item.id);
+        if (a >= 0 && b >= 0) {
+          for (let i = Math.min(a, b); i <= Math.max(a, b); i++) {
+            if (checked) state.selectedIds.add(state.filteredPdfs[i].id);
+            else state.selectedIds.delete(state.filteredPdfs[i].id);
+          }
+          try { window.getSelection()?.removeAllRanges(); } catch (_) {}
+        }
+      } else {
+        if (checked) state.selectedIds.add(item.id);
+        else state.selectedIds.delete(item.id);
+      }
+      state.lastSelectedId = item.id;
+      renderTable();
+    }
+
+    function handleRowClick(e, item) {
+      if (e.shiftKey) {
+        e.preventDefault();
+        try { window.getSelection()?.removeAllRanges(); } catch (_) {}
+        const anchor = state.lastSelectedId || state.activeId;
+        const a = anchor ? state.filteredPdfs.findIndex(x => x.id === anchor) : -1;
+        const b = state.filteredPdfs.findIndex(x => x.id === item.id);
+        if (a >= 0 && b >= 0) {
+          for (let i = Math.min(a, b); i <= Math.max(a, b); i++) {
+            state.selectedIds.add(state.filteredPdfs[i].id);
+          }
+        } else {
+          state.selectedIds.add(item.id);
+        }
+        state.lastSelectedId = item.id;
+        renderTable();
+        return;
+      }
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        if (state.selectedIds.has(item.id)) state.selectedIds.delete(item.id);
+        else state.selectedIds.add(item.id);
+        state.lastSelectedId = item.id;
+        renderTable();
+        return;
+      }
+      state.lastSelectedId = item.id;
+      showPdfPreview(item);
+    }
+
+    function toggleSelectAll(master) {
+      if (master.checked) state.filteredPdfs.forEach(it => state.selectedIds.add(it.id));
+      else state.filteredPdfs.forEach(it => state.selectedIds.delete(it.id));
+      state.lastSelectedId = null;
+      renderTable();
+    }
+
+    async function getFileObject(item) {
+      if (item.fileHandle) return await item.fileHandle.getFile();
+      return item.fileObj;
+    }
+
+    function clearActivePreview() {
+      state.activeId = null;
+      if (state.activeBlobUrl) {
+        URL.revokeObjectURL(state.activeBlobUrl);
+        state.activeBlobUrl = null;
+      }
+      document.getElementById('preview-title').textContent = 'PDF-Vorschau';
+      document.getElementById('btn-preview-tab').disabled = true;
+      document.getElementById('btn-preview-rename').disabled = true;
+      document.getElementById('preview-body').innerHTML = '<div class="empty-box"><div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div></div>';
+    }
+
+    async function showPdfPreview(item) {
+      state.activeId = item.id;
+      renderTable();
+      if (!state.previewVisible) return;
+      try {
+        const file = await getFileObject(item);
+        if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
+        const blobUrl = URL.createObjectURL(file);
+        state.activeBlobUrl = blobUrl;
+        document.getElementById('preview-title').textContent = item.name;
+        document.getElementById('btn-preview-tab').disabled = false;
+        document.getElementById('btn-preview-rename').disabled = !state.canWrite;
+        document.getElementById('preview-body').innerHTML = `<iframe src="${blobUrl}" title="${item.name.replace(/"/g, '&quot;')}"></iframe>`;
+      } catch (err) {
+        toast(`PDF konnte nicht geladen werden: ${err.message}`, 'err');
+      }
+    }
+
+    async function openPdfInNewTab(item) {
+      try {
+        const file = await getFileObject(item);
+        const url = URL.createObjectURL(file);
+        window.open(url, '_blank', 'noopener');
+      } catch (err) {
+        toast(`PDF konnte nicht geöffnet werden: ${err.message}`, 'err');
+      }
+    }
+
+    function openActivePdfInNewTab() {
+      const item = state.allPdfs.find(x => x.id === state.activeId);
+      if (item) openPdfInNewTab(item);
+    }
+
+    function openSingleRenameForActive() {
+      const item = state.allPdfs.find(x => x.id === state.activeId);
+      if (item) openSingleRenameModal(item);
+    }
+
+    function togglePreviewPane() {
+      state.previewVisible = !state.previewVisible;
+      document.getElementById('preview-card').classList.toggle('hidden', !state.previewVisible);
+      document.getElementById('workspace-split').classList.toggle('with-preview', state.previewVisible);
+      document.getElementById('btn-toggle-preview').classList.toggle('btn-active', state.previewVisible);
+      if (state.previewVisible && state.activeId) {
+        const item = state.allPdfs.find(x => x.id === state.activeId);
+        if (item) showPdfPreview(item);
+      }
+    }
+
+    /* Umbenennen-Engine (File System Access API: move() + Fallback copy+delete) */
+    function sanitizePdfName(raw) {
+      let clean = (raw || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+      if (!clean) return '';
+      if (!clean.toLowerCase().endsWith('.pdf')) clean += '.pdf';
+      return clean;
+    }
+
+    async function renamePdfItem(item, newNameRaw) {
+      if (!state.canWrite || !item.fileHandle || !item.parentHandle) {
+        throw new Error('Keine Schreibfreigabe für diesen Ordner.');
+      }
+      const newName = sanitizePdfName(newNameRaw);
+      if (!newName) throw new Error('Ungültiger Dateiname.');
+      if (newName === item.name) return false;
+
+      if (typeof item.fileHandle.move === 'function') {
+        await item.fileHandle.move(newName);
+      } else {
+        const origFile = await item.fileHandle.getFile();
+        const newHandle = await item.parentHandle.getFileHandle(newName, { create: true });
+        const writable = await newHandle.createWritable();
+        await writable.write(await origFile.arrayBuffer());
+        await writable.close();
+        await item.parentHandle.removeEntry(item.name);
+        item.fileHandle = newHandle;
+      }
+      item.name = newName;
+      item.relPath = item.dir === '(Hauptordner)' ? newName : `${item.dir}\\${newName}`;
+      return true;
+    }
+
+    function openSingleRenameModal(item) {
+      if (!state.canWrite) {
+        toast('Umbenennen erfordert Schreibfreigabe über https:// (GitHub Pages).', 'err');
+        return;
+      }
+      state.singleRenameId = item.id;
+      const stem = item.name.replace(/\.pdf$/i, '');
+      const inp = document.getElementById('single-rename-input');
+      inp.value = stem;
+      document.getElementById('single-rename-path').textContent = `Ordner: ${item.dir}`;
+      document.getElementById('modal-single-rename').classList.remove('hidden');
+      setTimeout(() => { inp.focus(); inp.select(); }, 30);
+    }
+
+    async function confirmSingleRename() {
+      const item = state.allPdfs.find(x => x.id === state.singleRenameId);
+      if (!item) return;
+      const newVal = document.getElementById('single-rename-input').value;
+      try {
+        const changed = await renamePdfItem(item, newVal);
+        closeModal('modal-single-rename');
+        if (changed) {
+          toast(`Umbenannt in „${item.name}“`, 'ok');
+          if (state.activeId === item.id) {
+            document.getElementById('preview-title').textContent = item.name;
+          }
+          applyFilters();
+        }
+      } catch (err) {
+        toast(`Fehler beim Umbenennen: ${err.message}`, 'err');
+      }
+    }
+
+    function getBatchTargets() {
+      return state.filteredPdfs.filter(it => state.selectedIds.has(it.id));
+    }
+
+    function computeBatchNewName(item, idx) {
+      const rule = document.getElementById('batch-rule').value;
+      const stem = item.name.replace(/\.pdf$/i, '');
+      if (rule === 'replace') {
+        const f = document.getElementById('batch-find').value;
+        const r = document.getElementById('batch-replace').value;
+        return sanitizePdfName(f ? stem.split(f).join(r) : stem);
+      }
+      if (rule === 'prefix') {
+        const v = document.getElementById('batch-single-val').value;
+        return sanitizePdfName(`${v}${stem}`);
+      }
+      if (rule === 'suffix') {
+        const v = document.getElementById('batch-single-val').value;
+        return sanitizePdfName(`${stem}${v}`);
+      }
+      const base = (document.getElementById('batch-single-val').value || 'Dokument').trim();
+      return sanitizePdfName(`${base}_${String(idx + 1).padStart(2, '0')}`);
+    }
+
+    function openBatchRenameModal() {
+      const targets = getBatchTargets();
+      if (!state.canWrite || targets.length === 0) return;
+      document.getElementById('batch-count-lbl').textContent = targets.length;
+      updateBatchRuleUI();
+      document.getElementById('modal-batch-rename').classList.remove('hidden');
+    }
+
+    function updateBatchRuleUI() {
+      const rule = document.getElementById('batch-rule').value;
+      document.getElementById('batch-fields-replace').classList.toggle('hidden', rule !== 'replace');
+      document.getElementById('batch-fields-single').classList.toggle('hidden', rule === 'replace');
+      const lbl = document.getElementById('batch-single-label');
+      const inp = document.getElementById('batch-single-val');
+      if (rule === 'prefix') { lbl.textContent = 'Präfix voranstellen:'; inp.placeholder = 'z. B. 2026_'; }
+      else if (rule === 'suffix') { lbl.textContent = 'Suffix anhängen (vor .pdf):'; inp.placeholder = 'z. B. _geprueft'; }
+      else if (rule === 'number') { lbl.textContent = 'Basisname für Nummerierung:'; inp.placeholder = 'z. B. Rechnung_2026'; }
+      updateBatchPreview();
+    }
+
+    function updateBatchPreview() {
+      const list = document.getElementById('batch-preview-list');
+      const targets = getBatchTargets();
+      list.innerHTML = targets.slice(0, 60).map((it, i) => {
+        const nn = computeBatchNewName(it, i);
+        return `<div class="rename-preview-item"><span class="rename-old" title="${it.name}">${it.name}</span><span>➔</span><span class="rename-new" title="${nn}">${nn}</span></div>`;
+      }).join('');
+    }
+
+    async function executeBatchRename() {
+      const targets = getBatchTargets();
+      let ok = 0;
+      let errCnt = 0;
+      for (let i = 0; i < targets.length; i++) {
+        const it = targets[i];
+        const nn = computeBatchNewName(it, i);
+        if (nn && nn !== it.name) {
+          try {
+            if (await renamePdfItem(it, nn)) ok += 1;
+          } catch (_) {
+            errCnt += 1;
+          }
+        }
+      }
+      closeModal('modal-batch-rename');
+      applyFilters();
+      if (errCnt > 0) {
+        toast(`${ok} PDFs umbenannt, ${errCnt} fehlgeschlagen.`, 'err');
+      } else {
+        toast(`${ok} PDFs erfolgreich umbenannt.`, 'ok');
+      }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
