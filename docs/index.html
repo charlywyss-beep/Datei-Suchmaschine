@@ -514,6 +514,12 @@
       justify-content: space-between;
       gap: 8px;
     }
+    .preview-title-wrap {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
     .preview-title {
       font-size: 13px;
       font-weight: 700;
@@ -521,6 +527,73 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .preview-subpath {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--accent-hover);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .path-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 9px;
+      background: #f8fafc;
+      border: 1px solid var(--divider);
+      font-size: 12.5px;
+    }
+    .path-breadcrumbs {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-sec);
+      font-weight: 600;
+      min-width: 0;
+    }
+    .crumb-link {
+      border: none;
+      background: transparent;
+      color: var(--accent-hover);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .crumb-link:hover {
+      background: var(--accent-soft);
+      text-decoration: underline;
+    }
+    .crumb-current {
+      color: var(--text);
+      font-weight: 700;
+      word-break: break-all;
+    }
+    .subfolder-select {
+      height: 32px;
+      max-width: 340px;
+      padding: 0 10px;
+      border-radius: 7px;
+      border: 1.5px solid var(--border-input);
+      background: #ffffff;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .subfolder-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
     }
     .preview-body {
       flex: 1;
@@ -694,7 +767,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.4</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.5</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -749,6 +822,17 @@
             oninput="applyFilters()"
           >
           <button type="button" class="input-clear" title="Suchfeld leeren" onclick="clearSearchInput()">✕</button>
+        </div>
+      </div>
+
+      <!-- Aktueller Pfad & Unterordner-Auswahl -->
+      <div id="path-bar" class="path-bar hidden" style="margin-bottom: 8px;">
+        <div class="path-breadcrumbs" id="path-breadcrumbs"></div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <label for="subfolder-filter" style="font-size:12px; font-weight:700; color:#475569; cursor:default;">Unterordner:</label>
+          <select id="subfolder-filter" class="subfolder-select" onchange="onSubfolderChanged(this.value)">
+            <option value="">Alle Unterordner</option>
+          </select>
         </div>
       </div>
 
@@ -856,7 +940,10 @@
 
       <aside id="preview-card" class="preview-card">
         <div class="preview-head">
-          <div id="preview-title" class="preview-title">PDF-Vorschau</div>
+          <div class="preview-title-wrap">
+            <div id="preview-title" class="preview-title">PDF-Vorschau</div>
+            <div id="preview-subpath" class="preview-subpath">Kein PDF ausgewählt</div>
+          </div>
           <div style="display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0;">
             <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActivePdfPath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad kopieren</button>
             <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActivePdfInNewTab()">↗ Öffnen in Tab</button>
@@ -958,6 +1045,7 @@
       sortAsc: true,
       timeframe: '',
       sizePreset: '',
+      activeSubfolder: '',
       scanning: false,
       cancelRequested: false,
       singleRenameId: null,
@@ -1230,6 +1318,9 @@
         hint.textContent = state.cancelRequested
           ? `Scan gestoppt · ${dispName} · ${state.allPdfs.length} PDFs`
           : `✓ Geladen: ${dispName} · ${state.allPdfs.length} PDFs`;
+        state.activeSubfolder = '';
+        rebuildSubfolderDropdown();
+        updatePathBar();
         updateModeBadge();
         applyFilters();
       }
@@ -1268,8 +1359,12 @@
       });
 
       state.rootName = firstRoot;
-      document.getElementById('folder-hint').textContent = `Ordner „${firstRoot}“ geladen (${state.allPdfs.length} PDFs)`;
+      state.activeSubfolder = '';
+      document.getElementById('folder-hint').textContent = `✓ Geladen: ${firstRoot} · ${state.allPdfs.length} PDFs`;
+      document.getElementById('folder-hint').classList.add('loaded');
       showModeNotice('ℹ️ Lese-Modus (lokal über file:// geöffnet): PDFs suchen &amp; öffnen funktioniert voll – für direktes Umbenennen bitte über <strong>GitHub Pages (https://)</strong> in Edge/Chrome öffnen.');
+      rebuildSubfolderDropdown();
+      updatePathBar();
       updateModeBadge();
       applyFilters();
     }
@@ -1334,14 +1429,62 @@
       applyFilters();
     }
 
+    function rebuildSubfolderDropdown() {
+      const bar = document.getElementById('path-bar');
+      const sel = document.getElementById('subfolder-filter');
+      if (!bar || !sel) return;
+      if (!state.rootName) {
+        bar.classList.add('hidden');
+        return;
+      }
+      bar.classList.remove('hidden');
+      const counts = new Map();
+      state.allPdfs.forEach(it => {
+        const d = it.dir || '(Hauptordner)';
+        counts.set(d, (counts.get(d) || 0) + 1);
+      });
+      const dirs = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' }));
+      sel.innerHTML = `<option value="">Alle Unterordner (${state.allPdfs.length})</option>` +
+        dirs.map(d => `<option value="${d.replace(/"/g, '&quot;')}">${d} (${counts.get(d)})</option>`).join('');
+      sel.value = state.activeSubfolder || '';
+    }
+
+    function onSubfolderChanged(val) {
+      state.activeSubfolder = val || '';
+      updatePathBar();
+      applyFilters();
+    }
+
+    function updatePathBar() {
+      const bc = document.getElementById('path-breadcrumbs');
+      if (!bc || !state.rootName) return;
+      const actItem = state.allPdfs.find(x => x.id === state.activeId);
+      let html = `<span>📂 Aktueller Pfad:</span>`;
+      if (state.activeSubfolder) {
+        html += `<button type="button" class="crumb-link" onclick="onSubfolderChanged('')" title="Zurück zu allen Unterordnern">${state.rootName}</button>`;
+        html += `<span style="color:#94a3b8;">›</span><span class="crumb-current">${state.activeSubfolder}</span>`;
+      } else {
+        html += `<span class="crumb-current">${state.rootName}</span>`;
+      }
+      if (actItem) {
+        const sub = (actItem.dir && actItem.dir !== '(Hauptordner)') ? `${actItem.dir}\\` : '';
+        html += `<span style="color:#cbd5e1; margin:0 4px;">|</span><span style="color:#475569;">Ausgewählt:</span> <span class="crumb-current" style="color:#1d4ed8;">${sub}${actItem.name}</span>`;
+      }
+      bc.innerHTML = html;
+    }
+
     function clearAllFilters() {
       state.timeframe = '';
       state.sizePreset = '';
+      state.activeSubfolder = '';
+      const sf = document.getElementById('subfolder-filter');
+      if (sf) sf.value = '';
       document.querySelectorAll('[data-tf],[data-sz]').forEach(b => b.classList.remove('btn-active'));
       document.getElementById('date-from').value = '';
       document.getElementById('date-to').value = '';
       document.getElementById('min-size-input').value = '';
       document.getElementById('search-input').value = '';
+      updatePathBar();
       applyFilters();
     }
 
@@ -1369,6 +1512,7 @@
       const minBytes = parseSizeBytes(document.getElementById('min-size-input').value);
 
       let list = state.allPdfs.filter(item => {
+        if (state.activeSubfolder && item.dir !== state.activeSubfolder) return false;
         if (terms.length > 0) {
           const hay = `${item.name} ${item.dir}`.toLowerCase();
           if (!terms.every(t => hay.includes(t))) return false;
@@ -1558,14 +1702,18 @@
         state.activeBlobUrl = null;
       }
       document.getElementById('preview-title').textContent = 'PDF-Vorschau';
+      const sp = document.getElementById('preview-subpath');
+      if (sp) sp.textContent = 'Kein PDF ausgewählt';
       document.getElementById('btn-preview-copy').disabled = true;
       document.getElementById('btn-preview-tab').disabled = true;
       document.getElementById('btn-preview-rename').disabled = true;
       document.getElementById('preview-body').innerHTML = '<div class="empty-box"><div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div></div>';
+      updatePathBar();
     }
 
     async function showPdfPreview(item) {
       state.activeId = item.id;
+      updatePathBar();
       renderTable();
       if (!state.previewVisible) return;
       try {
@@ -1574,6 +1722,8 @@
         const blobUrl = URL.createObjectURL(file);
         state.activeBlobUrl = blobUrl;
         document.getElementById('preview-title').textContent = item.name;
+        const sp = document.getElementById('preview-subpath');
+        if (sp) sp.textContent = `📂 ${state.rootName} › ${item.dir}`;
         document.getElementById('btn-preview-copy').disabled = false;
         document.getElementById('btn-preview-tab').disabled = false;
         document.getElementById('btn-preview-rename').disabled = !state.canWrite;
