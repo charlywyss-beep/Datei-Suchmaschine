@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDF-Suche Pro (Web Standalone)</title>
+  <title>Dokumenten-Suche Pro (Web Standalone)</title>
   <script src="./vendor/pdfjs/pdf.min.js"></script>
+  <script src="./vendor/mammoth.browser.min.js"></script>
+  <script src="./vendor/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg: #f1f5f9;
@@ -56,59 +58,27 @@
       gap: 12px;
       box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .brand { display: flex; align-items: center; gap: 10px; }
     .brand-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
+      width: 36px; height: 36px; border-radius: 10px;
       background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
     }
     .brand h1 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin: 0; font-size: 16px; font-weight: 700; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
     }
     .brand-badge {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      color: var(--accent-hover);
-      border: 1px solid var(--accent-border);
-      cursor: default;
+      font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent-hover);
+      border: 1px solid var(--accent-border); cursor: default;
     }
-    .brand-sub {
-      margin: 1px 0 0;
-      font-size: 11.5px;
-      color: var(--text-muted);
-    }
+    .brand-sub { margin: 1px 0 0; font-size: 11.5px; color: var(--text-muted); }
     .privacy-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 11px;
-      border-radius: 8px;
-      background: #f8fafc;
-      border: 1px solid var(--divider);
-      color: var(--text-sec);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: default;
+      display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px;
+      border-radius: 8px; background: #f8fafc; border: 1px solid var(--divider);
+      color: var(--text-sec); font-size: 12px; font-weight: 500; cursor: default;
     }
 
     main {
@@ -127,756 +97,355 @@
       box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
     }
     .section-header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding-bottom: 9px;
-      margin-bottom: 11px;
-      border-bottom: 1px solid var(--divider);
-      user-select: none;
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 8px; padding-bottom: 9px; margin-bottom: 11px;
+      border-bottom: 1px solid var(--divider); user-select: none;
     }
     .section-title {
-      font-size: 11.5px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: var(--text-sec);
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      cursor: default;
+      font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--text-sec); display: flex; align-items: center; gap: 7px; cursor: default;
     }
     .section-hint {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: #1e293b;
-      background: #f8fafc;
-      border: 1px solid var(--divider);
-      padding: 3px 10px;
-      border-radius: 7px;
-      cursor: default;
+      font-size: 12.5px; font-weight: 600; color: #1e293b;
+      background: #f8fafc; border: 1px solid var(--divider);
+      padding: 3px 10px; border-radius: 7px; cursor: default;
     }
     .section-hint.loaded {
-      background: #eff6ff;
-      border-color: #bfdbfe;
-      color: #1e3a8a;
+      background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a;
     }
 
     /* Eingabefelder */
-    .input-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: stretch;
-    }
-    .input-wrap {
-      position: relative;
-      flex: 1 1 280px;
-      display: flex;
-      align-items: center;
-    }
+    .input-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+    .input-wrap { position: relative; flex: 1 1 280px; display: flex; align-items: center; }
     .input-icon {
-      position: absolute;
-      left: 13px;
-      color: var(--text-muted);
-      pointer-events: none;
-      display: flex;
-      align-items: center;
+      position: absolute; left: 13px; color: var(--text-muted);
+      pointer-events: none; display: flex; align-items: center;
     }
     .main-input {
-      width: 100%;
-      height: 44px;
-      padding: 0 36px 0 40px;
-      border-radius: var(--radius);
-      border: 1.5px solid var(--border-input);
-      background: #ffffff;
-      color: var(--text);
-      font-size: 14px;
-      font-weight: 500;
-      font-family: inherit;
+      width: 100%; height: 44px; padding: 0 36px 0 40px; border-radius: var(--radius);
+      border: 1.5px solid var(--border-input); background: #ffffff; color: var(--text);
+      font-size: 14px; font-weight: 500; font-family: inherit;
       box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
       transition: border-color 0.14s ease, box-shadow 0.14s ease;
     }
-    .main-input::placeholder {
-      color: var(--text-muted);
-      font-weight: 400;
-    }
-    .main-input:focus::placeholder {
-      color: var(--text);
-      font-weight: 500;
-    }
+    .main-input::placeholder { color: var(--text-muted); font-weight: 400; }
+    .main-input:focus::placeholder { color: var(--text); font-weight: 500; }
     .main-input:hover { border-color: #64748b; }
     .main-input:focus {
-      outline: none;
-      border-color: var(--accent);
+      outline: none; border-color: var(--accent);
       box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04), 0 0 0 3px rgba(37, 99, 235, 0.16);
     }
     .input-clear {
-      position: absolute;
-      right: 8px;
-      width: 26px;
-      height: 26px;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: absolute; right: 8px; width: 26px; height: 26px; border: none;
+      background: transparent; color: var(--text-muted); border-radius: 6px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
-    .input-clear:hover {
-      background: #f1f5f9;
-      color: var(--text);
-    }
+    .input-clear:hover { background: #f1f5f9; color: var(--text); }
 
-    /* Buttons (klar als klickbar erkennbar) */
+    /* Buttons */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      height: 34px;
-      padding: 0 13px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border-input);
-      background: #ffffff;
-      color: var(--text);
-      font-family: inherit;
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      height: 34px; padding: 0 13px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-input); background: #ffffff; color: var(--text);
+      font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
       box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), inset 0 -1px 0 rgba(15, 23, 42, 0.06);
       transition: background-color 0.14s ease, border-color 0.14s ease, transform 0.08s ease, box-shadow 0.14s ease;
       white-space: nowrap;
     }
     .btn:hover:not(:disabled) {
-      background: var(--accent-soft);
-      border-color: #3b82f6;
-      color: var(--accent-hover);
+      background: var(--accent-soft); border-color: #3b82f6; color: var(--accent-hover);
       box-shadow: 0 2px 6px rgba(15, 23, 42, 0.10);
     }
     .btn:active:not(:disabled) { transform: translateY(1px); }
-    .btn:disabled {
-      opacity: 0.48;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-    .btn-lg {
-      height: 44px;
-      padding: 0 18px;
-      border-radius: var(--radius);
-      font-size: 13.5px;
-    }
+    .btn:disabled { opacity: 0.48; cursor: not-allowed; box-shadow: none; }
+    .btn-lg { height: 44px; padding: 0 18px; border-radius: var(--radius); font-size: 13.5px; }
     .btn-primary {
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      border-color: #1d4ed8;
-      color: #ffffff;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #1d4ed8; color: #ffffff;
       box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
     }
     .btn-primary:hover:not(:disabled) {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      border-color: #1d4ed8;
-      color: #ffffff;
+      background: linear-gradient(135deg, #3b82f6, #2563eb); border-color: #1d4ed8; color: #ffffff;
     }
-    .btn-soft {
-      background: var(--accent-soft);
-      border-color: var(--accent-border);
-      color: var(--accent-hover);
+    .btn-soft { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-hover); }
+    .btn-soft:hover:not(:disabled) { background: #dbeafe; border-color: #60a5fa; color: #1e40af; }
+    .btn-active { background: var(--accent) !important; border-color: var(--accent-hover) !important; color: #ffffff !important; }
+
+    /* Kategorie-Schnellfilter */
+    .cat-row { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .cat-count {
+      font-size: 11px; font-weight: 700; opacity: 0.78;
+      padding: 0 5px; border-radius: 999px; background: rgba(15, 23, 42, 0.07);
     }
-    .btn-soft:hover:not(:disabled) {
-      background: #dbeafe;
-      border-color: #60a5fa;
-      color: #1e40af;
-    }
-    .btn-active {
-      background: var(--accent) !important;
-      border-color: var(--accent-hover) !important;
-      color: #ffffff !important;
-    }
+    .btn-active .cat-count { background: rgba(255, 255, 255, 0.22); opacity: 1; }
 
     /* Filter-Zeilen */
-    .filter-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .filter-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-    }
-    .filter-label {
-      width: 112px;
-      flex-shrink: 0;
-      font-weight: 700;
-      color: var(--text-sec);
-      font-size: 12.5px;
-      cursor: default;
-    }
+    .filter-grid { display: flex; flex-direction: column; gap: 8px; }
+    .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .filter-label { width: 112px; flex-shrink: 0; font-weight: 700; color: var(--text-sec); font-size: 12.5px; cursor: default; }
     .date-box {
-      display: inline-flex;
-      align-items: center;
-      height: 34px;
-      width: 184px;
-      border-radius: var(--radius-sm);
-      border: 1.5px solid var(--border-input);
-      background: #ffffff;
-      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
-      padding: 0 8px 0 10px;
-      gap: 6px;
+      display: inline-flex; align-items: center; height: 34px; width: 184px;
+      border-radius: var(--radius-sm); border: 1.5px solid var(--border-input); background: #ffffff;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06); padding: 0 8px 0 10px; gap: 6px;
     }
-    .date-box:focus-within {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
-    }
-    .inline-prefix {
-      font-size: 11.5px;
-      font-weight: 700;
-      color: var(--text-muted);
-      user-select: none;
-      flex-shrink: 0;
-    }
-    .date-box input {
-      border: none;
-      outline: none;
-      background: transparent;
-      width: 100%;
-      font-family: inherit;
-      font-size: 12.5px;
-      color: var(--text);
-    }
+    .date-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16); }
+    .inline-prefix { font-size: 11.5px; font-weight: 700; color: var(--text-muted); user-select: none; flex-shrink: 0; }
+    .date-box input { border: none; outline: none; background: transparent; width: 100%; font-family: inherit; font-size: 12.5px; color: var(--text); }
 
-    /* Ergebnis-Toolbar: Anzeige links vs. Buttons rechts */
+    /* Gemerkte Ordner & Pfad-Leiste */
+    .saved-folders-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .saved-folder-pill {
+      display: inline-flex; align-items: center; border-radius: 8px;
+      border: 1px solid #a5b4fc; background: #eef2ff; color: #3730a3;
+      overflow: hidden; font-size: 12px; font-weight: 600;
+    }
+    .saved-folder-pill.active { border-color: var(--accent); background: #dbeafe; color: #1e40af; }
+    .saved-folder-btn {
+      border: none; background: transparent; color: inherit; font-family: inherit;
+      font-size: 12px; font-weight: 700; padding: 4px 8px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .saved-folder-btn:hover { background: rgba(37, 99, 235, 0.08); }
+    .saved-folder-del {
+      border: none; border-left: 1px solid rgba(99, 102, 241, 0.25); background: transparent;
+      color: #4f46e5; padding: 4px 7px; cursor: pointer; font-size: 11px;
+    }
+    .saved-folder-del:hover { background: #fee2e2; color: var(--danger); }
+
+    .path-bar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 8px 12px; border-radius: 9px;
+      background: #f8fafc; border: 1px solid var(--divider); font-size: 12.5px;
+    }
+    .path-breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--text-sec); font-weight: 600; min-width: 0; }
+    .crumb-link {
+      border: none; background: transparent; color: var(--accent-hover); font-family: inherit;
+      font-size: 12.5px; font-weight: 700; padding: 2px 6px; border-radius: 6px; cursor: pointer;
+    }
+    .crumb-link:hover { background: var(--accent-soft); text-decoration: underline; }
+    .crumb-current { color: var(--text); font-weight: 700; word-break: break-all; }
+    .basepath-wrap { position: relative; display: inline-flex; align-items: center; }
+    .basepath-input {
+      height: 30px; width: 245px; padding: 0 26px 0 9px; border-radius: 7px;
+      border: 1px solid var(--border-input); background: #ffffff; color: var(--text);
+      font-family: inherit; font-size: 12px; font-weight: 600;
+    }
+    .basepath-input::placeholder { color: var(--text-muted); font-weight: 400; }
+    .basepath-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16); }
+    .basepath-clear {
+      position: absolute; right: 4px; width: 20px; height: 20px; border: none;
+      background: transparent; color: var(--text-muted); border-radius: 4px;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;
+    }
+    .basepath-clear:hover { background: #fee2e2; color: var(--danger); }
+    .subfolder-select {
+      height: 32px; max-width: 320px; padding: 0 10px; border-radius: 7px;
+      border: 1.5px solid var(--border-input); background: #ffffff; color: var(--text);
+      font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    }
+    .subfolder-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16); }
+
+    /* Ergebnis-Toolbar */
     .results-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 14px;
-      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 10px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 14px; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
     }
     .status-readout {
-      display: inline-flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-      padding: 6px 12px;
-      border-radius: 8px;
-      background: #f8fafc;
-      border: 1px solid var(--divider);
-      color: var(--text-sec);
-      font-size: 12.5px;
-      cursor: default;
-      user-select: none;
+      display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px;
+      padding: 6px 12px; border-radius: 8px; background: #f8fafc;
+      border: 1px solid var(--divider); color: var(--text-sec); font-size: 12.5px;
+      cursor: default; user-select: none;
     }
     .status-readout strong { color: var(--text); }
     .status-sep { color: #cbd5e1; }
-    .status-mode {
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--ok);
-    }
+    .status-mode { font-size: 11.5px; font-weight: 600; color: var(--ok); }
     .status-mode.readonly { color: var(--text-muted); }
 
-    /* Hauptbereich: Tabelle links + PDF-Vorschau rechts */
-    .workspace-split {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      align-items: start;
-    }
-    .workspace-split.with-preview {
-      grid-template-columns: minmax(420px, 1.15fr) minmax(360px, 0.85fr);
-    }
-    @media (max-width: 1040px) {
-      .workspace-split.with-preview {
-        grid-template-columns: 1fr;
-      }
-    }
+    /* Hauptbereich: Tabelle + Vorschau */
+    .workspace-split { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
+    .workspace-split.with-preview { grid-template-columns: minmax(440px, 1.12fr) minmax(380px, 0.88fr); }
+    @media (max-width: 1080px) { .workspace-split.with-preview { grid-template-columns: 1fr; } }
 
     .table-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
     }
-    .table-scroll {
-      max-height: calc(100vh - 140px);
-      min-height: 460px;
-      overflow: auto;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-    }
+    .table-scroll { max-height: calc(100vh - 140px); min-height: 460px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     thead th {
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      background: #f8fafc;
-      color: var(--text);
-      font-size: 12px;
-      font-weight: 700;
-      text-align: left;
-      padding: 9px 10px;
-      border-bottom: 1px solid var(--border);
-      border-right: 1px solid var(--divider);
-      cursor: pointer;
-      user-select: none;
-      white-space: nowrap;
+      position: sticky; top: 0; z-index: 5; background: #f8fafc; color: var(--text);
+      font-size: 12px; font-weight: 700; text-align: left; padding: 9px 10px;
+      border-bottom: 1px solid var(--border); border-right: 1px solid var(--divider);
+      cursor: pointer; user-select: none; white-space: nowrap;
     }
     thead th:last-child { border-right: none; cursor: default; }
     thead th:hover:not(:first-child):not(:last-child) { background: #eff6ff; color: var(--accent-hover); }
-    tbody tr {
-      border-bottom: 1px solid #f1f5f9;
-      cursor: pointer;
-      transition: background-color 0.1s ease;
-    }
+    tbody tr { border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background-color 0.1s ease; }
     tbody tr:hover { background: #f8fafc; }
     tbody tr.selected { background: #dbeafe; }
     tbody tr.active-row { background: #eff6ff; outline: 1px solid #93c5fd; outline-offset: -1px; }
     tbody td {
-      padding: 8px 10px;
-      font-size: 12.5px;
-      color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      padding: 8px 10px; font-size: 12.5px; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .col-check { width: 38px; text-align: center; }
-    .col-name { width: 36%; font-weight: 600; }
-    .col-dir { width: 32%; color: var(--text-muted); }
-    .col-size { width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
-    .col-date { width: 136px; text-align: center; font-variant-numeric: tabular-nums; color: var(--text-sec); }
-    .col-act { width: 122px; text-align: right; }
+    .col-check { width: 36px; text-align: center; }
+    .col-name { width: 34%; font-weight: 600; }
+    .col-ext { width: 64px; text-align: center; }
+    .col-dir { width: 28%; color: var(--text-muted); }
+    .col-size { width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
+    .col-date { width: 126px; text-align: center; font-variant-numeric: tabular-nums; color: var(--text-sec); }
+    .col-act { width: 112px; text-align: right; }
+
+    .type-badge {
+      display: inline-block; padding: 1px 6px; border-radius: 5px;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
+      background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0;
+    }
+    .type-pdf { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+    .type-word { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .type-excel { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+    .type-ppt { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+    .type-image { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
+    .type-text { background: #ecfeff; color: #0e7490; border-color: #a5f3fc; }
 
     .icon-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: #ffffff;
-      color: var(--text-sec);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      margin-left: 4px;
+      width: 27px; height: 27px; border-radius: 6px; border: 1px solid var(--border);
+      background: #ffffff; color: var(--text-sec); display: inline-flex;
+      align-items: center; justify-content: center; cursor: pointer; margin-left: 3px;
       transition: all 0.12s ease;
     }
-    .icon-btn:hover:not(:disabled) {
-      background: var(--accent-soft);
-      border-color: #3b82f6;
-      color: var(--accent-hover);
-    }
+    .icon-btn:hover:not(:disabled) { background: var(--accent-soft); border-color: #3b82f6; color: var(--accent-hover); }
     .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* PDF-Vorschau rechts (nutzt volle Fensterhöhe + optional maximierbar) */
+    /* Rechte Vorschau */
     .preview-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      position: sticky;
-      top: 66px;
-      height: calc(100vh - 82px);
-      min-height: 520px;
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; display: flex; flex-direction: column;
+      position: sticky; top: 66px; height: calc(100vh - 82px); min-height: 520px;
       box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
     }
     .preview-card.maximized {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
-      border-radius: 0;
-      z-index: 75;
-      box-shadow: none;
-      border: none;
+      position: fixed; inset: 0; width: 100vw; height: 100vh;
+      border-radius: 0; z-index: 75; box-shadow: none; border: none;
     }
     .preview-head {
-      padding: 10px 14px;
-      background: #f8fafc;
-      border-bottom: 1px solid var(--divider);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
+      padding: 10px 14px; background: #f8fafc; border-bottom: 1px solid var(--divider);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
-    .preview-title-wrap {
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .preview-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .preview-subpath {
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--accent-hover);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .path-bar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 8px 12px;
-      border-radius: 9px;
-      background: #f8fafc;
-      border: 1px solid var(--divider);
-      font-size: 12.5px;
-    }
-    .path-breadcrumbs {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px;
-      color: var(--text-sec);
-      font-weight: 600;
-      min-width: 0;
-    }
-    .crumb-link {
-      border: none;
-      background: transparent;
-      color: var(--accent-hover);
-      font-family: inherit;
-      font-size: 12.5px;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .crumb-link:hover {
-      background: var(--accent-soft);
-      text-decoration: underline;
-    }
-    .crumb-current {
-      color: var(--text);
-      font-weight: 700;
-      word-break: break-all;
-    }
-    .subfolder-select {
-      height: 32px;
-      max-width: 340px;
-      padding: 0 10px;
-      border-radius: 7px;
-      border: 1.5px solid var(--border-input);
-      background: #ffffff;
-      color: var(--text);
-      font-family: inherit;
-      font-size: 12.5px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .subfolder-select:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
-    }
-    .basepath-wrap {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-    }
-    .basepath-input {
-      height: 30px;
-      width: 245px;
-      padding: 0 26px 0 9px;
-      border-radius: 7px;
-      border: 1px solid var(--border-input);
-      background: #ffffff;
-      color: var(--text);
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .basepath-clear {
-      position: absolute;
-      right: 4px;
-      width: 20px;
-      height: 20px;
-      border: none;
-      background: transparent;
-      color: var(--text-muted);
-      border-radius: 4px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-    }
-    .basepath-clear:hover {
-      background: #fee2e2;
-      color: var(--danger);
-    }
-    .saved-folders-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    .saved-folder-pill {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 8px;
-      border: 1px solid #a5b4fc;
-      background: #eef2ff;
-      color: #3730a3;
-      overflow: hidden;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .saved-folder-pill.active {
-      border-color: var(--accent);
-      background: #dbeafe;
-      color: #1e40af;
-    }
-    .saved-folder-btn {
-      border: none;
-      background: transparent;
-      color: inherit;
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 4px 8px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .saved-folder-btn:hover { background: rgba(37, 99, 235, 0.08); }
-    .saved-folder-del {
-      border: none;
-      border-left: 1px solid rgba(99, 102, 241, 0.25);
-      background: transparent;
-      color: #4f46e5;
-      padding: 4px 7px;
-      cursor: pointer;
-      font-size: 11px;
-    }
-    .saved-folder-del:hover {
-      background: #fee2e2;
-      color: var(--danger);
-    }
-    .basepath-input::placeholder {
-      color: var(--text-muted);
-      font-weight: 400;
-    }
-    .basepath-input:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
-    }
+    .preview-title-wrap { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .preview-title { font-size: 13px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .preview-subpath { font-size: 11.5px; font-weight: 600; color: var(--accent-hover); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .preview-body {
-      flex: 1;
-      background: #e2e8f0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      position: relative;
-      overflow: auto;
-      padding: 10px;
+      flex: 1; background: #e2e8f0; display: flex; align-items: flex-start;
+      justify-content: center; position: relative; overflow: auto; padding: 12px;
     }
-    .preview-body iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #ffffff;
+    .preview-body iframe { width: 100%; height: 100%; border: none; background: #ffffff; }
+
+    /* Sub-Toolbars (PDF.js & Excel-Blätter) */
+    .viewer-toolbar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+      gap: 6px; padding: 6px 10px; background: #ffffff;
+      border-bottom: 1px solid var(--divider); font-size: 12px;
     }
-    .pdf-toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 6px 10px;
-      background: #ffffff;
-      border-bottom: 1px solid var(--divider);
-      font-size: 12px;
-    }
-    .pdf-toolbar .btn {
-      height: 28px;
-      padding: 0 9px;
-      font-size: 12px;
-    }
-    .pdf-page-info {
-      font-weight: 700;
-      color: var(--text);
-      min-width: 78px;
-      text-align: center;
-      font-variant-numeric: tabular-nums;
-      cursor: default;
-    }
+    .viewer-toolbar .btn { height: 28px; padding: 0 9px; font-size: 12px; }
+    .pdf-page-info { font-weight: 700; color: var(--text); min-width: 78px; text-align: center; font-variant-numeric: tabular-nums; cursor: default; }
+
     #pdf-render-canvas {
-      display: block;
-      margin: auto;
-      background: #ffffff;
-      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.18);
-      border-radius: 3px;
-    }
-    .empty-box {
-      padding: 42px 24px;
-      text-align: center;
-      color: var(--text-muted);
-    }
-    .empty-box h3 {
-      margin: 10px 0 6px;
-      font-size: 15px;
-      color: var(--text);
+      display: block; margin: auto; background: #ffffff;
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.18); border-radius: 3px;
     }
 
-    /* Info-Banner */
+    /* Word (.docx) Blatt-Ansicht */
+    .docx-sheet {
+      width: 100%; max-width: 820px; background: #ffffff; color: #0f172a;
+      padding: 28px 34px; border-radius: 6px; box-shadow: 0 4px 18px rgba(15, 23, 42, 0.14);
+      line-height: 1.55; font-size: 13.5px; margin: 0 auto;
+    }
+    .docx-sheet h1, .docx-sheet h2, .docx-sheet h3 { color: #0f172a; margin-top: 1.1em; }
+    .docx-sheet table { width: 100%; border-collapse: collapse; margin: 12px 0; table-layout: auto; }
+    .docx-sheet td, .docx-sheet th { border: 1px solid #cbd5e1; padding: 6px 8px; white-space: normal; }
+    .docx-sheet img { max-width: 100%; height: auto; }
+
+    /* Excel (.xlsx/.csv) Tabellen-Ansicht */
+    .xlsx-sheet-wrap {
+      width: 100%; background: #ffffff; border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12); overflow: auto;
+      border: 1px solid #cbd5e1;
+    }
+    .xlsx-table { width: auto; min-width: 100%; border-collapse: collapse; table-layout: auto; font-size: 12px; }
+    .xlsx-table th, .xlsx-table td {
+      border: 1px solid #e2e8f0; padding: 5px 8px; text-align: left;
+      white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .xlsx-table tr:first-child td, .xlsx-table th { background: #f8fafc; font-weight: 700; color: #0f172a; }
+    .xlsx-table tr:nth-child(even) td { background: #fcfdff; }
+
+    /* Bild- & Text-Vorschau */
+    .img-preview {
+      max-width: 100%; max-height: 100%; object-fit: contain; margin: auto;
+      background: #ffffff; border-radius: 6px; box-shadow: 0 4px 18px rgba(15, 23, 42, 0.18);
+    }
+    .text-preview {
+      width: 100%; max-width: 960px; margin: 0 auto; background: #ffffff; color: #0f172a;
+      padding: 18px 22px; border-radius: 8px; border: 1px solid #cbd5e1;
+      font-family: Consolas, "Cascadia Code", monospace; font-size: 12.5px;
+      line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+    }
+
+    .empty-box { padding: 42px 24px; text-align: center; color: var(--text-muted); margin: auto; }
+    .empty-box h3 { margin: 10px 0 6px; font-size: 15px; color: var(--text); }
+
     .info-banner {
-      padding: 9px 12px;
-      border-radius: 8px;
-      background: #f0f9ff;
-      border: 1px solid #bae6fd;
-      color: #0369a1;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      padding: 9px 12px; border-radius: 8px; background: #f0f9ff;
+      border: 1px solid #bae6fd; color: #0369a1; font-size: 12px;
+      display: flex; align-items: center; gap: 8px;
     }
     .hidden { display: none !important; }
 
-    /* Modal (Einzel- & Massen-Umbenennung) */
+    /* Modals */
     .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.42);
-      z-index: 60;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.42); z-index: 80;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
     }
     .modal-card {
-      width: 100%;
-      max-width: 680px;
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      max-height: 86vh;
+      width: 100%; max-width: 680px; background: #ffffff; border: 1px solid var(--border);
+      border-radius: 14px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+      overflow: hidden; display: flex; flex-direction: column; max-height: 86vh;
     }
     .modal-head {
-      padding: 14px 18px;
-      background: #f8fafc;
-      border-bottom: 1px solid var(--divider);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      padding: 14px 18px; background: #f8fafc; border-bottom: 1px solid var(--divider);
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .modal-head h2 {
-      margin: 0;
-      font-size: 15px;
-      color: var(--text);
-    }
-    .modal-body {
-      padding: 16px 18px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+    .modal-head h2 { margin: 0; font-size: 15px; color: var(--text); }
+    .modal-body { padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
     .modal-foot {
-      padding: 12px 18px;
-      background: #f8fafc;
-      border-top: 1px solid var(--divider);
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
+      padding: 12px 18px; background: #f8fafc; border-top: 1px solid var(--divider);
+      display: flex; justify-content: flex-end; gap: 8px;
     }
-    .form-field {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .form-field label {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-sec);
-    }
+    .form-field { display: flex; flex-direction: column; gap: 5px; }
+    .form-field label { font-size: 12px; font-weight: 700; color: var(--text-sec); }
     .form-field input, .form-field select {
-      height: 36px;
-      padding: 0 11px;
-      border-radius: 8px;
-      border: 1.5px solid var(--border-input);
-      font-family: inherit;
-      font-size: 13px;
-      color: var(--text);
+      height: 36px; padding: 0 11px; border-radius: 8px;
+      border: 1.5px solid var(--border-input); font-family: inherit; font-size: 13px; color: var(--text);
     }
-    .form-field input:focus, .form-field select:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
-    }
-    .rename-preview-list {
-      border: 1px solid var(--divider);
-      border-radius: 8px;
-      max-height: 220px;
-      overflow-y: auto;
-      font-size: 12px;
-    }
+    .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16); }
+    .rename-preview-list { border: 1px solid var(--divider); border-radius: 8px; max-height: 220px; overflow-y: auto; font-size: 12px; }
     .rename-preview-item {
-      padding: 7px 10px;
-      border-bottom: 1px solid #f1f5f9;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 8px;
-      align-items: center;
+      padding: 7px 10px; border-bottom: 1px solid #f1f5f9;
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center;
     }
     .rename-preview-item:last-child { border-bottom: none; }
     .rename-old { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .rename-new { color: var(--accent-hover); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    /* Toast */
     #toast-box {
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
-      z-index: 80;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      pointer-events: none;
+      position: fixed; right: 18px; bottom: 18px; z-index: 90;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
     }
     .toast {
-      padding: 10px 14px;
-      border-radius: 10px;
-      background: #ffffff;
-      border: 1.5px solid var(--border);
-      color: var(--text);
-      font-size: 12.5px;
-      font-weight: 600;
-      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.16);
-      max-width: 380px;
+      padding: 10px 14px; border-radius: 10px; background: #ffffff;
+      border: 1.5px solid var(--border); color: var(--text); font-size: 12.5px;
+      font-weight: 600; box-shadow: 0 10px 26px rgba(15, 23, 42, 0.16); max-width: 390px;
     }
     .toast.ok { background: var(--ok-soft); border-color: var(--ok-border); color: var(--ok); }
     .toast.err { background: var(--danger-soft); border-color: var(--danger-border); color: var(--danger); }
@@ -895,8 +464,8 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.12</span></h1>
-        <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
+        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.0</span></h1>
+        <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
     <div class="privacy-pill" title="Alle Dateien bleiben auf deinem PC und werden niemals hochgeladen">
@@ -909,10 +478,10 @@
   </header>
 
   <main>
-    <!-- BEREICH 1: Ordner wählen & PDF suchen -->
+    <!-- BEREICH 1: Ordner wählen & Suche -->
     <section class="section-card">
       <div class="section-header">
-        <span class="section-title">1. Ordner &amp; PDF-Suche</span>
+        <span class="section-title">1. Ordner &amp; Dokumenten-Suche</span>
         <span id="folder-hint" class="section-hint">Wähle zuerst einen Ordner auf deinem PC oder Netzlaufwerk</span>
       </div>
 
@@ -928,7 +497,7 @@
           <span>↺ Letzten Ordner öffnen</span>
         </button>
 
-        <button id="btn-rescan" type="button" class="btn btn-soft btn-lg hidden" onclick="rescanCurrentFolder()" title="Ordner erneut einlesen, falls zwischenzeitlich neue PDFs dazugekommen sind (für die Suche nicht nötig)">
+        <button id="btn-rescan" type="button" class="btn btn-soft btn-lg hidden" onclick="rescanCurrentFolder()" title="Ordner erneut einlesen, falls zwischenzeitlich neue Dateien dazugekommen sind">
           <span>↻ Neu einlesen</span>
         </button>
 
@@ -946,17 +515,17 @@
             id="search-input"
             type="text"
             class="main-input"
-            placeholder="PDF-Name oder Unterordner filtern (z. B. Rechnung 2026)…"
+            placeholder="Dateiname oder Unterordner filtern (z. B. Rechnung 2026, Zeichnung)…"
             oninput="applyFilters()"
           >
           <button type="button" class="input-clear" title="Suchfeld leeren" onclick="clearSearchInput()">✕</button>
         </div>
       </div>
 
-      <!-- Gemerkte Ordner (bleiben bestehen bis manuell per × gelöscht) -->
+      <!-- Gemerkte Ordner -->
       <div id="saved-folders-row" class="saved-folders-row hidden"></div>
 
-      <!-- Aktueller Pfad & Unterordner-Auswahl -->
+      <!-- Aktueller Pfad, Basis-Pfad & Unterordner-Auswahl -->
       <div id="path-bar" class="path-bar hidden" style="margin-bottom: 8px;">
         <div class="path-breadcrumbs" id="path-breadcrumbs"></div>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -978,20 +547,32 @@
         </div>
       </div>
 
-      <!-- Versteckter Fallback-Ordnerpicker für file:// oder ältere Browser -->
       <input id="fallback-folder-input" type="file" webkitdirectory directory multiple class="hidden" onchange="handleFallbackFiles(this.files)">
-
       <div id="mode-notice" class="info-banner hidden"></div>
     </section>
 
-    <!-- BEREICH 2: Zeit- & Größenfilter -->
+    <!-- BEREICH 2: Dateityp-, Zeit- & Größenfilter -->
     <section class="section-card">
       <div class="section-header">
-        <span class="section-title">2. Zeit- &amp; Größenfilter</span>
-        <span class="section-hint">Filtert die gefundenen PDFs sofort live ohne neu zu scannen</span>
+        <span class="section-title">2. Dateityp-, Zeit- &amp; Größenfilter</span>
+        <span class="section-hint">Filtert alle eingelesenen Dateien sofort live ohne neu zu scannen</span>
       </div>
 
       <div class="filter-grid">
+        <div class="filter-row">
+          <span class="filter-label">Dateityp:</span>
+          <div class="cat-row" id="category-buttons">
+            <button type="button" class="btn btn-active" data-cat="all" onclick="setCategory('all')">Alle <span class="cat-count" id="cnt-all">0</span></button>
+            <button type="button" class="btn" data-cat="pdf" onclick="setCategory('pdf')">PDF <span class="cat-count" id="cnt-pdf">0</span></button>
+            <button type="button" class="btn" data-cat="word" onclick="setCategory('word')">Word <span class="cat-count" id="cnt-word">0</span></button>
+            <button type="button" class="btn" data-cat="excel" onclick="setCategory('excel')">Excel <span class="cat-count" id="cnt-excel">0</span></button>
+            <button type="button" class="btn" data-cat="ppt" onclick="setCategory('ppt')">PowerPoint <span class="cat-count" id="cnt-ppt">0</span></button>
+            <button type="button" class="btn" data-cat="image" onclick="setCategory('image')">Bilder <span class="cat-count" id="cnt-image">0</span></button>
+            <button type="button" class="btn" data-cat="text" onclick="setCategory('text')">Text <span class="cat-count" id="cnt-text">0</span></button>
+            <button type="button" class="btn" data-cat="other" onclick="setCategory('other')">Sonstige <span class="cat-count" id="cnt-other">0</span></button>
+          </div>
+        </div>
+
         <div class="filter-row">
           <span class="filter-label">Zeitraum:</span>
           <button type="button" class="btn" data-tf="today" onclick="toggleTimeframe('today')">Heute</button>
@@ -1026,10 +607,10 @@
       </div>
     </section>
 
-    <!-- BEREICH 3: Ergebnis-Leiste (Anzeige links, Aktions-Buttons rechts) -->
+    <!-- BEREICH 3: Ergebnis-Leiste -->
     <div class="results-toolbar">
       <div class="status-readout" title="Ergebnis-Anzeige (nur Information)">
-        <span><strong id="stat-shown">0</strong> PDFs</span>
+        <span><strong id="stat-shown">0</strong> Dateien</span>
         <span class="status-sep">|</span>
         <span id="stat-size">0 KB</span>
         <span class="status-sep">|</span>
@@ -1040,16 +621,16 @@
       </div>
 
       <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-        <button id="btn-batch-rename" type="button" class="btn btn-soft" disabled onclick="openBatchRenameModal()" title="Markierte PDFs in einem Schritt umbenennen">
+        <button id="btn-batch-rename" type="button" class="btn btn-soft" disabled onclick="openBatchRenameModal()" title="Markierte Dateien in einem Schritt umbenennen">
           <span>✏️ Massen-Umbenennung</span>
         </button>
         <button id="btn-toggle-preview" type="button" class="btn btn-active" onclick="togglePreviewPane()">
-          <span>👁 PDF-Vorschau</span>
+          <span>👁 Dateivorschau</span>
         </button>
       </div>
     </div>
 
-    <!-- BEREICH 4: Tabelle + Rechte PDF-Vorschau -->
+    <!-- BEREICH 4: Tabelle + Rechte Multi-Format-Vorschau -->
     <div id="workspace-split" class="workspace-split with-preview">
       <div class="table-card">
         <div class="table-scroll">
@@ -1057,21 +638,22 @@
             <thead>
               <tr>
                 <th class="col-check">
-                  <input id="select-all-cb" type="checkbox" onchange="toggleSelectAll(this)" title="Alle sichtbaren PDFs auswählen (Tipp: Umschalt+Klick für Bereich)">
+                  <input id="select-all-cb" type="checkbox" onchange="toggleSelectAll(this)" title="Alle sichtbaren Dateien auswählen (Tipp: Umschalt+Klick für Bereich)">
                 </th>
                 <th class="col-name" onclick="setSort('name')">Dateiname <span id="sort-name">▲</span></th>
+                <th class="col-ext" onclick="setSort('ext')">Typ <span id="sort-ext"></span></th>
                 <th class="col-dir" onclick="setSort('dir')">Unterordner <span id="sort-dir"></span></th>
                 <th class="col-size" onclick="setSort('size')">Größe <span id="sort-size"></span></th>
                 <th class="col-date" onclick="setSort('mtime')">Geändert <span id="sort-mtime"></span></th>
                 <th class="col-act">Aktionen</th>
               </tr>
             </thead>
-            <tbody id="pdf-tbody">
+            <tbody id="file-tbody">
               <tr>
-                <td colspan="6">
+                <td colspan="7">
                   <div class="empty-box">
                     <h3>Noch kein Ordner ausgewählt</h3>
-                    <div>Klicke oben links auf <strong>„Ordner wählen…“</strong>, um alle PDF-Dateien inklusive Unterordner einzulesen.</div>
+                    <div>Klicke oben links auf <strong>„Ordner wählen…“</strong>, um PDFs, Word-, Excel-, PowerPoint-, Bild- &amp; Textdateien einzulesen.</div>
                   </div>
                 </td>
               </tr>
@@ -1083,18 +665,20 @@
       <aside id="preview-card" class="preview-card">
         <div class="preview-head">
           <div class="preview-title-wrap">
-            <div id="preview-title" class="preview-title">PDF-Vorschau</div>
-            <div id="preview-subpath" class="preview-subpath">Kein PDF ausgewählt</div>
+            <div id="preview-title" class="preview-title">Dateivorschau</div>
+            <div id="preview-subpath" class="preview-subpath">Keine Datei ausgewählt</div>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0;">
-            <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActivePdfPath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad kopieren</button>
-            <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActivePdfInNewTab()">↗ Öffnen in Tab</button>
-            <button id="btn-preview-dl" type="button" class="btn" disabled onclick="downloadActivePdf()" title="Kopie herunterladen (im Browser ggf. ‚Dateien dieses Typs immer öffnen‘ für automatisches Öffnen in PDF-Standard-App aktivieren)">⬇ Download</button>
+            <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActiveFilePath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad kopieren</button>
+            <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActiveFileInNewTab()">↗ Öffnen in Tab</button>
+            <button id="btn-preview-dl" type="button" class="btn" disabled onclick="downloadActiveFile()" title="Kopie herunterladen (z. B. zum Öffnen in Standard-App)">⬇ Download</button>
             <button id="btn-preview-rename" type="button" class="btn" disabled onclick="openSingleRenameForActive()">✏️ Umbenennen</button>
-            <button id="btn-preview-max" type="button" class="btn" onclick="togglePreviewMaximize()" title="PDF-Vorschau bildschirmfüllend anzeigen (ideal für Querformat / Montagezeichnungen, Esc zum Schließen)">⛶ Vollbild</button>
+            <button id="btn-preview-max" type="button" class="btn" onclick="togglePreviewMaximize()" title="Vorschau bildschirmfüllend anzeigen (Esc zum Schließen)">⛶ Vollbild</button>
           </div>
         </div>
-        <div id="pdf-toolbar" class="pdf-toolbar hidden">
+
+        <!-- PDF.js Steuerleiste -->
+        <div id="pdf-toolbar" class="viewer-toolbar hidden">
           <button type="button" class="btn" id="btn-pdf-prev" onclick="pdfStepPage(-1)" title="Vorherige Seite (←)">◀</button>
           <span id="pdf-page-info" class="pdf-page-info">Seite 1 / 1</span>
           <button type="button" class="btn" id="btn-pdf-next" onclick="pdfStepPage(1)" title="Nächste Seite (→)">▶</button>
@@ -1106,9 +690,13 @@
           <button type="button" class="btn" id="btn-pdf-fitw" onclick="pdfSetFitMode('width')" title="Auf volle Breite anpassen">Breite</button>
           <button type="button" class="btn" onclick="pdfRotate90()" title="Um 90° drehen (ideal für Montagezeichnungen)">↻ Drehen</button>
         </div>
+
+        <!-- Excel-Tabellenblatt-Leiste -->
+        <div id="xlsx-toolbar" class="viewer-toolbar hidden"></div>
+
         <div id="preview-body" class="preview-body">
           <div class="empty-box">
-            <div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div>
+            <div>Klicke links auf eine Datei (PDF, Word, Excel, Bild oder Text), um sie hier direkt anzuzeigen.</div>
           </div>
         </div>
       </aside>
@@ -1119,12 +707,12 @@
   <div id="modal-single-rename" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-single-rename')">
     <div class="modal-card" style="max-width:500px;">
       <div class="modal-head">
-        <h2>PDF umbenennen</h2>
+        <h2>Datei umbenennen</h2>
         <button type="button" class="btn" onclick="closeModal('modal-single-rename')">✕</button>
       </div>
       <div class="modal-body">
         <div class="form-field">
-          <label for="single-rename-input">Neuer Dateiname (Endung .pdf bleibt erhalten):</label>
+          <label id="single-rename-label" for="single-rename-input">Neuer Dateiname:</label>
           <input id="single-rename-input" type="text" onkeydown="if(event.key==='Enter') confirmSingleRename()">
         </div>
         <div id="single-rename-path" style="font-size:11.5px; color:#64748b;"></div>
@@ -1140,7 +728,7 @@
   <div id="modal-batch-rename" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-batch-rename')">
     <div class="modal-card">
       <div class="modal-head">
-        <h2>Massen-Umbenennung (<span id="batch-count-lbl">0</span> PDFs)</h2>
+        <h2>Massen-Umbenennung (<span id="batch-count-lbl">0</span> Dateien)</h2>
         <button type="button" class="btn" onclick="closeModal('modal-batch-rename')">✕</button>
       </div>
       <div class="modal-body">
@@ -1149,8 +737,8 @@
           <select id="batch-rule" onchange="updateBatchRuleUI()">
             <option value="replace">Text suchen &amp; ersetzen</option>
             <option value="prefix">Präfix voranstellen (z. B. 2026_)</option>
-            <option value="suffix">Suffix vor .pdf anhängen (z. B. _geprueft)</option>
-            <option value="number">Durchnummerieren (Basisname_01.pdf, _02.pdf…)</option>
+            <option value="suffix">Suffix vor Dateiendung anhängen (z. B. _geprueft)</option>
+            <option value="number">Durchnummerieren (Basisname_01, _02…)</option>
           </select>
         </div>
 
@@ -1189,8 +777,8 @@
       rootHandle: null,
       rootName: '',
       canWrite: false,
-      allPdfs: [],       // { id, name, dir, relPath, size, mtime, fileHandle, parentHandle, fileObj }
-      filteredPdfs: [],
+      allFiles: [],       // { id, name, ext, cat, dir, relPath, size, mtime, fileHandle, parentHandle, fileObj }
+      filteredFiles: [],
       selectedIds: new Set(),
       lastSelectedId: null,
       activeId: null,
@@ -1198,6 +786,7 @@
       previewVisible: true,
       sortCol: 'name',
       sortAsc: true,
+      category: 'all',
       timeframe: '',
       sizePreset: '',
       activeSubfolder: '',
@@ -1207,17 +796,25 @@
       singleRenameId: null,
       pdfDoc: null,
       pdfPageNum: 1,
-      pdfFitMode: 'fit', // 'fit' | 'width' | 'manual'
+      pdfFitMode: 'fit',
       pdfScale: 1.0,
       pdfRotation: 0,
       pdfLoadSeq: 0,
+      xlsxWorkbook: null,
+      xlsxActiveSheet: '',
     };
 
     const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information', 'node_modules', '.git', '__pycache__']);
     const IDB_NAME = 'pdf_suche_pro_web_v1';
     const IDB_STORE = 'handles';
     let savedLastHandle = null;
-    let savedFoldersList = []; // [{ id, name, handle }]
+    let savedFoldersList = [];
+
+    const EXT_WORD = new Set(['docx', 'doc', 'odt', 'rtf']);
+    const EXT_EXCEL = new Set(['xlsx', 'xls', 'xlsm', 'xlsb', 'ods', 'csv']);
+    const EXT_PPT = new Set(['pptx', 'ppt', 'ppsx', 'odp']);
+    const EXT_IMAGE = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg', 'ico', 'avif']);
+    const EXT_TEXT = new Set(['txt', 'md', 'json', 'xml', 'log', 'ini', 'cfg', 'conf', 'yml', 'yaml', 'html', 'htm', 'css', 'js', 'ts', 'py', 'sql', 'bat', 'ps1']);
 
     const GERMAN_WIN_FOLDER_NAMES = {
       public: 'Öffentlich',
@@ -1230,235 +827,39 @@
       links: 'Links',
     };
 
+    function getExt(filename) {
+      const i = (filename || '').lastIndexOf('.');
+      return i > 0 ? filename.slice(i + 1).toLowerCase() : '';
+    }
+
+    function getStem(filename) {
+      const i = (filename || '').lastIndexOf('.');
+      return i > 0 ? filename.slice(0, i) : (filename || '');
+    }
+
+    function getCategoryForExt(ext) {
+      if (ext === 'pdf') return 'pdf';
+      if (EXT_WORD.has(ext)) return 'word';
+      if (EXT_EXCEL.has(ext)) return 'excel';
+      if (EXT_PPT.has(ext)) return 'ppt';
+      if (EXT_IMAGE.has(ext)) return 'image';
+      if (EXT_TEXT.has(ext)) return 'text';
+      return 'other';
+    }
+
     function toGermanFolderLabel(name) {
       const s = (name || '').trim();
       if (!s) return '';
-      const mapped = GERMAN_WIN_FOLDER_NAMES[s.toLowerCase()];
-      return mapped || s;
+      return GERMAN_WIN_FOLDER_NAMES[s.toLowerCase()] || s;
     }
 
     function toGermanDisplayPath(pathStr) {
       if (!pathStr) return '';
-      return String(pathStr)
-        .split('\\')
-        .map((seg, idx) => (idx === 0 && seg.endsWith(':')) ? seg : toGermanFolderLabel(seg))
-        .join('\\');
+      return String(pathStr).split('\\').map((seg, idx) => (idx === 0 && seg.endsWith(':')) ? seg : toGermanFolderLabel(seg)).join('\\');
     }
 
-    function openHandleDb() {
-      return new Promise((resolve, reject) => {
-        if (!window.indexedDB) { resolve(null); return; }
-        const req = indexedDB.open(IDB_NAME, 1);
-        req.onupgradeneeded = () => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function saveSavedFoldersList() {
-      try {
-        const db = await openHandleDb();
-        if (!db) return;
-        await new Promise((resolve, reject) => {
-          const tx = db.transaction(IDB_STORE, 'readwrite');
-          tx.objectStore(IDB_STORE).put(savedFoldersList, 'saved_dirs');
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        });
-      } catch (_) {}
-    }
-
-    async function loadSavedFoldersList() {
-      try {
-        const db = await openHandleDb();
-        if (!db) return [];
-        return await new Promise((resolve) => {
-          const tx = db.transaction(IDB_STORE, 'readonly');
-          const req = tx.objectStore(IDB_STORE).get('saved_dirs');
-          req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
-          req.onerror = () => resolve([]);
-        });
-      } catch (_) {
-        return [];
-      }
-    }
-
-    function renderSavedFoldersRow() {
-      const row = document.getElementById('saved-folders-row');
-      if (!row) return;
-      if (!savedFoldersList.length) {
-        row.classList.add('hidden');
-        row.innerHTML = '';
-        return;
-      }
-      row.classList.remove('hidden');
-      row.innerHTML = '<span style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em; margin-right:4px; cursor:default;">Gemerkte Ordner:</span>';
-      savedFoldersList.forEach(entry => {
-        const pill = document.createElement('div');
-        const isCur = state.rootName && entry.name.toLowerCase() === state.rootName.toLowerCase();
-        pill.className = 'saved-folder-pill' + (isCur ? ' active' : '');
-
-        const btnOpen = document.createElement('button');
-        btnOpen.type = 'button';
-        btnOpen.className = 'saved-folder-btn';
-        let savedPref = '';
-        try { savedPref = localStorage.getItem(getBasePathStorageKey(entry.name)) || ''; } catch (_) {}
-        const labelTxt = savedPref ? toGermanDisplayPath(savedPref) : toGermanFolderLabel(entry.name);
-        btnOpen.title = `Gespeicherten Ordner öffnen: ${labelTxt}`;
-        btnOpen.textContent = `📂 ${labelTxt}`;
-        btnOpen.onclick = () => openSavedFolderById(entry.id);
-
-        const btnDel = document.createElement('button');
-        btnDel.type = 'button';
-        btnDel.className = 'saved-folder-del';
-        btnDel.title = `„${labelTxt}“ aus gemerkten Ordnern entfernen`;
-        btnDel.textContent = '✕';
-        btnDel.onclick = e => { e.stopPropagation(); removeSavedFolderById(entry.id); };
-
-        pill.append(btnOpen, btnDel);
-        row.appendChild(pill);
-      });
-    }
-
-    async function openSavedFolderById(id) {
-      const entry = savedFoldersList.find(x => x.id === id);
-      if (!entry || !entry.handle) return;
-      try {
-        const ok = await activateDirectoryHandle(entry.handle, true);
-        if (!ok) toast('Ordner-Freigabe wurde abgebrochen.', 'err');
-      } catch (err) {
-        toast(`Ordner konnte nicht geöffnet werden: ${err.message}`, 'err');
-      }
-    }
-
-    async function removeSavedFolderById(id) {
-      const entry = savedFoldersList.find(x => x.id === id);
-      savedFoldersList = savedFoldersList.filter(x => x.id !== id);
-      await saveSavedFoldersList();
-      if (entry) {
-        try { localStorage.removeItem(getBasePathStorageKey(entry.name)); } catch (_) {}
-      }
-      renderSavedFoldersRow();
-    }
-
-    async function saveLastDirectoryHandle(handle, displayName) {
-      try {
-        const db = await openHandleDb();
-        if (!db) return;
-        await new Promise((resolve, reject) => {
-          const tx = db.transaction(IDB_STORE, 'readwrite');
-          tx.objectStore(IDB_STORE).put({ handle, name: displayName }, 'last_dir');
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        });
-        savedLastHandle = handle;
-        localStorage.setItem('pdf_suche_last_folder_name', displayName || '');
-
-        const existing = savedFoldersList.find(x => x.name.toLowerCase() === (displayName || '').toLowerCase());
-        if (existing) {
-          existing.handle = handle;
-        } else {
-          savedFoldersList.push({ id: `dir_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, name: displayName, handle });
-        }
-        await saveSavedFoldersList();
-        renderSavedFoldersRow();
-      } catch (_) {}
-    }
-
-    async function loadLastDirectoryHandle() {
-      try {
-        const db = await openHandleDb();
-        if (!db) return null;
-        return await new Promise((resolve) => {
-          const tx = db.transaction(IDB_STORE, 'readonly');
-          const req = tx.objectStore(IDB_STORE).get('last_dir');
-          req.onsuccess = () => resolve(req.result || null);
-          req.onerror = () => resolve(null);
-        });
-      } catch (_) {
-        return null;
-      }
-    }
-
-    async function activateDirectoryHandle(handle, askPermission = true) {
-      let canWrite = true;
-      if (handle.queryPermission) {
-        let permW = await handle.queryPermission({ mode: 'readwrite' });
-        if (permW !== 'granted' && askPermission && handle.requestPermission) {
-          try {
-            permW = await handle.requestPermission({ mode: 'readwrite' });
-          } catch (_) {}
-        }
-        if (permW === 'granted') {
-          canWrite = true;
-        } else {
-          canWrite = false;
-          let permR = await handle.queryPermission({ mode: 'read' });
-          if (permR !== 'granted' && askPermission && handle.requestPermission) {
-            permR = await handle.requestPermission({ mode: 'read' });
-          }
-          if (permR !== 'granted') return false;
-        }
-      }
-      state.rootHandle = handle;
-      const rawName = (handle.name || '').trim();
-      state.rootName = (!rawName || rawName === '\\' || rawName === '/') ? 'Gewähltes Laufwerk' : toGermanFolderLabel(rawName);
-      state.canWrite = canWrite;
-      document.getElementById('btn-reopen-last').classList.add('hidden');
-      document.getElementById('btn-rescan').classList.remove('hidden');
-      await saveLastDirectoryHandle(handle, state.rootName);
-      if (!canWrite) {
-        showModeNotice('ℹ️ Schreibfreigabe wurde nicht erteilt – PDFs können gesucht &amp; geöffnet werden, Umbenennen ist schreibgeschützt.');
-      } else {
-        showModeNotice('');
-      }
-      await scanDirectoryHandle(handle);
-      return true;
-    }
-
-    async function reopenLastDirectory() {
-      if (!savedLastHandle) {
-        await pickDirectory();
-        return;
-      }
-      try {
-        const ok = await activateDirectoryHandle(savedLastHandle, true);
-        if (!ok) toast('Ordner-Freigabe wurde abgebrochen.', 'err');
-      } catch (err) {
-        toast(`Letzter Ordner konnte nicht geöffnet werden: ${err.message}`, 'err');
-      }
-    }
-
-    async function initLastDirectoryOnStartup() {
-      if (!window.showDirectoryPicker || !window.isSecureContext) return;
-      savedFoldersList = await loadSavedFoldersList();
-      renderSavedFoldersRow();
-      const rec = await loadLastDirectoryHandle();
-      if (!rec || !rec.handle) return;
-      savedLastHandle = rec.handle;
-      const disp = rec.name || localStorage.getItem('pdf_suche_last_folder_name') || 'Letzter Ordner';
-      // 1) Falls Browser-Berechtigung noch aktiv ist, direkt automatisch einlesen!
-      try {
-        const permW = await savedLastHandle.queryPermission({ mode: 'readwrite' });
-        const permR = permW === 'granted' ? 'granted' : await savedLastHandle.queryPermission({ mode: 'read' });
-        if (permR === 'granted') {
-          await activateDirectoryHandle(savedLastHandle, false);
-          return;
-        }
-      } catch (_) {}
-      // 2) Sonst 1-Klick-Button anzeigen (Browser verlangt nach Neustart 1 Benutzer-Klick)
-      const btn = document.getElementById('btn-reopen-last');
-      if (btn) {
-        btn.querySelector('span').textContent = `↺ Letzten Ordner öffnen (${disp})`;
-        btn.classList.remove('hidden');
-      }
-      const hint = document.getElementById('folder-hint');
-      if (hint) {
-        hint.textContent = `Letzter Ordner gemerkt: ${disp} – 1 Klick zum Öffnen`;
-      }
+    function escapeHtml(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function toast(msg, kind = 'info') {
@@ -1507,18 +908,208 @@
       el.classList.remove('hidden');
     }
 
+    /* IndexedDB für gemerkte Ordner */
+    function openHandleDb() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) { resolve(null); return; }
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveSavedFoldersList() {
+      try {
+        const db = await openHandleDb();
+        if (!db) return;
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put(savedFoldersList, 'saved_dirs');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (_) {}
+    }
+
+    async function loadSavedFoldersList() {
+      try {
+        const db = await openHandleDb();
+        if (!db) return [];
+        return await new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get('saved_dirs');
+          req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+          req.onerror = () => resolve([]);
+        });
+      } catch (_) { return []; }
+    }
+
+    function renderSavedFoldersRow() {
+      const row = document.getElementById('saved-folders-row');
+      if (!row) return;
+      if (!savedFoldersList.length) { row.classList.add('hidden'); row.innerHTML = ''; return; }
+      row.classList.remove('hidden');
+      row.innerHTML = '<span style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em; margin-right:4px; cursor:default;">Gemerkte Ordner:</span>';
+      savedFoldersList.forEach(entry => {
+        const pill = document.createElement('div');
+        const isCur = state.rootName && entry.name.toLowerCase() === state.rootName.toLowerCase();
+        pill.className = 'saved-folder-pill' + (isCur ? ' active' : '');
+        const btnOpen = document.createElement('button');
+        btnOpen.type = 'button';
+        btnOpen.className = 'saved-folder-btn';
+        let savedPref = '';
+        try { savedPref = localStorage.getItem(getBasePathStorageKey(entry.name)) || ''; } catch (_) {}
+        const labelTxt = savedPref ? toGermanDisplayPath(savedPref) : toGermanFolderLabel(entry.name);
+        btnOpen.title = `Gespeicherten Ordner öffnen: ${labelTxt}`;
+        btnOpen.textContent = `📂 ${labelTxt}`;
+        btnOpen.onclick = () => openSavedFolderById(entry.id);
+
+        const btnDel = document.createElement('button');
+        btnDel.type = 'button';
+        btnDel.className = 'saved-folder-del';
+        btnDel.title = `„${labelTxt}“ aus gemerkten Ordnern entfernen`;
+        btnDel.textContent = '✕';
+        btnDel.onclick = e => { e.stopPropagation(); removeSavedFolderById(entry.id); };
+
+        pill.append(btnOpen, btnDel);
+        row.appendChild(pill);
+      });
+    }
+
+    async function openSavedFolderById(id) {
+      const entry = savedFoldersList.find(x => x.id === id);
+      if (!entry || !entry.handle) return;
+      try {
+        const ok = await activateDirectoryHandle(entry.handle, true);
+        if (!ok) toast('Ordner-Freigabe wurde abgebrochen.', 'err');
+      } catch (err) {
+        toast(`Ordner konnte nicht geöffnet werden: ${err.message}`, 'err');
+      }
+    }
+
+    async function removeSavedFolderById(id) {
+      const entry = savedFoldersList.find(x => x.id === id);
+      savedFoldersList = savedFoldersList.filter(x => x.id !== id);
+      await saveSavedFoldersList();
+      if (entry) { try { localStorage.removeItem(getBasePathStorageKey(entry.name)); } catch (_) {} }
+      renderSavedFoldersRow();
+    }
+
+    async function saveLastDirectoryHandle(handle, displayName) {
+      try {
+        const db = await openHandleDb();
+        if (!db) return;
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put({ handle, name: displayName }, 'last_dir');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+        savedLastHandle = handle;
+        localStorage.setItem('pdf_suche_last_folder_name', displayName || '');
+        const existing = savedFoldersList.find(x => x.name.toLowerCase() === (displayName || '').toLowerCase());
+        if (existing) existing.handle = handle;
+        else savedFoldersList.push({ id: `dir_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, name: displayName, handle });
+        await saveSavedFoldersList();
+        renderSavedFoldersRow();
+      } catch (_) {}
+    }
+
+    async function loadLastDirectoryHandle() {
+      try {
+        const db = await openHandleDb();
+        if (!db) return null;
+        return await new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get('last_dir');
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        });
+      } catch (_) { return null; }
+    }
+
+    async function activateDirectoryHandle(handle, askPermission = true) {
+      let canWrite = true;
+      if (handle.queryPermission) {
+        let permW = await handle.queryPermission({ mode: 'readwrite' });
+        if (permW !== 'granted' && askPermission && handle.requestPermission) {
+          try { permW = await handle.requestPermission({ mode: 'readwrite' }); } catch (_) {}
+        }
+        if (permW === 'granted') {
+          canWrite = true;
+        } else {
+          canWrite = false;
+          let permR = await handle.queryPermission({ mode: 'read' });
+          if (permR !== 'granted' && askPermission && handle.requestPermission) {
+            permR = await handle.requestPermission({ mode: 'read' });
+          }
+          if (permR !== 'granted') return false;
+        }
+      }
+      state.rootHandle = handle;
+      const rawName = (handle.name || '').trim();
+      state.rootName = (!rawName || rawName === '\\' || rawName === '/') ? 'Gewähltes Laufwerk' : toGermanFolderLabel(rawName);
+      state.canWrite = canWrite;
+      document.getElementById('btn-reopen-last').classList.add('hidden');
+      document.getElementById('btn-rescan').classList.remove('hidden');
+      await saveLastDirectoryHandle(handle, state.rootName);
+      if (!canWrite) {
+        showModeNotice('ℹ️ Schreibfreigabe wurde nicht erteilt – Dateien können gesucht &amp; angezeigt werden, Umbenennen ist schreibgeschützt.');
+      } else {
+        showModeNotice('');
+      }
+      await scanDirectoryHandle(handle);
+      return true;
+    }
+
+    async function reopenLastDirectory() {
+      if (!savedLastHandle) { await pickDirectory(); return; }
+      try {
+        const ok = await activateDirectoryHandle(savedLastHandle, true);
+        if (!ok) toast('Ordner-Freigabe wurde abgebrochen.', 'err');
+      } catch (err) {
+        toast(`Letzter Ordner konnte nicht geöffnet werden: ${err.message}`, 'err');
+      }
+    }
+
+    async function initLastDirectoryOnStartup() {
+      if (!window.showDirectoryPicker || !window.isSecureContext) return;
+      savedFoldersList = await loadSavedFoldersList();
+      renderSavedFoldersRow();
+      const rec = await loadLastDirectoryHandle();
+      if (!rec || !rec.handle) return;
+      savedLastHandle = rec.handle;
+      const disp = rec.name || localStorage.getItem('pdf_suche_last_folder_name') || 'Letzter Ordner';
+      try {
+        const permW = await savedLastHandle.queryPermission({ mode: 'readwrite' });
+        const permR = permW === 'granted' ? 'granted' : await savedLastHandle.queryPermission({ mode: 'read' });
+        if (permR === 'granted') {
+          await activateDirectoryHandle(savedLastHandle, false);
+          return;
+        }
+      } catch (_) {}
+      const btn = document.getElementById('btn-reopen-last');
+      if (btn) {
+        btn.querySelector('span').textContent = `↺ Letzten Ordner öffnen (${disp})`;
+        btn.classList.remove('hidden');
+      }
+      const hint = document.getElementById('folder-hint');
+      if (hint) hint.textContent = `Letzter Ordner gemerkt: ${disp} – 1 Klick zum Öffnen`;
+    }
+
     async function pickDirectory() {
       if (window.showDirectoryPicker && window.isSecureContext) {
         try {
           let handle;
-          let canWrite = true;
           try {
             handle = await window.showDirectoryPicker({ mode: 'readwrite' });
           } catch (e) {
             if (e && e.name === 'AbortError') return;
-            // Fallback auf reinen Lesezugriff falls Firma Schreibzugriff blockiert
             handle = await window.showDirectoryPicker({ mode: 'read' });
-            canWrite = false;
           }
           await activateDirectoryHandle(handle, true);
           return;
@@ -1527,25 +1118,20 @@
           toast(`Ordnerzugriff: ${err.message}`, 'err');
         }
       }
-      // Fallback (z. B. lokal per Doppelklick über file:// geöffnet)
       document.getElementById('fallback-folder-input').value = '';
       document.getElementById('fallback-folder-input').click();
     }
 
     async function rescanCurrentFolder() {
-      if (state.rootHandle) {
-        await scanDirectoryHandle(state.rootHandle);
-      }
+      if (state.rootHandle) await scanDirectoryHandle(state.rootHandle);
     }
 
-    function cancelScan() {
-      state.cancelRequested = true;
-    }
+    function cancelScan() { state.cancelRequested = true; }
 
     async function scanDirectoryHandle(rootHandle) {
       state.scanning = true;
       state.cancelRequested = false;
-      state.allPdfs = [];
+      state.allFiles = [];
       state.selectedIds.clear();
       state.lastSelectedId = null;
       clearActivePreview();
@@ -1555,7 +1141,7 @@
       const dispName = state.rootName || 'Gewählter Ordner';
       btnCancel.classList.remove('hidden');
       hint.classList.remove('loaded');
-      hint.textContent = `Durchsuche „${dispName}“ nach PDFs…`;
+      hint.textContent = `Durchsuche „${dispName}“…`;
 
       const queue = [{ handle: rootHandle, relDir: '' }];
       let counter = 0;
@@ -1571,14 +1157,19 @@
                 const low = name.toLowerCase();
                 if (low.startsWith('$') || SKIP_DIRS.has(low)) continue;
                 queue.push({ handle: entry, relDir: relDir ? `${relDir}\\${name}` : name });
-              } else if (entry.kind === 'file' && name.toLowerCase().endsWith('.pdf')) {
+              } else if (entry.kind === 'file') {
+                if (name.startsWith('~$') || name.toLowerCase() === 'desktop.ini' || name.toLowerCase() === 'thumbs.db') continue;
                 try {
                   const file = await entry.getFile();
                   counter += 1;
+                  const ext = getExt(name);
+                  const cat = getCategoryForExt(ext);
                   const relPath = relDir ? `${relDir}\\${name}` : name;
-                  state.allPdfs.push({
-                    id: `pdf_${counter}`,
+                  state.allFiles.push({
+                    id: `f_${counter}`,
                     name,
+                    ext: ext ? ext.toUpperCase() : '—',
+                    cat,
                     dir: relDir || '(Hauptordner)',
                     relPath,
                     size: file.size || 0,
@@ -1592,7 +1183,7 @@
               const now = performance.now();
               if (now - lastPaint > 120) {
                 lastPaint = now;
-                hint.textContent = `Durchsuche „${dispName}“… ${counter} PDFs gefunden`;
+                hint.textContent = `Durchsuche „${dispName}“… ${counter} Dateien gefunden`;
               }
             }
           } catch (_) {}
@@ -1602,9 +1193,10 @@
         btnCancel.classList.add('hidden');
         hint.classList.add('loaded');
         hint.textContent = state.cancelRequested
-          ? `Scan gestoppt · ${dispName} · ${state.allPdfs.length} PDFs`
-          : `✓ Geladen: ${dispName} · ${state.allPdfs.length} PDFs`;
+          ? `Scan gestoppt · ${dispName} · ${state.allFiles.length} Dateien`
+          : `✓ Geladen: ${dispName} · ${state.allFiles.length} Dateien`;
         state.activeSubfolder = '';
+        updateCategoryCounts();
         rebuildSubfolderDropdown();
         updatePathBar();
         updateModeBadge();
@@ -1616,7 +1208,7 @@
       if (!fileList || fileList.length === 0) return;
       state.rootHandle = null;
       state.canWrite = false;
-      state.allPdfs = [];
+      state.allFiles = [];
       state.selectedIds.clear();
       state.lastSelectedId = null;
       clearActivePreview();
@@ -1625,15 +1217,18 @@
       let firstRoot = 'Gewählter Ordner';
       let counter = 0;
       Array.from(fileList).forEach(file => {
-        if (!file.name.toLowerCase().endsWith('.pdf')) return;
+        if (file.name.startsWith('~$') || file.name.toLowerCase() === 'desktop.ini') return;
         counter += 1;
         const rawRel = (file.webkitRelativePath || file.name).replace(/\//g, '\\');
         const parts = rawRel.split('\\');
-        if (parts.length > 1) firstRoot = parts[0];
+        if (parts.length > 1) firstRoot = toGermanFolderLabel(parts[0]);
         const dirParts = parts.slice(1, -1);
-        state.allPdfs.push({
-          id: `pdf_${counter}`,
+        const ext = getExt(file.name);
+        state.allFiles.push({
+          id: `f_${counter}`,
           name: file.name,
+          ext: ext ? ext.toUpperCase() : '—',
+          cat: getCategoryForExt(ext),
           dir: dirParts.length ? dirParts.join('\\') : '(Hauptordner)',
           relPath: rawRel,
           size: file.size || 0,
@@ -1646,12 +1241,28 @@
 
       state.rootName = firstRoot;
       state.activeSubfolder = '';
-      document.getElementById('folder-hint').textContent = `✓ Geladen: ${firstRoot} · ${state.allPdfs.length} PDFs`;
+      document.getElementById('folder-hint').textContent = `✓ Geladen: ${firstRoot} · ${state.allFiles.length} Dateien`;
       document.getElementById('folder-hint').classList.add('loaded');
-      showModeNotice('ℹ️ Lese-Modus (lokal über file:// geöffnet): PDFs suchen &amp; öffnen funktioniert voll – für direktes Umbenennen bitte über <strong>GitHub Pages (https://)</strong> in Edge/Chrome öffnen.');
+      showModeNotice('ℹ️ Lese-Modus (lokal über file:// geöffnet): Suchen &amp; Vorschau funktionieren voll – für direktes Umbenennen bitte über <strong>GitHub Pages (https://)</strong> in Edge/Chrome öffnen.');
+      updateCategoryCounts();
       rebuildSubfolderDropdown();
       updatePathBar();
       updateModeBadge();
+      applyFilters();
+    }
+
+    function updateCategoryCounts() {
+      const counts = { all: state.allFiles.length, pdf: 0, word: 0, excel: 0, ppt: 0, image: 0, text: 0, other: 0 };
+      state.allFiles.forEach(it => { counts[it.cat] = (counts[it.cat] || 0) + 1; });
+      Object.keys(counts).forEach(k => {
+        const el = document.getElementById(`cnt-${k}`);
+        if (el) el.textContent = counts[k];
+      });
+    }
+
+    function setCategory(cat) {
+      state.category = cat;
+      document.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('btn-active', b.dataset.cat === cat));
       applyFilters();
     }
 
@@ -1659,15 +1270,94 @@
       const fEl = document.getElementById('stat-folder');
       const mEl = document.getElementById('stat-mode');
       fEl.textContent = state.rootName || 'Kein Ordner gewählt';
-      if (!state.rootName) {
-        mEl.textContent = '';
-      } else if (state.canWrite) {
-        mEl.textContent = '✓ Umbenennen aktiv';
-        mEl.className = 'status-mode';
-      } else {
-        mEl.textContent = 'Nur Lesen';
-        mEl.className = 'status-mode readonly';
+      if (!state.rootName) mEl.textContent = '';
+      else if (state.canWrite) { mEl.textContent = '✓ Umbenennen aktiv'; mEl.className = 'status-mode'; }
+      else { mEl.textContent = 'Nur Lesen'; mEl.className = 'status-mode readonly'; }
+    }
+
+    function getBasePathStorageKey(rootName) { return `pdf_suche_base_prefix::${(rootName || '').toLowerCase()}`; }
+
+    function loadSavedBasePathPrefix(rootName) {
+      let val = '';
+      try { val = localStorage.getItem(getBasePathStorageKey(rootName)) || ''; } catch (_) {}
+      state.basePathPrefix = val.trim();
+      const inp = document.getElementById('base-path-prefix');
+      if (inp) inp.value = state.basePathPrefix;
+    }
+
+    function onBasePathPrefixChanged(val) {
+      state.basePathPrefix = (val || '').trim();
+      if (state.rootName) {
+        try { localStorage.setItem(getBasePathStorageKey(state.rootName), state.basePathPrefix); } catch (_) {}
       }
+      updatePathBar();
+      renderSavedFoldersRow();
+      const actItem = state.allFiles.find(x => x.id === state.activeId);
+      const sp = document.getElementById('preview-subpath');
+      if (sp && actItem) sp.textContent = `📂 ${formatFullFolderPath(actItem.dir)}`;
+    }
+
+    function clearBasePathPrefix() {
+      const inp = document.getElementById('base-path-prefix');
+      if (inp) inp.value = '';
+      onBasePathPrefixChanged('');
+    }
+
+    function formatRootDisplayPath() {
+      const pref = (state.basePathPrefix || '').replace(/[\\/]+$/, '');
+      if (pref) return pref;
+      return toGermanFolderLabel(state.rootName || '');
+    }
+
+    function formatFullFolderPath(subDir) {
+      const root = formatRootDisplayPath();
+      if (!subDir || subDir === '(Hauptordner)') return root;
+      const dispSub = toGermanDisplayPath(subDir);
+      if (!root) return dispSub;
+      return `${root}\\${dispSub}`;
+    }
+
+    function rebuildSubfolderDropdown() {
+      loadSavedBasePathPrefix(state.rootName);
+      const bar = document.getElementById('path-bar');
+      const sel = document.getElementById('subfolder-filter');
+      if (!bar || !sel) return;
+      if (!state.rootName) { bar.classList.add('hidden'); return; }
+      bar.classList.remove('hidden');
+      const counts = new Map();
+      state.allFiles.forEach(it => {
+        const d = it.dir || '(Hauptordner)';
+        counts.set(d, (counts.get(d) || 0) + 1);
+      });
+      const dirs = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' }));
+      sel.innerHTML = `<option value="">Alle Unterordner (${state.allFiles.length})</option>` +
+        dirs.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d === '(Hauptordner)' ? d : toGermanDisplayPath(d))} (${counts.get(d)})</option>`).join('');
+      sel.value = state.activeSubfolder || '';
+    }
+
+    function onSubfolderChanged(val) {
+      state.activeSubfolder = val || '';
+      updatePathBar();
+      applyFilters();
+    }
+
+    function updatePathBar() {
+      const bc = document.getElementById('path-breadcrumbs');
+      if (!bc || !state.rootName) return;
+      const actItem = state.allFiles.find(x => x.id === state.activeId);
+      const rootDisp = formatRootDisplayPath();
+      let html = `<span>📂 Aktueller Pfad:</span>`;
+      if (state.activeSubfolder) {
+        html += `<button type="button" class="crumb-link" onclick="onSubfolderChanged('')" title="Zurück zu allen Unterordnern">${escapeHtml(rootDisp)}</button>`;
+        html += `<span style="color:#94a3b8;">\\</span><span class="crumb-current">${escapeHtml(toGermanDisplayPath(state.activeSubfolder))}</span>`;
+      } else {
+        html += `<span class="crumb-current">${escapeHtml(rootDisp)}</span>`;
+      }
+      if (actItem) {
+        const fullDir = formatFullFolderPath(actItem.dir);
+        html += `<span style="color:#cbd5e1; margin:0 4px;">|</span><span style="color:#475569;">Ausgewählt:</span> <span class="crumb-current" style="color:#1d4ed8;">${escapeHtml(fullDir)}\\${escapeHtml(actItem.name)}</span>`;
+      }
+      bc.innerHTML = html;
     }
 
     function clearSearchInput() {
@@ -1715,103 +1405,14 @@
       applyFilters();
     }
 
-    function getBasePathStorageKey(rootName) {
-      return `pdf_suche_base_prefix::${(rootName || '').toLowerCase()}`;
-    }
-
-    function loadSavedBasePathPrefix(rootName) {
-      let val = '';
-      try { val = localStorage.getItem(getBasePathStorageKey(rootName)) || ''; } catch (_) {}
-      state.basePathPrefix = val.trim();
-      const inp = document.getElementById('base-path-prefix');
-      if (inp) inp.value = state.basePathPrefix;
-    }
-
-    function onBasePathPrefixChanged(val) {
-      state.basePathPrefix = (val || '').trim();
-      if (state.rootName) {
-        try { localStorage.setItem(getBasePathStorageKey(state.rootName), state.basePathPrefix); } catch (_) {}
-      }
-      updatePathBar();
-      renderSavedFoldersRow();
-      const actItem = state.allPdfs.find(x => x.id === state.activeId);
-      const sp = document.getElementById('preview-subpath');
-      if (sp && actItem) {
-        sp.textContent = `📂 ${formatFullFolderPath(actItem.dir)}`;
-      }
-    }
-
-    function clearBasePathPrefix() {
-      const inp = document.getElementById('base-path-prefix');
-      if (inp) inp.value = '';
-      onBasePathPrefixChanged('');
-    }
-
-    function formatRootDisplayPath() {
-      const pref = (state.basePathPrefix || '').replace(/[\\/]+$/, '');
-      if (pref) return pref;
-      return toGermanFolderLabel(state.rootName || '');
-    }
-
-    function formatFullFolderPath(subDir) {
-      const root = formatRootDisplayPath();
-      if (!subDir || subDir === '(Hauptordner)') return root;
-      if (!root) return subDir;
-      return `${root}\\${subDir}`;
-    }
-
-    function rebuildSubfolderDropdown() {
-      loadSavedBasePathPrefix(state.rootName);
-      const bar = document.getElementById('path-bar');
-      const sel = document.getElementById('subfolder-filter');
-      if (!bar || !sel) return;
-      if (!state.rootName) {
-        bar.classList.add('hidden');
-        return;
-      }
-      bar.classList.remove('hidden');
-      const counts = new Map();
-      state.allPdfs.forEach(it => {
-        const d = it.dir || '(Hauptordner)';
-        counts.set(d, (counts.get(d) || 0) + 1);
-      });
-      const dirs = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' }));
-      sel.innerHTML = `<option value="">Alle Unterordner (${state.allPdfs.length})</option>` +
-        dirs.map(d => `<option value="${d.replace(/"/g, '&quot;')}">${d} (${counts.get(d)})</option>`).join('');
-      sel.value = state.activeSubfolder || '';
-    }
-
-    function onSubfolderChanged(val) {
-      state.activeSubfolder = val || '';
-      updatePathBar();
-      applyFilters();
-    }
-
-    function updatePathBar() {
-      const bc = document.getElementById('path-breadcrumbs');
-      if (!bc || !state.rootName) return;
-      const actItem = state.allPdfs.find(x => x.id === state.activeId);
-      const rootDisp = formatRootDisplayPath();
-      let html = `<span>📂 Aktueller Pfad:</span>`;
-      if (state.activeSubfolder) {
-        html += `<button type="button" class="crumb-link" onclick="onSubfolderChanged('')" title="Zurück zu allen Unterordnern">${rootDisp}</button>`;
-        html += `<span style="color:#94a3b8;">\\</span><span class="crumb-current">${state.activeSubfolder}</span>`;
-      } else {
-        html += `<span class="crumb-current">${rootDisp}</span>`;
-      }
-      if (actItem) {
-        const fullDir = formatFullFolderPath(actItem.dir);
-        html += `<span style="color:#cbd5e1; margin:0 4px;">|</span><span style="color:#475569;">Ausgewählt:</span> <span class="crumb-current" style="color:#1d4ed8;">${fullDir}\\${actItem.name}</span>`;
-      }
-      bc.innerHTML = html;
-    }
-
     function clearAllFilters() {
+      state.category = 'all';
       state.timeframe = '';
       state.sizePreset = '';
       state.activeSubfolder = '';
       const sf = document.getElementById('subfolder-filter');
       if (sf) sf.value = '';
+      document.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('btn-active', b.dataset.cat === 'all'));
       document.querySelectorAll('[data-tf],[data-sz]').forEach(b => b.classList.remove('btn-active'));
       document.getElementById('date-from').value = '';
       document.getElementById('date-to').value = '';
@@ -1822,13 +1423,9 @@
     }
 
     function setSort(col) {
-      if (state.sortCol === col) {
-        state.sortAsc = !state.sortAsc;
-      } else {
-        state.sortCol = col;
-        state.sortAsc = true;
-      }
-      ['name', 'dir', 'size', 'mtime'].forEach(c => {
+      if (state.sortCol === col) state.sortAsc = !state.sortAsc;
+      else { state.sortCol = col; state.sortAsc = true; }
+      ['name', 'ext', 'dir', 'size', 'mtime'].forEach(c => {
         const sp = document.getElementById(`sort-${c}`);
         if (sp) sp.textContent = (c === state.sortCol) ? (state.sortAsc ? '▲' : '▼') : '';
       });
@@ -1844,10 +1441,11 @@
       const toTs = dTo ? new Date(`${dTo}T23:59:59.999`).getTime() : null;
       const minBytes = parseSizeBytes(document.getElementById('min-size-input').value);
 
-      let list = state.allPdfs.filter(item => {
+      let list = state.allFiles.filter(item => {
+        if (state.category !== 'all' && item.cat !== state.category) return false;
         if (state.activeSubfolder && item.dir !== state.activeSubfolder) return false;
         if (terms.length > 0) {
-          const hay = `${item.name} ${item.dir}`.toLowerCase();
+          const hay = `${item.name} ${item.dir} ${item.ext}`.toLowerCase();
           if (!terms.every(t => hay.includes(t))) return false;
         }
         if (fromTs !== null && item.mtime < fromTs) return false;
@@ -1863,34 +1461,34 @@
         return String(a[state.sortCol] || '').localeCompare(String(b[state.sortCol] || ''), 'de', { sensitivity: 'base' }) * dir;
       });
 
-      state.filteredPdfs = list;
+      state.filteredFiles = list;
       renderTable();
     }
 
     function renderTable() {
-      const tbody = document.getElementById('pdf-tbody');
-      const totalSize = state.filteredPdfs.reduce((s, it) => s + (it.size || 0), 0);
-      document.getElementById('stat-shown').textContent = state.filteredPdfs.length;
+      const tbody = document.getElementById('file-tbody');
+      const totalSize = state.filteredFiles.reduce((s, it) => s + (it.size || 0), 0);
+      document.getElementById('stat-shown').textContent = state.filteredFiles.length;
       document.getElementById('stat-size').textContent = formatBytes(totalSize);
       updateSelectionUI();
 
-      if (state.allPdfs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-box"><h3>${state.rootName ? 'Keine PDF-Dateien gefunden' : 'Noch kein Ordner ausgewählt'}</h3><div>${state.rootName ? 'In diesem Ordner (inkl. Unterordner) wurden keine .pdf-Dateien gefunden.' : 'Klicke oben links auf <strong>„Ordner wählen…“</strong>, um alle PDF-Dateien einzulesen.'}</div></div></td></tr>`;
+      if (state.allFiles.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>${state.rootName ? 'Keine Dateien gefunden' : 'Noch kein Ordner ausgewählt'}</h3><div>${state.rootName ? 'In diesem Ordner wurden keine Dateien gefunden.' : 'Klicke oben links auf <strong>„Ordner wählen…“</strong>, um deine Dateien einzulesen.'}</div></div></td></tr>`;
         return;
       }
-      if (state.filteredPdfs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-box"><h3>Keine Treffer für den aktuellen Filter</h3><div>Passe den Suchbegriff an oder klicke auf <strong>„Filter leeren“</strong>.</div></div></td></tr>`;
+      if (state.filteredFiles.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Keine Treffer für den aktuellen Filter</h3><div>Passe den Suchbegriff an oder klicke auf <strong>„Filter leeren“</strong>.</div></div></td></tr>`;
         return;
       }
 
       const frag = document.createDocumentFragment();
-      state.filteredPdfs.forEach(item => {
+      state.filteredFiles.forEach(item => {
         const isSel = state.selectedIds.has(item.id);
         const isAct = state.activeId === item.id;
         const tr = document.createElement('tr');
         tr.className = `${isSel ? 'selected' : ''} ${isAct ? 'active-row' : ''}`.trim();
         tr.onclick = e => handleRowClick(e, item);
-        tr.ondblclick = () => openPdfInNewTab(item);
+        tr.ondblclick = () => openFileInNewTab(item);
 
         const tdCheck = document.createElement('td');
         tdCheck.className = 'col-check';
@@ -1906,6 +1504,13 @@
         tdName.className = 'col-name';
         tdName.title = item.name;
         tdName.textContent = item.name;
+
+        const tdExt = document.createElement('td');
+        tdExt.className = 'col-ext';
+        const badge = document.createElement('span');
+        badge.className = `type-badge type-${item.cat}`;
+        badge.textContent = item.ext;
+        tdExt.appendChild(badge);
 
         const tdDir = document.createElement('td');
         tdDir.className = 'col-dir';
@@ -1928,30 +1533,27 @@
         const btnCopy = document.createElement('button');
         btnCopy.type = 'button';
         btnCopy.className = 'icon-btn';
-        btnCopy.title = 'Ordnerpfad kopieren (für Windows Explorer: Strg+L, Strg+V)';
+        btnCopy.title = 'Ordnerpfad kopieren';
         btnCopy.textContent = '📋';
-        btnCopy.onclick = () => copyPdfPath(item);
+        btnCopy.onclick = () => copyFilePath(item);
 
         const btnOpen = document.createElement('button');
         btnOpen.type = 'button';
         btnOpen.className = 'icon-btn';
-        btnOpen.title = 'PDF in neuem Tab öffnen';
+        btnOpen.title = 'In neuem Tab öffnen';
         btnOpen.textContent = '↗';
-        btnOpen.onclick = () => openPdfInNewTab(item);
+        btnOpen.onclick = () => openFileInNewTab(item);
 
         const btnRen = document.createElement('button');
         btnRen.type = 'button';
         btnRen.className = 'icon-btn';
-        btnRen.title = state.canWrite ? 'PDF umbenennen' : 'Umbenennen nur mit Schreibfreigabe (https:// / GitHub Pages)';
+        btnRen.title = state.canWrite ? 'Datei umbenennen' : 'Umbenennen nur mit Schreibfreigabe';
         btnRen.disabled = !state.canWrite;
         btnRen.textContent = '✏️';
         btnRen.onclick = () => openSingleRenameModal(item);
 
-        tdAct.appendChild(btnCopy);
-        tdAct.appendChild(btnOpen);
-        tdAct.appendChild(btnRen);
-
-        tr.append(tdCheck, tdName, tdDir, tdSize, tdDate, tdAct);
+        tdAct.append(btnCopy, btnOpen, btnRen);
+        tr.append(tdCheck, tdName, tdExt, tdDir, tdSize, tdDate, tdAct);
         frag.appendChild(tr);
       });
       tbody.innerHTML = '';
@@ -1965,17 +1567,17 @@
       btnBatch.disabled = !(state.canWrite && cnt > 0);
       btnBatch.querySelector('span').textContent = cnt > 0 ? `✏️ Massen-Umbenennung (${cnt})` : '✏️ Massen-Umbenennung';
       const master = document.getElementById('select-all-cb');
-      master.checked = state.filteredPdfs.length > 0 && state.filteredPdfs.every(it => state.selectedIds.has(it.id));
+      master.checked = state.filteredFiles.length > 0 && state.filteredFiles.every(it => state.selectedIds.has(it.id));
     }
 
     function handleCheckboxClick(e, item, checked) {
       if (e && e.shiftKey && state.lastSelectedId) {
-        const a = state.filteredPdfs.findIndex(x => x.id === state.lastSelectedId);
-        const b = state.filteredPdfs.findIndex(x => x.id === item.id);
+        const a = state.filteredFiles.findIndex(x => x.id === state.lastSelectedId);
+        const b = state.filteredFiles.findIndex(x => x.id === item.id);
         if (a >= 0 && b >= 0) {
           for (let i = Math.min(a, b); i <= Math.max(a, b); i++) {
-            if (checked) state.selectedIds.add(state.filteredPdfs[i].id);
-            else state.selectedIds.delete(state.filteredPdfs[i].id);
+            if (checked) state.selectedIds.add(state.filteredFiles[i].id);
+            else state.selectedIds.delete(state.filteredFiles[i].id);
           }
           try { window.getSelection()?.removeAllRanges(); } catch (_) {}
         }
@@ -1992,12 +1594,10 @@
         e.preventDefault();
         try { window.getSelection()?.removeAllRanges(); } catch (_) {}
         const anchor = state.lastSelectedId || state.activeId;
-        const a = anchor ? state.filteredPdfs.findIndex(x => x.id === anchor) : -1;
-        const b = state.filteredPdfs.findIndex(x => x.id === item.id);
+        const a = anchor ? state.filteredFiles.findIndex(x => x.id === anchor) : -1;
+        const b = state.filteredFiles.findIndex(x => x.id === item.id);
         if (a >= 0 && b >= 0) {
-          for (let i = Math.min(a, b); i <= Math.max(a, b); i++) {
-            state.selectedIds.add(state.filteredPdfs[i].id);
-          }
+          for (let i = Math.min(a, b); i <= Math.max(a, b); i++) state.selectedIds.add(state.filteredFiles[i].id);
         } else {
           state.selectedIds.add(item.id);
         }
@@ -2014,12 +1614,12 @@
         return;
       }
       state.lastSelectedId = item.id;
-      showPdfPreview(item);
+      showFilePreview(item);
     }
 
     function toggleSelectAll(master) {
-      if (master.checked) state.filteredPdfs.forEach(it => state.selectedIds.add(it.id));
-      else state.filteredPdfs.forEach(it => state.selectedIds.delete(it.id));
+      if (master.checked) state.filteredFiles.forEach(it => state.selectedIds.add(it.id));
+      else state.filteredFiles.forEach(it => state.selectedIds.delete(it.id));
       state.lastSelectedId = null;
       renderTable();
     }
@@ -2029,27 +1629,23 @@
       return item.fileObj;
     }
 
+    /* Multi-Format Vorschau (PDF.js, Word Mammoth, Excel SheetJS, Bilder, Text) */
     function clearActivePreview() {
       state.activeId = null;
       state.pdfLoadSeq += 1;
-      if (state.pdfDoc) {
-        try { state.pdfDoc.destroy(); } catch (_) {}
-        state.pdfDoc = null;
-      }
-      if (state.activeBlobUrl) {
-        URL.revokeObjectURL(state.activeBlobUrl);
-        state.activeBlobUrl = null;
-      }
-      document.getElementById('preview-title').textContent = 'PDF-Vorschau';
-      const sp = document.getElementById('preview-subpath');
-      if (sp) sp.textContent = 'Kein PDF ausgewählt';
-      const tb = document.getElementById('pdf-toolbar');
-      if (tb) tb.classList.add('hidden');
+      if (state.pdfDoc) { try { state.pdfDoc.destroy(); } catch (_) {} state.pdfDoc = null; }
+      state.xlsxWorkbook = null;
+      state.xlsxActiveSheet = '';
+      if (state.activeBlobUrl) { URL.revokeObjectURL(state.activeBlobUrl); state.activeBlobUrl = null; }
+      document.getElementById('preview-title').textContent = 'Dateivorschau';
+      document.getElementById('preview-subpath').textContent = 'Keine Datei ausgewählt';
+      document.getElementById('pdf-toolbar').classList.add('hidden');
+      document.getElementById('xlsx-toolbar').classList.add('hidden');
       document.getElementById('btn-preview-copy').disabled = true;
       document.getElementById('btn-preview-tab').disabled = true;
       document.getElementById('btn-preview-dl').disabled = true;
       document.getElementById('btn-preview-rename').disabled = true;
-      document.getElementById('preview-body').innerHTML = '<div class="empty-box" style="margin:auto;"><div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div></div>';
+      document.getElementById('preview-body').innerHTML = '<div class="empty-box"><div>Klicke links auf eine Datei (PDF, Word, Excel, Bild oder Text), um sie hier direkt anzuzeigen.</div></div>';
       updatePathBar();
     }
 
@@ -2068,13 +1664,9 @@
         const baseVp = page.getViewport({ scale: 1, rotation: state.pdfRotation });
         const availW = Math.max(220, body.clientWidth - 24);
         const availH = Math.max(220, body.clientHeight - 24);
-
         let scale = state.pdfScale;
-        if (state.pdfFitMode === 'fit') {
-          scale = Math.min(availW / baseVp.width, availH / baseVp.height);
-        } else if (state.pdfFitMode === 'width') {
-          scale = availW / baseVp.width;
-        }
+        if (state.pdfFitMode === 'fit') scale = Math.min(availW / baseVp.width, availH / baseVp.height);
+        else if (state.pdfFitMode === 'width') scale = availW / baseVp.width;
         scale = Math.max(0.2, Math.min(4.0, scale));
         state.pdfScale = scale;
 
@@ -2085,9 +1677,7 @@
         canvas.style.width = `${Math.floor(vp.width / dpr)}px`;
         canvas.style.height = `${Math.floor(vp.height / dpr)}px`;
 
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport: vp }).promise;
-
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
         document.getElementById('pdf-page-info').textContent = `Seite ${state.pdfPageNum} / ${state.pdfDoc.numPages}`;
         document.getElementById('pdf-zoom-info').textContent = `${Math.round(scale * 100)}%`;
         document.getElementById('btn-pdf-prev').disabled = state.pdfPageNum <= 1;
@@ -2102,77 +1692,173 @@
     function pdfStepPage(delta) {
       if (!state.pdfDoc) return;
       const next = state.pdfPageNum + delta;
-      if (next >= 1 && next <= state.pdfDoc.numPages) {
-        state.pdfPageNum = next;
-        renderCurrentPdfPage();
-      }
+      if (next >= 1 && next <= state.pdfDoc.numPages) { state.pdfPageNum = next; renderCurrentPdfPage(); }
     }
-
     function pdfChangeZoom(delta) {
       if (!state.pdfDoc) return;
       state.pdfFitMode = 'manual';
       state.pdfScale = Math.max(0.25, Math.min(4.0, (state.pdfScale || 1) + delta));
       renderCurrentPdfPage();
     }
+    function pdfSetFitMode(mode) { state.pdfFitMode = mode; renderCurrentPdfPage(); }
+    function pdfRotate90() { if (!state.pdfDoc) return; state.pdfRotation = (state.pdfRotation + 90) % 360; renderCurrentPdfPage(); }
 
-    function pdfSetFitMode(mode) {
-      state.pdfFitMode = mode;
-      renderCurrentPdfPage();
+    function renderExcelSheet(sheetName) {
+      if (!state.xlsxWorkbook || !window.XLSX) return;
+      state.xlsxActiveSheet = sheetName;
+      const tb = document.getElementById('xlsx-toolbar');
+      tb.querySelectorAll('button').forEach(b => b.classList.toggle('btn-active', b.dataset.sheet === sheetName));
+      const sheet = state.xlsxWorkbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const maxRows = 500;
+      const limited = rows.slice(0, maxRows);
+      const body = document.getElementById('preview-body');
+      if (limited.length === 0) {
+        body.innerHTML = '<div class="empty-box"><div>Dieses Tabellenblatt ist leer.</div></div>';
+        return;
+      }
+      const maxCols = Math.min(40, Math.max(1, ...limited.map(r => r.length)));
+      let html = '<div class="xlsx-sheet-wrap"><table class="xlsx-table"><tbody>';
+      limited.forEach(r => {
+        html += '<tr>';
+        for (let c = 0; c < maxCols; c++) {
+          const val = r[c] !== undefined && r[c] !== null ? String(r[c]) : '';
+          html += `<td title="${escapeHtml(val)}">${escapeHtml(val)}</td>`;
+        }
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      if (rows.length > maxRows) {
+        html += `<div style="padding:8px 12px; font-size:11.5px; color:#64748b; background:#f8fafc; border-top:1px solid #e2e8f0;">Vorschau zeigt die ersten ${maxRows} von ${rows.length} Zeilen.</div>`;
+      }
+      html += '</div>';
+      body.innerHTML = html;
     }
 
-    function pdfRotate90() {
-      if (!state.pdfDoc) return;
-      state.pdfRotation = (state.pdfRotation + 90) % 360;
-      renderCurrentPdfPage();
-    }
-
-    async function showPdfPreview(item) {
+    async function showFilePreview(item) {
       state.activeId = item.id;
       const mySeq = ++state.pdfLoadSeq;
+      if (state.pdfDoc) { try { state.pdfDoc.destroy(); } catch (_) {} state.pdfDoc = null; }
+      state.xlsxWorkbook = null;
+      document.getElementById('pdf-toolbar').classList.add('hidden');
+      document.getElementById('xlsx-toolbar').classList.add('hidden');
       updatePathBar();
       renderTable();
       if (!state.previewVisible) return;
+
+      const ext = getExt(item.name);
+      const body = document.getElementById('preview-body');
+      document.getElementById('preview-title').textContent = item.name;
+      document.getElementById('preview-subpath').textContent = `📂 ${formatFullFolderPath(item.dir)}`;
+      document.getElementById('btn-preview-copy').disabled = false;
+      document.getElementById('btn-preview-tab').disabled = false;
+      document.getElementById('btn-preview-dl').disabled = false;
+      document.getElementById('btn-preview-rename').disabled = !state.canWrite;
+
       try {
         const file = await getFileObject(item);
         if (mySeq !== state.pdfLoadSeq) return;
-        document.getElementById('preview-title').textContent = item.name;
-        const sp = document.getElementById('preview-subpath');
-        if (sp) sp.textContent = `📂 ${formatFullFolderPath(item.dir)}`;
-        document.getElementById('btn-preview-copy').disabled = false;
-        document.getElementById('btn-preview-tab').disabled = false;
-        document.getElementById('btn-preview-dl').disabled = false;
-        document.getElementById('btn-preview-rename').disabled = !state.canWrite;
 
-        if (window.pdfjsLib) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.js';
-          if (state.pdfDoc) {
-            try { state.pdfDoc.destroy(); } catch (_) {}
-            state.pdfDoc = null;
+        // 1. PDF (PDF.js)
+        if (ext === 'pdf') {
+          if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.js';
+            body.innerHTML = '<div class="empty-box"><div>Lade PDF…</div></div>';
+            const buf = await file.arrayBuffer();
+            if (mySeq !== state.pdfLoadSeq) return;
+            const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+            if (mySeq !== state.pdfLoadSeq) { try { doc.destroy(); } catch (_) {} return; }
+            state.pdfDoc = doc;
+            state.pdfPageNum = 1;
+            state.pdfRotation = 0;
+            state.pdfFitMode = 'fit';
+            document.getElementById('pdf-toolbar').classList.remove('hidden');
+            await renderCurrentPdfPage();
+          } else {
+            if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
+            state.activeBlobUrl = URL.createObjectURL(file);
+            body.innerHTML = `<iframe src="${state.activeBlobUrl}#navpanes=0&view=Fit"></iframe>`;
           }
-          document.getElementById('preview-body').innerHTML = '<div class="empty-box" style="margin:auto;"><div>Lade PDF…</div></div>';
+          return;
+        }
+
+        // 2. Word (.docx via Mammoth.js)
+        if (ext === 'docx' && window.mammoth) {
+          body.innerHTML = '<div class="empty-box"><div>Lade Word-Dokument…</div></div>';
           const buf = await file.arrayBuffer();
           if (mySeq !== state.pdfLoadSeq) return;
-          const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
-          if (mySeq !== state.pdfLoadSeq) { try { doc.destroy(); } catch (_) {} return; }
-          state.pdfDoc = doc;
-          state.pdfPageNum = 1;
-          state.pdfRotation = 0;
-          state.pdfFitMode = 'fit';
-          document.getElementById('pdf-toolbar').classList.remove('hidden');
-          await renderCurrentPdfPage();
-        } else {
-          document.getElementById('pdf-toolbar').classList.add('hidden');
-          if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
-          const blobUrl = URL.createObjectURL(file);
-          state.activeBlobUrl = blobUrl;
-          document.getElementById('preview-body').innerHTML = `<iframe src="${blobUrl}#navpanes=0&view=Fit" title="${item.name.replace(/"/g, '&quot;')}"></iframe>`;
+          const res = await mammoth.convertToHtml({ arrayBuffer: buf });
+          if (mySeq !== state.pdfLoadSeq) return;
+          body.innerHTML = `<div class="docx-sheet">${res.value || '<p style="color:#64748b;">Dokument ist leer.</p>'}</div>`;
+          return;
         }
+
+        // 3. Excel / CSV (.xlsx, .xls, .xlsm, .ods, .csv via SheetJS)
+        if (EXT_EXCEL.has(ext) && window.XLSX) {
+          body.innerHTML = '<div class="empty-box"><div>Lade Tabelle…</div></div>';
+          const buf = await file.arrayBuffer();
+          if (mySeq !== state.pdfLoadSeq) return;
+          const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+          if (mySeq !== state.pdfLoadSeq) return;
+          state.xlsxWorkbook = wb;
+          const names = wb.SheetNames || [];
+          const tb = document.getElementById('xlsx-toolbar');
+          tb.innerHTML = '';
+          if (names.length > 0) {
+            names.forEach(sn => {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.className = 'btn';
+              b.dataset.sheet = sn;
+              b.textContent = sn;
+              b.onclick = () => renderExcelSheet(sn);
+              tb.appendChild(b);
+            });
+            tb.classList.remove('hidden');
+            renderExcelSheet(names[0]);
+          } else {
+            body.innerHTML = '<div class="empty-box"><div>Keine Tabellenblätter gefunden.</div></div>';
+          }
+          return;
+        }
+
+        // 4. Bilder
+        if (EXT_IMAGE.has(ext)) {
+          if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
+          state.activeBlobUrl = URL.createObjectURL(file);
+          body.innerHTML = `<img class="img-preview" src="${state.activeBlobUrl}" alt="${escapeHtml(item.name)}">`;
+          return;
+        }
+
+        // 5. Text / Code
+        if (EXT_TEXT.has(ext)) {
+          const slice = file.size > 300 * 1024 ? file.slice(0, 300 * 1024) : file;
+          const txt = await slice.text();
+          if (mySeq !== state.pdfLoadSeq) return;
+          const extra = file.size > 300 * 1024 ? '\n\n… (Vorschau auf die ersten 300 KB begrenzt)' : '';
+          body.innerHTML = `<pre class="text-preview">${escapeHtml(txt + extra)}</pre>`;
+          return;
+        }
+
+        // 6. Nicht direkt renderbare Formate (.doc, .pptx, .zip, .exe, ...)
+        const note = ext === 'doc'
+          ? 'Das ältere Word-Format (.doc) kann im Browser nicht direkt angezeigt werden (.docx wird voll unterstützt).'
+          : (EXT_PPT.has(ext)
+            ? 'PowerPoint-Präsentationen können im Browser nicht originalgetreu gerendert werden.'
+            : `Für den Dateityp .${ext || '?'} steht keine direkte Browser-Vorschau zur Verfügung.`);
+        body.innerHTML = `
+          <div class="empty-box">
+            <h3>${escapeHtml(item.name)}</h3>
+            <div style="margin-bottom:10px;">${escapeHtml(note)}</div>
+            <div style="font-size:12px; color:#475569;">Größe: <strong>${formatBytes(item.size)}</strong> · Geändert: <strong>${formatDate(item.mtime)}</strong></div>
+            <div style="margin-top:14px; font-size:12px;">Nutze oben <strong>📋 Pfad kopieren</strong>, <strong>⬇ Download</strong> oder <strong>✏️ Umbenennen</strong>.</div>
+          </div>`;
       } catch (err) {
-        toast(`PDF konnte nicht geladen werden: ${err.message}`, 'err');
+        body.innerHTML = `<div class="empty-box"><h3>Vorschau fehlgeschlagen</h3><div>${escapeHtml(err.message)}</div></div>`;
       }
     }
 
-    async function copyPdfPath(item) {
+    async function copyFilePath(item) {
       const folderPart = formatFullFolderPath(item.dir);
       try {
         await navigator.clipboard.writeText(folderPart);
@@ -2187,14 +1873,10 @@
         toast(`Pfad kopiert: ${folderPart}`, 'ok');
       }
     }
+    function copyActiveFilePath() { const item = state.allFiles.find(x => x.id === state.activeId); if (item) copyFilePath(item); }
 
-    function copyActivePdfPath() {
-      const item = state.allPdfs.find(x => x.id === state.activeId);
-      if (item) copyPdfPath(item);
-    }
-
-    async function downloadActivePdf() {
-      const item = state.allPdfs.find(x => x.id === state.activeId);
+    async function downloadActiveFile() {
+      const item = state.allFiles.find(x => x.id === state.activeId);
       if (!item) return;
       try {
         const file = await getFileObject(item);
@@ -2212,25 +1894,18 @@
       }
     }
 
-    async function openPdfInNewTab(item) {
+    async function openFileInNewTab(item) {
       try {
         const file = await getFileObject(item);
         const url = URL.createObjectURL(file);
-        window.open(`${url}#navpanes=0&view=Fit`, '_blank', 'noopener');
+        const suffix = getExt(item.name) === 'pdf' ? '#navpanes=0&view=Fit' : '';
+        window.open(`${url}${suffix}`, '_blank', 'noopener');
       } catch (err) {
-        toast(`PDF konnte nicht geöffnet werden: ${err.message}`, 'err');
+        toast(`Datei konnte nicht geöffnet werden: ${err.message}`, 'err');
       }
     }
-
-    function openActivePdfInNewTab() {
-      const item = state.allPdfs.find(x => x.id === state.activeId);
-      if (item) openPdfInNewTab(item);
-    }
-
-    function openSingleRenameForActive() {
-      const item = state.allPdfs.find(x => x.id === state.activeId);
-      if (item) openSingleRenameModal(item);
-    }
+    function openActiveFileInNewTab() { const item = state.allFiles.find(x => x.id === state.activeId); if (item) openFileInNewTab(item); }
+    function openSingleRenameForActive() { const item = state.allFiles.find(x => x.id === state.activeId); if (item) openSingleRenameModal(item); }
 
     async function togglePreviewMaximize(forceOff = false) {
       const card = document.getElementById('preview-card');
@@ -2240,11 +1915,8 @@
       btn.textContent = isMax ? '⤡ Schließen (Esc)' : '⛶ Vollbild';
       btn.classList.toggle('btn-active', isMax);
       document.body.style.overflow = isMax ? 'hidden' : '';
-
       if (isMax) {
-        if (card.requestFullscreen && !document.fullscreenElement) {
-          try { await card.requestFullscreen(); } catch (_) {}
-        }
+        if (card.requestFullscreen && !document.fullscreenElement) { try { await card.requestFullscreen(); } catch (_) {} }
       } else if (document.fullscreenElement === card && document.exitFullscreen) {
         try { await document.exitFullscreen(); } catch (_) {}
       }
@@ -2254,31 +1926,31 @@
     function togglePreviewPane() {
       state.previewVisible = !state.previewVisible;
       const card = document.getElementById('preview-card');
-      if (!state.previewVisible && card.classList.contains('maximized')) {
-        togglePreviewMaximize(true);
-      }
+      if (!state.previewVisible && card.classList.contains('maximized')) togglePreviewMaximize(true);
       card.classList.toggle('hidden', !state.previewVisible);
       document.getElementById('workspace-split').classList.toggle('with-preview', state.previewVisible);
       document.getElementById('btn-toggle-preview').classList.toggle('btn-active', state.previewVisible);
       if (state.previewVisible && state.activeId) {
-        const item = state.allPdfs.find(x => x.id === state.activeId);
-        if (item) showPdfPreview(item);
+        const item = state.allFiles.find(x => x.id === state.activeId);
+        if (item) showFilePreview(item);
       }
     }
 
-    /* Umbenennen-Engine (File System Access API: move() + Fallback copy+delete) */
-    function sanitizePdfName(raw) {
-      let clean = (raw || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+    /* Umbenennen-Engine (behält jeweilige Dateiendung sicher bei) */
+    function sanitizeFileNameWithExt(rawStemOrName, origExt) {
+      let clean = (rawStemOrName || '').trim().replace(/[<>:"/\\|?*]/g, '_');
       if (!clean) return '';
-      if (!clean.toLowerCase().endsWith('.pdf')) clean += '.pdf';
+      if (origExt) {
+        const dotExt = `.${origExt.toLowerCase()}`;
+        if (!clean.toLowerCase().endsWith(dotExt)) clean += dotExt;
+      }
       return clean;
     }
 
-    async function renamePdfItem(item, newNameRaw) {
-      if (!state.canWrite || !item.fileHandle || !item.parentHandle) {
-        throw new Error('Keine Schreibfreigabe für diesen Ordner.');
-      }
-      const newName = sanitizePdfName(newNameRaw);
+    async function renameFileItem(item, newNameRaw) {
+      if (!state.canWrite || !item.fileHandle || !item.parentHandle) throw new Error('Keine Schreibfreigabe für diesen Ordner.');
+      const origExt = getExt(item.name);
+      const newName = sanitizeFileNameWithExt(newNameRaw, origExt);
       if (!newName) throw new Error('Ungültiger Dateiname.');
       if (newName === item.name) return false;
 
@@ -2299,30 +1971,28 @@
     }
 
     function openSingleRenameModal(item) {
-      if (!state.canWrite) {
-        toast('Umbenennen erfordert Schreibfreigabe über https:// (GitHub Pages).', 'err');
-        return;
-      }
+      if (!state.canWrite) { toast('Umbenennen erfordert Schreibfreigabe über https:// (GitHub Pages).', 'err'); return; }
       state.singleRenameId = item.id;
-      const stem = item.name.replace(/\.pdf$/i, '');
+      const origExt = getExt(item.name);
+      document.getElementById('single-rename-label').textContent = origExt ? `Neuer Dateiname (Endung .${origExt} bleibt erhalten):` : 'Neuer Dateiname:';
       const inp = document.getElementById('single-rename-input');
-      inp.value = stem;
-      document.getElementById('single-rename-path').textContent = `Ordner: ${item.dir}`;
+      inp.value = getStem(item.name);
+      document.getElementById('single-rename-path').textContent = `Ordner: ${formatFullFolderPath(item.dir)}`;
       document.getElementById('modal-single-rename').classList.remove('hidden');
       setTimeout(() => { inp.focus(); inp.select(); }, 30);
     }
 
     async function confirmSingleRename() {
-      const item = state.allPdfs.find(x => x.id === state.singleRenameId);
+      const item = state.allFiles.find(x => x.id === state.singleRenameId);
       if (!item) return;
-      const newVal = document.getElementById('single-rename-input').value;
       try {
-        const changed = await renamePdfItem(item, newVal);
+        const changed = await renameFileItem(item, document.getElementById('single-rename-input').value);
         closeModal('modal-single-rename');
         if (changed) {
           toast(`Umbenannt in „${item.name}“`, 'ok');
           if (state.activeId === item.id) {
             document.getElementById('preview-title').textContent = item.name;
+            updatePathBar();
           }
           applyFilters();
         }
@@ -2331,28 +2001,21 @@
       }
     }
 
-    function getBatchTargets() {
-      return state.filteredPdfs.filter(it => state.selectedIds.has(it.id));
-    }
+    function getBatchTargets() { return state.filteredFiles.filter(it => state.selectedIds.has(it.id)); }
 
     function computeBatchNewName(item, idx) {
       const rule = document.getElementById('batch-rule').value;
-      const stem = item.name.replace(/\.pdf$/i, '');
+      const stem = getStem(item.name);
+      const ext = getExt(item.name);
       if (rule === 'replace') {
         const f = document.getElementById('batch-find').value;
         const r = document.getElementById('batch-replace').value;
-        return sanitizePdfName(f ? stem.split(f).join(r) : stem);
+        return sanitizeFileNameWithExt(f ? stem.split(f).join(r) : stem, ext);
       }
-      if (rule === 'prefix') {
-        const v = document.getElementById('batch-single-val').value;
-        return sanitizePdfName(`${v}${stem}`);
-      }
-      if (rule === 'suffix') {
-        const v = document.getElementById('batch-single-val').value;
-        return sanitizePdfName(`${stem}${v}`);
-      }
+      if (rule === 'prefix') return sanitizeFileNameWithExt(`${document.getElementById('batch-single-val').value}${stem}`, ext);
+      if (rule === 'suffix') return sanitizeFileNameWithExt(`${stem}${document.getElementById('batch-single-val').value}`, ext);
       const base = (document.getElementById('batch-single-val').value || 'Dokument').trim();
-      return sanitizePdfName(`${base}_${String(idx + 1).padStart(2, '0')}`);
+      return sanitizeFileNameWithExt(`${base}_${String(idx + 1).padStart(2, '0')}`, ext);
     }
 
     function openBatchRenameModal() {
@@ -2370,8 +2033,8 @@
       const lbl = document.getElementById('batch-single-label');
       const inp = document.getElementById('batch-single-val');
       if (rule === 'prefix') { lbl.textContent = 'Präfix voranstellen:'; inp.placeholder = 'z. B. 2026_'; }
-      else if (rule === 'suffix') { lbl.textContent = 'Suffix anhängen (vor .pdf):'; inp.placeholder = 'z. B. _geprueft'; }
-      else if (rule === 'number') { lbl.textContent = 'Basisname für Nummerierung:'; inp.placeholder = 'z. B. Rechnung_2026'; }
+      else if (rule === 'suffix') { lbl.textContent = 'Suffix vor Dateiendung anhängen:'; inp.placeholder = 'z. B. _geprueft'; }
+      else if (rule === 'number') { lbl.textContent = 'Basisname für Nummerierung:'; inp.placeholder = 'z. B. Dokument_2026'; }
       updateBatchPreview();
     }
 
@@ -2380,7 +2043,7 @@
       const targets = getBatchTargets();
       list.innerHTML = targets.slice(0, 60).map((it, i) => {
         const nn = computeBatchNewName(it, i);
-        return `<div class="rename-preview-item"><span class="rename-old" title="${it.name}">${it.name}</span><span>➔</span><span class="rename-new" title="${nn}">${nn}</span></div>`;
+        return `<div class="rename-preview-item"><span class="rename-old" title="${escapeHtml(it.name)}">${escapeHtml(it.name)}</span><span>➔</span><span class="rename-new" title="${escapeHtml(nn)}">${escapeHtml(nn)}</span></div>`;
       }).join('');
     }
 
@@ -2392,35 +2055,23 @@
         const it = targets[i];
         const nn = computeBatchNewName(it, i);
         if (nn && nn !== it.name) {
-          try {
-            if (await renamePdfItem(it, nn)) ok += 1;
-          } catch (_) {
-            errCnt += 1;
-          }
+          try { if (await renameFileItem(it, nn)) ok += 1; } catch (_) { errCnt += 1; }
         }
       }
       closeModal('modal-batch-rename');
       applyFilters();
-      if (errCnt > 0) {
-        toast(`${ok} PDFs umbenannt, ${errCnt} fehlgeschlagen.`, 'err');
-      } else {
-        toast(`${ok} PDFs erfolgreich umbenannt.`, 'ok');
-      }
+      if (errCnt > 0) toast(`${ok} Dateien umbenannt, ${errCnt} fehlgeschlagen.`, 'err');
+      else toast(`${ok} Dateien erfolgreich umbenannt.`, 'ok');
     }
 
-    function closeModal(id) {
-      document.getElementById(id).classList.add('hidden');
-    }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
     document.addEventListener('DOMContentLoaded', () => {
       initLastDirectoryOnStartup();
       document.addEventListener('fullscreenchange', () => {
         const card = document.getElementById('preview-card');
-        if (!document.fullscreenElement && card && card.classList.contains('maximized')) {
-          togglePreviewMaximize(true);
-        } else if (state.pdfDoc) {
-          setTimeout(() => renderCurrentPdfPage(), 90);
-        }
+        if (!document.fullscreenElement && card && card.classList.contains('maximized')) togglePreviewMaximize(true);
+        else if (state.pdfDoc) setTimeout(() => renderCurrentPdfPage(), 90);
       });
       window.addEventListener('resize', () => {
         if (state.pdfDoc && state.pdfFitMode !== 'manual') {
@@ -2431,9 +2082,7 @@
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
           const card = document.getElementById('preview-card');
-          if (card && card.classList.contains('maximized')) {
-            togglePreviewMaximize(true);
-          }
+          if (card && card.classList.contains('maximized')) togglePreviewMaximize(true);
         } else if (state.pdfDoc && document.activeElement?.tagName !== 'INPUT') {
           if (e.key === 'ArrowLeft') pdfStepPage(-1);
           if (e.key === 'ArrowRight') pdfStepPage(1);
