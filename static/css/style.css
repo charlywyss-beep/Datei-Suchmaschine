@@ -1546,3 +1546,166 @@ html.light #view-grid-wrapper .glass-card button:hover {
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
 }
+
+/* ==========================================
+   v1.7.33: KLARE TRENNUNG BEREICHE / ANZEIGEN / BUTTONS / EINGABEN
+   ========================================== */
+
+/* 1. Klar abgegrenzte Bereichs-Karten (Light & Dark) */
+html.light body {
+  background-color: #f1f5f9 !important;
+}
+html.light .ui-section-card {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+html.dark .ui-section-card,
+body:not(.light) .ui-section-card {
+  background-color: rgba(30, 41, 59, 0.90) !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28) !important;
+}
+
+.ui-section-header {
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  user-select: none;
+}
+html.light .ui-section-header {
+  border-bottom-color: #e2e8f0 !important;
+}
+html.light .ui-section-header label,
+html.light .ui-section-header span {
+  color: #1e293b !important;
+}
+html.light .ui-section-header .ui-readout-hint {
+  color: #64748b !important;
+  font-weight: 500 !important;
+}
+
+/* 2. Einheitliche Haupt-Eingabefelder (#search-query & #target-directory identisch!) */
+.ui-main-input {
+  min-height: 50px;
+  font-family: inherit !important;
+}
+html.light #search-query,
+html.light #target-directory {
+  background-color: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07) !important;
+}
+html.light #search-query:hover,
+html.light #target-directory:hover {
+  border-color: #64748b !important;
+}
+html.light #search-query:focus,
+html.light #target-directory:focus {
+  border-color: #2563eb !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04), 0 0 0 3px rgba(37, 99, 235, 0.16) !important;
+}
+html.light #target-directory::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+}
+html.dark #search-query,
+html.dark #target-directory,
+body:not(.light) #search-query,
+body:not(.light) #target-directory {
+  background-color: #0f172a !important;
+  border: 1.5px solid #475569 !important;
+  color: #f8fafc !important;
+  font-size: 1rem !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35) !important;
+}
+html.dark #search-query:focus,
+html.dark #target-directory:focus,
+body:not(.light) #search-query:focus,
+body:not(.light) #target-directory:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22) !important;
+}
+html.light .fluent-date-box {
+  border: 1.5px solid #94a3b8 !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+}
+html.light .fluent-date-box:focus-within {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16) !important;
+}
+
+/* 3. Reine Status-/Info-Anzeigen (flach, ohne Button-Optik) */
+.ui-status-readout {
+  background-color: rgba(15, 23, 42, 0.65);
+  border: 1px dashed rgba(100, 116, 139, 0.45);
+  box-shadow: none !important;
+  cursor: default !important;
+}
+html.light .ui-status-readout {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  box-shadow: none !important;
+}
+html.light .ui-status-readout #stat-count,
+html.light .ui-status-readout > span:first-child {
+  color: #0f172a !important;
+}
+html.light .ui-status-readout .ui-readout-sep {
+  color: #cbd5e1 !important;
+}
+
+/* 4. Echte Buttons deutlich als klickbar hervorheben (Fluent-Erhebung + Hover/Active) */
+.ui-action-btn,
+.loc-btn {
+  cursor: pointer !important;
+  transition: transform 0.1s ease, box-shadow 0.14s ease, background-color 0.14s ease, border-color 0.14s ease !important;
+}
+html.light .ui-action-btn:not(#btn-search):not(.active),
+html.light .loc-btn:not(.active) {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), inset 0 -1px 0 rgba(15, 23, 42, 0.07) !important;
+}
+html.light .ui-action-btn:not(#btn-search):hover,
+html.light .loc-btn:hover {
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12), inset 0 -1px 0 rgba(15, 23, 42, 0.08) !important;
+  transform: translateY(-0.5px);
+}
+.ui-action-btn:active,
+.loc-btn:active {
+  transform: translateY(1px) !important;
+}
+html.light .fluent-pill-btn:not(.active) {
+  background-color: #ffffff !important;
+  border: 1px solid #94a3b8 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), inset 0 -1px 0 rgba(15, 23, 42, 0.06) !important;
+}
+html.light .fluent-pill-btn:not(.active):hover {
+  background-color: #eff6ff !important;
+  border-color: #3b82f6 !important;
+  color: #1d4ed8 !important;
+}
+html.light .cat-pill:not(.active),
+html.light .scope-btn:not(.active),
+html.light .loc-btn {
+  border-color: #94a3b8 !important;
+}
+html.light .cat-pill:not(.active):hover,
+html.light .scope-btn:not(.active):hover,
+html.light .loc-btn:hover {
+  border-color: #3b82f6 !important;
+  background-color: #eff6ff !important;
+}
+html.light #results-toolbar {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important;
+}
+html.light #results-toolbar .ui-action-btn {
+  border-width: 1px !important;
+  font-weight: 600 !important;
+}

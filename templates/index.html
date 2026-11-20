@@ -118,13 +118,13 @@
     <!-- ========================================== -->
     <!-- TAB 1: DATEISUCHE & FILTER MASKE          -->
     <!-- ========================================== -->
-    <section id="view-search" class="space-y-6">
+    <section id="view-search" class="space-y-3.5">
       
-      <!-- Such-Konsole / Maske Card -->
-      <div class="glass-card rounded-2xl p-6 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-5">
+      <!-- BEREICH 1: Suchbegriff, Gespeicherte Suchen & Verlauf -->
+      <div class="glass-card ui-section-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-3.5">
         
         <!-- Haupt-Suchleiste mit Action Button -->
-        <div class="flex flex-col md:flex-row gap-3">
+        <div class="flex flex-col md:flex-row gap-2.5 items-stretch">
           <div class="relative flex-1">
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
               <i class="fa-solid fa-magnifying-glass text-lg"></i>
@@ -133,12 +133,13 @@
               type="text" 
               id="search-query" 
               placeholder="Datei- oder Ordnernamen eingeben (z.B. Rechnung, Serien, Hauskauf, 2026)..." 
-              class="w-full pl-12 pr-10 py-3.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base transition shadow-inner font-medium"
+              class="ui-main-input w-full pl-12 pr-10 py-3.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base transition shadow-inner font-medium"
               onkeydown="if(event.key === 'Enter') { event.preventDefault(); executeSearch(); }"
             >
             <button 
+              type="button"
               onclick="document.getElementById('search-query').value = ''; document.getElementById('search-query').focus();" 
-              class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition" 
+              class="ui-input-clear absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition" 
               title="Suchfeld leeren"
             >
               <i class="fa-solid fa-xmark"></i>
@@ -150,7 +151,7 @@
             id="btn-save-search" 
             type="button"
             onclick="saveCurrentSearch()" 
-            class="px-5 py-3.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-sm font-semibold flex items-center justify-center gap-2 transition active:scale-95 shrink-0"
+            class="ui-action-btn px-5 py-3.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-sm font-semibold flex items-center justify-center gap-2 transition active:scale-95 shrink-0"
             title="Aktuellen Suchbegriff für wiederkehrende Dateisuche dauerhaft speichern"
           >
             <i class="fa-solid fa-star text-amber-400"></i>
@@ -160,8 +161,9 @@
           <!-- Suchen Button -->
           <button 
             id="btn-search" 
+            type="button"
             onclick="executeSearch()" 
-            class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold flex items-center justify-center gap-2.5 shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/40 transition active:scale-95"
+            class="ui-action-btn px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold flex items-center justify-center gap-2.5 shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/40 transition active:scale-95 shrink-0"
           >
             <i class="fa-solid fa-bolt"></i>
             <span>Dateien Suchen</span>
@@ -169,10 +171,10 @@
         </div>
 
         <!-- Gespeicherte Suchen & Such-History -->
-        <div id="search-history-panel" class="hidden pt-1 space-y-2.5 border-t border-slate-800/60">
+        <div id="search-history-panel" class="hidden pt-3 space-y-2.5 border-t border-slate-800/60">
           <!-- Gespeicherte Suchen (Wiederkehrende Datei-Suche) -->
           <div id="saved-searches-row" class="hidden flex flex-wrap items-center gap-2">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 mr-1">
+            <span class="ui-readout-label text-[11px] font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 mr-1">
               <i class="fa-solid fa-star text-amber-400"></i>
               <span>Gespeicherte Suchen:</span>
             </span>
@@ -182,7 +184,7 @@
           <!-- Such-History (Letzte Suchbegriffe) -->
           <div id="recent-searches-row" class="hidden flex flex-wrap items-center justify-between gap-2">
             <div class="flex flex-wrap items-center gap-1.5 flex-1">
-              <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mr-1">
+              <span class="ui-readout-label text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mr-1">
                 <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i>
                 <span>Such-History:</span>
               </span>
@@ -191,7 +193,7 @@
             <button
               type="button"
               onclick="clearSearchHistory()"
-              class="text-[11px] text-slate-500 hover:text-red-400 transition flex items-center gap-1 px-2 py-0.5 rounded hover:bg-red-500/10 shrink-0"
+              class="ui-action-btn text-[11px] text-slate-500 hover:text-red-400 transition flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-red-500/10 shrink-0"
               title="Gesamte Such-History leeren"
             >
               <i class="fa-solid fa-trash-can text-[10px]"></i>
@@ -199,266 +201,290 @@
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- Schnell-Kategorien (PDF, Word, Excel, JPG, ...) -->
-        <div>
-          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5 block">
-            <i class="fa-solid fa-filter mr-1 text-indigo-400"></i> Dateityp-Schnellfilter:
+      <!-- BEREICH 2: Dateityp-Schnellfilter -->
+      <div class="glass-card ui-section-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-3">
+        <div class="ui-section-header flex items-center justify-between gap-2">
+          <label class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5 cursor-default">
+            <i class="fa-solid fa-filter text-indigo-400"></i>
+            <span>Dateityp-Schnellfilter:</span>
           </label>
-          <div class="flex flex-wrap items-stretch w-full gap-1.5" id="category-filter-group">
-            <button type="button" onclick="setCategoryFilter('all', this)" class="cat-pill active flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-center shadow-sm" title="Alle Dateitypen durchsuchen">
-              <i class="fa-solid fa-layer-group"></i>
-              <span>Alle</span>
+        </div>
+        <div class="flex flex-wrap items-stretch w-full gap-1.5" id="category-filter-group">
+          <button type="button" onclick="setCategoryFilter('all', this)" class="cat-pill ui-action-btn active flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-center shadow-sm" title="Alle Dateitypen durchsuchen">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Alle</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('folder', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-amber-300 hover:bg-amber-500/10 border-slate-700/80 text-center shadow-sm" title="Nur Ordner / Verzeichnisse durchsuchen">
+            <i class="fa-solid fa-folder text-amber-400"></i>
+            <span>Ordner</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('pdf', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-red-400 hover:bg-red-500/10 border-slate-700/80 text-center shadow-sm" title="PDF-Dokumente (.pdf)">
+            <i class="fa-solid fa-file-pdf text-red-500"></i>
+            <span>PDF</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('word', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-blue-400 hover:bg-blue-500/10 border-slate-700/80 text-center shadow-sm" title="Word-Dokumente (.docx, .doc, .rtf, .odt)">
+            <i class="fa-solid fa-file-word text-blue-500"></i>
+            <span>Word</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('excel', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-emerald-400 hover:bg-emerald-500/10 border-slate-700/80 text-center shadow-sm" title="Excel-Tabellen (.xlsx, .xls, .csv, .ods)">
+            <i class="fa-solid fa-file-excel text-emerald-500"></i>
+            <span>Excel</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('powerpoint', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-orange-400 hover:bg-orange-500/10 border-slate-700/80 text-center shadow-sm" title="PowerPoint-Präsentationen (.pptx, .ppt, .pps, .odp)">
+            <i class="fa-solid fa-file-powerpoint text-orange-500"></i>
+            <span>PowerPoint</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('access', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-rose-400 hover:bg-rose-500/10 border-slate-700/80 text-center shadow-sm" title="Access-Datenbanken (.accdb, .mdb)">
+            <i class="fa-solid fa-database text-rose-500"></i>
+            <span>Access</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('office', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-amber-400 hover:bg-amber-500/10 border-slate-700/80 text-center shadow-sm" title="Alle Office-Dokumente (PDF, Word, Excel, PowerPoint, Access)">
+            <i class="fa-solid fa-briefcase text-amber-500"></i>
+            <span>Office</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('image', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-purple-400 hover:bg-purple-500/10 border-slate-700/80 text-center shadow-sm" title="Bilder &amp; Fotos (.jpg, .png, .webp, .svg, .heic...)">
+            <i class="fa-solid fa-file-image text-purple-500"></i>
+            <span>Bilder</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('video', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-pink-400 hover:bg-pink-500/10 border-slate-700/80 text-center shadow-sm" title="Videos (.mp4, .mkv, .avi, .mov, .wmv...)">
+            <i class="fa-solid fa-film text-pink-500"></i>
+            <span>Video</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('audio', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-teal-400 hover:bg-teal-500/10 border-slate-700/80 text-center shadow-sm" title="Audio &amp; Musik (.mp3, .wav, .flac, .m4a, .aac...)">
+            <i class="fa-solid fa-music text-teal-400"></i>
+            <span>Audio</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('email', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-sky-400 hover:bg-sky-500/10 border-slate-700/80 text-center shadow-sm" title="E-Mails &amp; Kontakte (.msg, .eml, .pst, .vcf, .ics)">
+            <i class="fa-solid fa-envelope text-sky-400"></i>
+            <span>E-Mail</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('archive', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-yellow-400 hover:bg-yellow-500/10 border-slate-700/80 text-center shadow-sm" title="Archive (.zip, .rar, .7z, .tar, .gz...)">
+            <i class="fa-solid fa-file-zipper text-yellow-500"></i>
+            <span>Archive</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('setup', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-emerald-300 hover:bg-emerald-500/10 border-slate-700/80 text-center shadow-sm" title="Programme &amp; Anwendungen (.exe, .msi, .iso, .bat...)">
+            <i class="fa-solid fa-box text-emerald-400"></i>
+            <span>Program</span>
+          </button>
+          <button type="button" onclick="setCategoryFilter('code', this)" class="cat-pill ui-action-btn flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-cyan-400 hover:bg-cyan-500/10 border-slate-700/80 text-center shadow-sm" title="Textdateien &amp; Skripte (.txt, .md, .py, .srt...)">
+            <i class="fa-solid fa-file-code text-cyan-500"></i>
+            <span>Text</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- BEREICH 3: Suchbereich (Laufwerks-Eingabe zuoberst, dann Schnellwahl & Speicherorte) -->
+      <div class="glass-card ui-section-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-3.5">
+        <div class="ui-section-header flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <label for="target-directory" class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5 cursor-default">
+            <i class="fa-solid fa-compass text-indigo-400"></i>
+            <span>Suchbereich:</span>
+          </label>
+          <span class="ui-readout-hint text-[11px] text-slate-400 font-medium cursor-default">Standardmäßig wird der gesamte PC mit allen Laufwerken durchsucht</span>
+        </div>
+
+        <!-- Laufwerks- & Pfad-Eingabe ZUOBERST (identisch zum Datei-/Ordnernamen-Feld oben) -->
+        <div class="flex flex-col lg:flex-row gap-2.5 items-stretch">
+          <div class="relative flex-1 w-full">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-folder-open text-lg"></i>
+            </div>
+            <input 
+              type="text" 
+              id="target-directory" 
+              value="Dieser PC (Alle lokalen Laufwerke: C:\, D:\)" 
+              placeholder="Laufwerk oder Suchverzeichnis eingeben (z.B. C:\, D:\01\Documents\...)"
+              class="ui-main-input w-full pl-12 pr-10 py-3.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base transition shadow-inner font-medium"
+              onkeydown="if(event.key === 'Enter') { event.preventDefault(); executeSearch(); }"
+            >
+            <button
+              type="button"
+              onclick="document.getElementById('target-directory').value = ''; document.getElementById('target-directory').focus();"
+              class="ui-input-clear absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition"
+              title="Suchpfad leeren"
+            >
+              <i class="fa-solid fa-xmark"></i>
             </button>
-            <button type="button" onclick="setCategoryFilter('folder', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-amber-300 hover:bg-amber-500/10 border-slate-700/80 text-center shadow-sm" title="Nur Ordner / Verzeichnisse durchsuchen">
-              <i class="fa-solid fa-folder text-amber-400"></i>
-              <span>Ordner</span>
+          </div>
+          
+          <div class="flex flex-wrap items-stretch gap-2 shrink-0">
+            <!-- Button: Pfad als Favorit speichern -->
+            <button 
+              type="button" 
+              onclick="openSavePathModal()" 
+              class="ui-action-btn px-4 py-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-sm"
+              title="Diesen Pfad als eigenen Schnell-Button dauerhaft speichern"
+            >
+              <i class="fa-solid fa-star text-amber-400"></i>
+              <span>Pfad speichern</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('pdf', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-red-400 hover:bg-red-500/10 border-slate-700/80 text-center shadow-sm" title="PDF-Dokumente (.pdf)">
-              <i class="fa-solid fa-file-pdf text-red-500"></i>
-              <span>PDF</span>
+
+            <!-- Button: Netzwerk-Freigabe hinzufügen -->
+            <button 
+              type="button" 
+              id="btn-add-network"
+              onclick="openAddNetworkModal()" 
+              class="ui-action-btn px-4 py-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-sm"
+              title="Netzwerkpfad hinzufügen (z.B. \\NAS\Freigabe oder Z:\)"
+            >
+              <i class="fa-solid fa-network-wired text-emerald-400"></i>
+              <span>Netzwerk-Pfad +</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('word', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-blue-400 hover:bg-blue-500/10 border-slate-700/80 text-center shadow-sm" title="Word-Dokumente (.docx, .doc, .rtf, .odt)">
-              <i class="fa-solid fa-file-word text-blue-500"></i>
-              <span>Word</span>
+
+            <!-- Brücke: Ordner an 7-Ordner-Pro übergeben -->
+            <button
+              type="button"
+              id="btn-handoff-folder-seven"
+              onclick="sendFolderToSevenFolder()"
+              class="ui-action-btn px-4 py-3 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition shadow-sm"
+              title="Aktuellen Ordner in 7-Ordner-Pro sortieren (startet 7-Ordner-Pro automatisch)"
+            >
+              <i class="fa-solid fa-folder-tree text-teal-400"></i>
+              <span>In 7-Ordner-Pro sortieren</span>
             </button>
-            <button type="button" onclick="setCategoryFilter('excel', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-emerald-400 hover:bg-emerald-500/10 border-slate-700/80 text-center shadow-sm" title="Excel-Tabellen (.xlsx, .xls, .csv, .ods)">
-              <i class="fa-solid fa-file-excel text-emerald-500"></i>
-              <span>Excel</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('powerpoint', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-orange-400 hover:bg-orange-500/10 border-slate-700/80 text-center shadow-sm" title="PowerPoint-Präsentationen (.pptx, .ppt, .pps, .odp)">
-              <i class="fa-solid fa-file-powerpoint text-orange-500"></i>
-              <span>PowerPoint</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('access', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-rose-400 hover:bg-rose-500/10 border-slate-700/80 text-center shadow-sm" title="Access-Datenbanken (.accdb, .mdb)">
-              <i class="fa-solid fa-database text-rose-500"></i>
-              <span>Access</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('office', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-amber-400 hover:bg-amber-500/10 border-slate-700/80 text-center shadow-sm" title="Alle Office-Dokumente (PDF, Word, Excel, PowerPoint, Access)">
-              <i class="fa-solid fa-briefcase text-amber-500"></i>
-              <span>Office</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('image', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-purple-400 hover:bg-purple-500/10 border-slate-700/80 text-center shadow-sm" title="Bilder &amp; Fotos (.jpg, .png, .webp, .svg, .heic...)">
-              <i class="fa-solid fa-file-image text-purple-500"></i>
-              <span>Bilder</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('video', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-pink-400 hover:bg-pink-500/10 border-slate-700/80 text-center shadow-sm" title="Videos (.mp4, .mkv, .avi, .mov, .wmv...)">
-              <i class="fa-solid fa-film text-pink-500"></i>
-              <span>Video</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('audio', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-teal-400 hover:bg-teal-500/10 border-slate-700/80 text-center shadow-sm" title="Audio &amp; Musik (.mp3, .wav, .flac, .m4a, .aac...)">
-              <i class="fa-solid fa-music text-teal-400"></i>
-              <span>Audio</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('email', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-sky-400 hover:bg-sky-500/10 border-slate-700/80 text-center shadow-sm" title="E-Mails &amp; Kontakte (.msg, .eml, .pst, .vcf, .ics)">
-              <i class="fa-solid fa-envelope text-sky-400"></i>
-              <span>E-Mail</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('archive', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-yellow-400 hover:bg-yellow-500/10 border-slate-700/80 text-center shadow-sm" title="Archive (.zip, .rar, .7z, .tar, .gz...)">
-              <i class="fa-solid fa-file-zipper text-yellow-500"></i>
-              <span>Archive</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('setup', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-emerald-300 hover:bg-emerald-500/10 border-slate-700/80 text-center shadow-sm" title="Programme &amp; Anwendungen (.exe, .msi, .iso, .bat...)">
-              <i class="fa-solid fa-box text-emerald-400"></i>
-              <span>Program</span>
-            </button>
-            <button type="button" onclick="setCategoryFilter('code', this)" class="cat-pill flex-1 min-w-[65px] flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-semibold border transition text-cyan-400 hover:bg-cyan-500/10 border-slate-700/80 text-center shadow-sm" title="Textdateien &amp; Skripte (.txt, .md, .py, .srt...)">
-              <i class="fa-solid fa-file-code text-cyan-500"></i>
-              <span>Text</span>
+
+            <!-- Toggle Erweiterte Filter -->
+            <button type="button" onclick="toggleAdvancedFilters()" class="ui-action-btn text-xs sm:text-sm text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1.5 px-3.5 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 transition">
+              <i class="fa-solid fa-sliders"></i>
+              <span>Filter</span>
+              <i id="adv-chevron" class="fa-solid fa-chevron-down text-[10px] transition-transform"></i>
             </button>
           </div>
         </div>
 
-        <!-- Haupt-Suchbereich (Scope): Dieser PC, Nur OneDrive, Nur Netzwerk, Ordner -->
-        <div class="pt-3 border-t border-slate-800 space-y-3">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
-            <label class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <i class="fa-solid fa-compass text-indigo-400"></i>
-              <span>Suchbereich (Scope):</span>
-            </label>
-            <span class="text-[11px] text-slate-400 font-medium">Standardmäßig wird der gesamte PC mit allen Laufwerken durchsucht</span>
+        <!-- Bereichs-Schnellwahl: Ganzer PC, Nur OneDrive, Nur Netzwerk -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1" id="scope-selector-group">
+          <!-- 1. Ganzer PC (Default) -->
+          <button type="button" id="scope-btn-pc" onclick="setSearchScope('pc')" class="scope-btn ui-action-btn active p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-indigo-500/20">
+            <div class="w-7 h-7 rounded-lg bg-indigo-500/30 text-indigo-300 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-laptop text-sm"></i>
+            </div>
+            <div class="text-left">
+              <div class="font-bold">Ganzer PC</div>
+              <div class="text-[11px] text-indigo-200 font-normal">Alle Laufwerke (C:, D: ...)</div>
+            </div>
+          </button>
+
+          <!-- 2. Nur OneDrive -->
+          <button type="button" id="scope-btn-onedrive" onclick="setSearchScope('onedrive')" class="scope-btn ui-action-btn p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2.5 transition">
+            <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-cloud text-sm"></i>
+            </div>
+            <div class="text-left">
+              <div class="font-bold text-white">Nur OneDrive</div>
+              <div class="text-[11px] text-slate-400">Privat &amp; Geschäft</div>
+            </div>
+          </button>
+
+          <!-- 3. Nur Netzwerk -->
+          <button type="button" id="scope-btn-network" onclick="setSearchScope('network')" class="scope-btn ui-action-btn p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2.5 transition">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-network-wired text-sm"></i>
+            </div>
+            <div class="text-left">
+              <div class="font-bold text-white">Nur Netzwerk</div>
+              <div class="text-[11px] text-slate-400">Netzlaufwerke &amp; Freigaben</div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Schnell-Speicherort Buttons & Gespeicherte Pfade -->
+        <div class="pt-2.5 border-t border-slate-800/60">
+          <div class="flex flex-wrap items-center gap-1.5" id="location-shortcuts">
+            <!-- Dynamisch via renderLocationShortcuts() -->
+          </div>
+        </div>
+      </div>
+
+      <!-- BEREICH 4: Zeit- & Größenfilter -->
+      <div class="glass-card ui-section-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-3">
+        <div class="ui-section-header flex items-center justify-between gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5 cursor-default">
+            <i class="fa-solid fa-calendar-days text-indigo-400"></i>
+            <span>Zeit- &amp; Größenfilter:</span>
+          </span>
+        </div>
+
+        <!-- Fluent Schnellfilter-Raster (Zeitraum, Änderungsdatum Von/Bis, Dateigröße) -->
+        <div id="fluent-quick-filters" class="space-y-2 text-xs">
+          <!-- Zeile 1: Zeitraum -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="w-[112px] shrink-0 font-bold text-slate-300 cursor-default">Zeitraum:</span>
+            <button type="button" data-zeitraum="today" onclick="setQuickTimeframe('today')" class="fluent-pill-btn ui-action-btn">Heute</button>
+            <button type="button" data-zeitraum="week" onclick="setQuickTimeframe('week')" class="fluent-pill-btn ui-action-btn">Diese Woche</button>
+            <button type="button" data-zeitraum="month" onclick="setQuickTimeframe('month')" class="fluent-pill-btn ui-action-btn">Dieser Monat</button>
+            <button type="button" data-zeitraum="year" onclick="setQuickTimeframe('year')" class="fluent-pill-btn ui-action-btn">Dieses Jahr</button>
           </div>
 
-          <!-- Scope Buttons -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2" id="scope-selector-group">
-            <!-- 1. Ganzer PC (Default) -->
-            <button type="button" id="scope-btn-pc" onclick="setSearchScope('pc')" class="scope-btn active p-3 rounded-xl border border-indigo-500/50 bg-indigo-500/20 text-white font-bold text-xs flex items-center gap-2.5 transition shadow-md shadow-indigo-500/20">
-              <div class="w-7 h-7 rounded-lg bg-indigo-500/30 text-indigo-300 flex items-center justify-center shrink-0">
-                <i class="fa-solid fa-laptop text-sm"></i>
-              </div>
-              <div class="text-left">
-                <div class="font-bold">Ganzer PC</div>
-                <div class="text-[11px] text-indigo-200 font-normal">Alle Laufwerke (C:, D: ...)</div>
-              </div>
+          <!-- Zeile 2: Änderungsdatum (Von/Bis + Filter leeren) -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="w-[112px] shrink-0 font-bold text-slate-300 cursor-default">Änderungsdatum:</span>
+
+            <!-- Von Datum -->
+            <div class="fluent-date-box w-[180px]">
+              <span class="fluent-inline-prefix">Von</span>
+              <input
+                type="text"
+                id="filter-date-from"
+                placeholder="TT.MM.JJJJ"
+                maxlength="10"
+                oninput="onDateTextChanged()"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
+                class="fluent-date-text"
+              >
+              <input type="date" id="native-date-from" class="sr-only" tabindex="-1" onchange="syncFromNativeDate('from', this.value)">
+              <button type="button" onclick="openNativeDatePicker('from')" class="fluent-cal-btn" title="Datumsauswahl anzeigen">
+                <i class="fa-regular fa-calendar"></i>
+              </button>
+            </div>
+
+            <!-- Bis Datum -->
+            <div class="fluent-date-box w-[180px]">
+              <span class="fluent-inline-prefix">Bis</span>
+              <input
+                type="text"
+                id="filter-date-to"
+                placeholder="TT.MM.JJJJ"
+                maxlength="10"
+                oninput="onDateTextChanged()"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
+                class="fluent-date-text"
+              >
+              <input type="date" id="native-date-to" class="sr-only" tabindex="-1" onchange="syncFromNativeDate('to', this.value)">
+              <button type="button" onclick="openNativeDatePicker('to')" class="fluent-cal-btn" title="Datumsauswahl anzeigen">
+                <i class="fa-regular fa-calendar"></i>
+              </button>
+            </div>
+
+            <button type="button" onclick="clearAllQuickFilters()" class="fluent-pill-btn ui-action-btn" title="Alle Datums-, Größen- und Zusatzfilter zurücksetzen">
+              Filter leeren
             </button>
-
-            <!-- 2. Nur OneDrive -->
-            <button type="button" id="scope-btn-onedrive" onclick="setSearchScope('onedrive')" class="scope-btn p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2.5 transition">
-              <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
-                <i class="fa-solid fa-cloud text-sm"></i>
-              </div>
-              <div class="text-left">
-                <div class="font-bold text-white">Nur OneDrive</div>
-                <div class="text-[11px] text-slate-400">Privat &amp; Geschäft</div>
-              </div>
-            </button>
-
-            <!-- 3. Nur Netzwerk -->
-            <button type="button" id="scope-btn-network" onclick="setSearchScope('network')" class="scope-btn p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 font-medium text-xs flex items-center gap-2.5 transition">
-              <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                <i class="fa-solid fa-network-wired text-sm"></i>
-              </div>
-              <div class="text-left">
-                <div class="font-bold text-white">Nur Netzwerk</div>
-                <div class="text-[11px] text-slate-400">Netzlaufwerke &amp; Freigaben</div>
-              </div>
-            </button>
           </div>
 
-          <!-- Pfad-Eingabe & Favorit-Button -->
-          <div class="flex flex-col md:flex-row gap-2 pt-1 items-center">
-            <div class="relative flex-1 w-full">
-              <input 
-                type="text" 
-                id="target-directory" 
-                value="Dieser PC (Alle lokalen Laufwerke: C:\, D:\)" 
-                placeholder="Suchverzeichnis (z.B. C:\Users\01\Documents\, D:\01\Documents\...)"
-                class="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-slate-100 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                onkeydown="if(event.key === 'Enter') { event.preventDefault(); executeSearch(); }"
+          <!-- Zeile 3: Dateigröße -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="w-[112px] shrink-0 font-bold text-slate-300 cursor-default">Dateigröße:</span>
+            <div class="fluent-date-box w-[180px]">
+              <span class="fluent-inline-prefix">Ab</span>
+              <input
+                type="text"
+                id="filter-min-size"
+                placeholder="z. B. 500 KB"
+                oninput="onMinSizeInput()"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
+                class="fluent-date-text"
               >
             </div>
-            
-            <div class="flex items-center gap-2 shrink-0">
-              <!-- Button: Pfad als Favorit speichern -->
-              <button 
-                type="button" 
-                onclick="openSavePathModal()" 
-                class="px-3.5 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-                title="Diesen Pfad als eigenen Schnell-Button dauerhaft speichern"
-              >
-                <i class="fa-solid fa-star text-amber-400"></i>
-                <span>Pfad speichern</span>
-              </button>
-
-              <!-- Button: Netzwerk-Freigabe hinzufügen -->
-              <button 
-                type="button" 
-                id="btn-add-network"
-                onclick="openAddNetworkModal()" 
-                class="px-3.5 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-                title="Netzwerkpfad hinzufügen (z.B. \\NAS\Freigabe oder Z:\)"
-              >
-                <i class="fa-solid fa-network-wired text-emerald-400"></i>
-                <span>Netzwerk-Pfad +</span>
-              </button>
-
-              <!-- Brücke: Ordner an 7-Ordner-Pro übergeben -->
-              <button
-                type="button"
-                id="btn-handoff-folder-seven"
-                onclick="sendFolderToSevenFolder()"
-                class="px-3.5 py-2.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-                title="Aktuellen Ordner in 7-Ordner-Pro sortieren (startet 7-Ordner-Pro automatisch)"
-              >
-                <i class="fa-solid fa-folder-tree text-teal-400"></i>
-                <span>In 7-Ordner-Pro sortieren</span>
-              </button>
-
-              <!-- Toggle Erweiterte Filter -->
-              <button type="button" onclick="toggleAdvancedFilters()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 transition">
-                <i class="fa-solid fa-sliders"></i>
-                <span>Filter</span>
-                <i id="adv-chevron" class="fa-solid fa-chevron-down text-[10px] transition-transform"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Schnell-Speicherort Buttons & Gespeicherte Pfade -->
-          <div class="space-y-1.5 pt-1">
-            <div class="flex flex-wrap items-center gap-1.5" id="location-shortcuts">
-              <!-- Dynamisch via renderLocationShortcuts() -->
-            </div>
-          </div>
-
-          <!-- Fluent Schnellfilter-Raster (Zeitraum, Änderungsdatum Von/Bis, Dateigröße) -->
-          <div id="fluent-quick-filters" class="pt-3 border-t border-slate-800/70 space-y-2 text-xs">
-            <!-- Zeile 1: Zeitraum -->
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="w-[104px] shrink-0 font-bold text-slate-300">Zeitraum:</span>
-              <button type="button" data-zeitraum="today" onclick="setQuickTimeframe('today')" class="fluent-pill-btn">Heute</button>
-              <button type="button" data-zeitraum="week" onclick="setQuickTimeframe('week')" class="fluent-pill-btn">Diese Woche</button>
-              <button type="button" data-zeitraum="month" onclick="setQuickTimeframe('month')" class="fluent-pill-btn">Dieser Monat</button>
-              <button type="button" data-zeitraum="year" onclick="setQuickTimeframe('year')" class="fluent-pill-btn">Dieses Jahr</button>
-            </div>
-
-            <!-- Zeile 2: Änderungsdatum (Von/Bis + Filter leeren) -->
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="w-[104px] shrink-0 font-bold text-slate-300">Änderungsdatum:</span>
-
-              <!-- Von Datum -->
-              <div class="fluent-date-box w-[180px]">
-                <span class="fluent-inline-prefix">Von</span>
-                <input
-                  type="text"
-                  id="filter-date-from"
-                  placeholder="TT.MM.JJJJ"
-                  maxlength="10"
-                  oninput="onDateTextChanged()"
-                  onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
-                  class="fluent-date-text"
-                >
-                <input type="date" id="native-date-from" class="sr-only" tabindex="-1" onchange="syncFromNativeDate('from', this.value)">
-                <button type="button" onclick="openNativeDatePicker('from')" class="fluent-cal-btn" title="Datumsauswahl anzeigen">
-                  <i class="fa-regular fa-calendar"></i>
-                </button>
-              </div>
-
-              <!-- Bis Datum -->
-              <div class="fluent-date-box w-[180px]">
-                <span class="fluent-inline-prefix">Bis</span>
-                <input
-                  type="text"
-                  id="filter-date-to"
-                  placeholder="TT.MM.JJJJ"
-                  maxlength="10"
-                  oninput="onDateTextChanged()"
-                  onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
-                  class="fluent-date-text"
-                >
-                <input type="date" id="native-date-to" class="sr-only" tabindex="-1" onchange="syncFromNativeDate('to', this.value)">
-                <button type="button" onclick="openNativeDatePicker('to')" class="fluent-cal-btn" title="Datumsauswahl anzeigen">
-                  <i class="fa-regular fa-calendar"></i>
-                </button>
-              </div>
-
-              <button type="button" onclick="clearAllQuickFilters()" class="fluent-pill-btn" title="Alle Datums-, Größen- und Zusatzfilter zurücksetzen">
-                Filter leeren
-              </button>
-            </div>
-
-            <!-- Zeile 3: Dateigröße -->
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="w-[104px] shrink-0 font-bold text-slate-300">Dateigröße:</span>
-              <div class="fluent-date-box w-[180px]">
-                <span class="fluent-inline-prefix">Ab</span>
-                <input
-                  type="text"
-                  id="filter-min-size"
-                  placeholder="z. B. 500 KB"
-                  oninput="onMinSizeInput()"
-                  onkeydown="if(event.key==='Enter'){event.preventDefault(); executeSearch();}"
-                  class="fluent-date-text"
-                >
-              </div>
-              <button type="button" data-size-preset="100 KB" onclick="toggleMinSizePreset('100 KB')" class="fluent-pill-btn">&gt; 100 KB</button>
-              <button type="button" data-size-preset="500 KB" onclick="toggleMinSizePreset('500 KB')" class="fluent-pill-btn">&gt; 500 KB</button>
-              <button type="button" data-size-preset="1 MB" onclick="toggleMinSizePreset('1 MB')" class="fluent-pill-btn">&gt; 1 MB</button>
-            </div>
+            <button type="button" data-size-preset="100 KB" onclick="toggleMinSizePreset('100 KB')" class="fluent-pill-btn ui-action-btn">&gt; 100 KB</button>
+            <button type="button" data-size-preset="500 KB" onclick="toggleMinSizePreset('500 KB')" class="fluent-pill-btn ui-action-btn">&gt; 500 KB</button>
+            <button type="button" data-size-preset="1 MB" onclick="toggleMinSizePreset('1 MB')" class="fluent-pill-btn ui-action-btn">&gt; 1 MB</button>
           </div>
         </div>
 
         <!-- Ausklappbare Zusätzliche Filter (Eigene Endungen, Max Größe) -->
-        <div id="advanced-filters" class="hidden pt-4 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div id="advanced-filters" class="hidden pt-3 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <!-- Eigene Dateiendungen -->
           <div class="space-y-1.5">
             <label class="text-slate-400 font-medium">Benutzerdefinierte Endungen (Kommagetrennt):</label>
@@ -475,18 +501,18 @@
 
       <!-- Ergebnis-Toolbar & Massen-Aktionen (Sticky angedockt unter dem Haupt-Header: Bild 2) -->
       <div id="results-toolbar" class="hidden sticky top-[64px] z-30 flex flex-wrap items-center justify-between gap-2.5 bg-slate-900/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-slate-800 shadow-xl transition-all">
-        <!-- Result Stats -->
-        <div class="flex items-center space-x-2.5 text-xs text-slate-300 whitespace-nowrap shrink-0">
-          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30 whitespace-nowrap">
-            <i class="fa-solid fa-list-check mr-0.5"></i>
+        <!-- Result Stats (Reine Anzeige – deutlich als Info-Feld und nicht als Button gestaltet) -->
+        <div class="ui-status-readout flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-slate-300 whitespace-nowrap shrink-0 select-none cursor-default" title="Ergebnis-Anzeige (nur Information)">
+          <span class="inline-flex items-center gap-1.5 font-bold text-slate-100 whitespace-nowrap">
+            <i class="fa-solid fa-circle-info text-slate-400 text-[11px]"></i>
             <span id="stat-count">0</span>
             <span>Treffer</span>
           </span>
-          <span class="text-slate-400">&bull;</span>
-          <span id="stat-size" class="font-medium text-slate-200 whitespace-nowrap">0 MB</span>
-          <span class="text-slate-400">&bull;</span>
+          <span class="ui-readout-sep text-slate-500">|</span>
+          <span id="stat-size" class="font-medium text-slate-300 whitespace-nowrap">0 MB</span>
+          <span class="ui-readout-sep text-slate-500">|</span>
           <span id="stat-time" class="text-slate-400 whitespace-nowrap">0.00s</span>
-          <span class="text-slate-400">&bull;</span>
+          <span class="ui-readout-sep text-slate-500">|</span>
           <span id="selected-counter" class="text-indigo-400 font-semibold whitespace-nowrap">0 ausgewählt</span>
         </div>
 
@@ -496,7 +522,7 @@
           <button
             id="btn-choose-target-folder"
             onclick="openTargetFolderModal()"
-            class="px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold transition flex items-center gap-1.5"
+            class="ui-action-btn px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold transition flex items-center gap-1.5"
             title="Speicher-Ordner für ausgewählte Dateien wählen (kopieren, verschieben oder Zielordner ändern)"
           >
             <i class="fa-solid fa-folder-plus text-blue-400"></i>
@@ -508,7 +534,7 @@
           <button
             id="btn-handoff-seven-folder"
             onclick="sendToSevenFolder()"
-            class="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium transition flex items-center gap-1.5"
+            class="ui-action-btn px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-medium transition flex items-center gap-1.5"
             title="Markierte Dateien (oder Treffer) direkt in 7-Ordner-Pro sortieren — startet die App automatisch"
           >
             <i class="fa-solid fa-folder-tree text-emerald-400"></i>
@@ -517,19 +543,19 @@
           </button>
 
           <!-- Massen-Aktion: Ausgewählte Dateien in den Papierkorb löschen -->
-          <button id="btn-delete-selected" onclick="deleteSelectedFiles()" class="hidden px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95" title="Alle ausgewählten Dateien sicher in den Windows-Papierkorb verschieben">
+          <button id="btn-delete-selected" onclick="deleteSelectedFiles()" class="ui-action-btn hidden px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95" title="Alle ausgewählten Dateien sicher in den Windows-Papierkorb verschieben">
             <i class="fa-solid fa-trash-can text-rose-400"></i>
             <span>Ausgewählte löschen (<span id="delete-selected-count">0</span>)</span>
           </button>
 
           <!-- Massen-Aktion: Umbenennen -->
-          <button onclick="openBatchRenameWithSelected()" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition flex items-center gap-1.5">
+          <button onclick="openBatchRenameWithSelected()" class="ui-action-btn px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-medium transition flex items-center gap-1.5">
             <i class="fa-solid fa-pen-to-square"></i>
             <span>Massen-Umbenennung</span>
           </button>
           
           <!-- Massen-Aktion: Duplikate analysieren -->
-          <button onclick="analyzeDuplicatesFromSearch()" class="px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-medium transition flex items-center gap-1.5">
+          <button onclick="analyzeDuplicatesFromSearch()" class="ui-action-btn px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-medium transition flex items-center gap-1.5">
             <i class="fa-solid fa-clone"></i>
             <span>Doppel-Eliminierung</span>
           </button>
@@ -538,7 +564,7 @@
           <button
             id="btn-reset-columns"
             onclick="resetColumnLayout()"
-            class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+            class="ui-action-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
             title="Spaltenreihenfolge &amp; Spaltenbreiten auf Standard zurücksetzen"
           >
             <i class="fa-solid fa-rotate-left"></i>
@@ -549,7 +575,7 @@
           <button
             id="btn-toggle-preview"
             onclick="togglePreviewPane()"
-            class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+            class="ui-action-btn px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
             title="Rechte Dateivorschau ein- oder ausblenden"
           >
             <i class="fa-regular fa-eye"></i>
