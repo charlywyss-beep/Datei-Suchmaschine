@@ -862,7 +862,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.8</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.9</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -1168,6 +1168,32 @@
     let savedLastHandle = null;
     let savedFoldersList = []; // [{ id, name, handle }]
 
+    const GERMAN_WIN_FOLDER_NAMES = {
+      public: 'Öffentlich',
+      documents: 'Dokumente',
+      pictures: 'Bilder',
+      music: 'Musik',
+      users: 'Benutzer',
+      favorites: 'Favoriten',
+      contacts: 'Kontakte',
+      links: 'Links',
+    };
+
+    function toGermanFolderLabel(name) {
+      const s = (name || '').trim();
+      if (!s) return '';
+      const mapped = GERMAN_WIN_FOLDER_NAMES[s.toLowerCase()];
+      return mapped || s;
+    }
+
+    function toGermanDisplayPath(pathStr) {
+      if (!pathStr) return '';
+      return String(pathStr)
+        .split('\\')
+        .map((seg, idx) => (idx === 0 && seg.endsWith(':')) ? seg : toGermanFolderLabel(seg))
+        .join('\\');
+    }
+
     function openHandleDb() {
       return new Promise((resolve, reject) => {
         if (!window.indexedDB) { resolve(null); return; }
@@ -1229,7 +1255,7 @@
         btnOpen.className = 'saved-folder-btn';
         let savedPref = '';
         try { savedPref = localStorage.getItem(getBasePathStorageKey(entry.name)) || ''; } catch (_) {}
-        const labelTxt = savedPref || entry.name;
+        const labelTxt = savedPref ? toGermanDisplayPath(savedPref) : toGermanFolderLabel(entry.name);
         btnOpen.title = `Gespeicherten Ordner öffnen: ${labelTxt}`;
         btnOpen.textContent = `📂 ${labelTxt}`;
         btnOpen.onclick = () => openSavedFolderById(entry.id);
@@ -1328,7 +1354,7 @@
       }
       state.rootHandle = handle;
       const rawName = (handle.name || '').trim();
-      state.rootName = (!rawName || rawName === '\\' || rawName === '/') ? 'Gewähltes Laufwerk' : rawName;
+      state.rootName = (!rawName || rawName === '\\' || rawName === '/') ? 'Gewähltes Laufwerk' : toGermanFolderLabel(rawName);
       state.canWrite = canWrite;
       document.getElementById('btn-reopen-last').classList.add('hidden');
       document.getElementById('btn-rescan').classList.remove('hidden');
@@ -1673,7 +1699,7 @@
     function formatRootDisplayPath() {
       const pref = (state.basePathPrefix || '').replace(/[\\/]+$/, '');
       if (pref) return pref;
-      return state.rootName || '';
+      return toGermanFolderLabel(state.rootName || '');
     }
 
     function formatFullFolderPath(subDir) {
@@ -1832,8 +1858,9 @@
 
         const tdDir = document.createElement('td');
         tdDir.className = 'col-dir';
-        tdDir.title = item.dir;
-        tdDir.textContent = item.dir;
+        const dispDir = item.dir === '(Hauptordner)' ? item.dir : toGermanDisplayPath(item.dir);
+        tdDir.title = dispDir;
+        tdDir.textContent = dispDir;
 
         const tdSize = document.createElement('td');
         tdSize.className = 'col-size';
