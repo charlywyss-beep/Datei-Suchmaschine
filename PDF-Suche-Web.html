@@ -680,7 +680,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.2</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.3</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -845,7 +845,6 @@
           <div id="preview-title" class="preview-title">PDF-Vorschau</div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
             <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActivePdfPath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad</button>
-            <button id="btn-preview-dl" type="button" class="btn" disabled onclick="downloadActivePdf()" title="Kopie herunterladen (z. B. zum Öffnen in System-App)">⬇ Öffnen/Laden</button>
             <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActivePdfInNewTab()">↗ Neuer Tab</button>
             <button id="btn-preview-rename" type="button" class="btn" disabled onclick="openSingleRenameForActive()">✏️ Umbenennen</button>
           </div>
@@ -1545,7 +1544,6 @@
       }
       document.getElementById('preview-title').textContent = 'PDF-Vorschau';
       document.getElementById('btn-preview-copy').disabled = true;
-      document.getElementById('btn-preview-dl').disabled = true;
       document.getElementById('btn-preview-tab').disabled = true;
       document.getElementById('btn-preview-rename').disabled = true;
       document.getElementById('preview-body').innerHTML = '<div class="empty-box"><div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div></div>';
@@ -1562,7 +1560,6 @@
         state.activeBlobUrl = blobUrl;
         document.getElementById('preview-title').textContent = item.name;
         document.getElementById('btn-preview-copy').disabled = false;
-        document.getElementById('btn-preview-dl').disabled = false;
         document.getElementById('btn-preview-tab').disabled = false;
         document.getElementById('btn-preview-rename').disabled = !state.canWrite;
         document.getElementById('preview-body').innerHTML = `<iframe src="${blobUrl}" title="${item.name.replace(/"/g, '&quot;')}"></iframe>`;
@@ -1590,25 +1587,6 @@
     function copyActivePdfPath() {
       const item = state.allPdfs.find(x => x.id === state.activeId);
       if (item) copyPdfPath(item);
-    }
-
-    async function downloadActivePdf() {
-      const item = state.allPdfs.find(x => x.id === state.activeId);
-      if (!item) return;
-      try {
-        const file = await getFileObject(item);
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = item.name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-        toast(`„${item.name}“ geladen – kann über die Browser-Downloadleiste direkt in der System-App geöffnet werden.`, 'ok');
-      } catch (err) {
-        toast(`Download fehlgeschlagen: ${err.message}`, 'err');
-      }
     }
 
     async function openPdfInNewTab(item) {
