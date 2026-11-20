@@ -806,6 +806,20 @@ function setCategoryFilter(category, btnElement) {
   executeSearch();
 }
 
+let _activeSearchController = null;
+let _activeSearchSeq = 0;
+
+function cancelActiveSearch() {
+  _activeSearchSeq += 1;
+  if (_activeSearchController) {
+    try { _activeSearchController.abort(); } catch (_) {}
+    _activeSearchController = null;
+  }
+  const spinner = document.getElementById('search-spinner');
+  if (spinner) spinner.classList.add('hidden');
+  fetch('/api/search/cancel', { method: 'POST' }).catch(() => {});
+}
+
 function setLocation(path, isOneDrive) {
   const dirInput = document.getElementById('target-directory');
   if (dirInput) {
@@ -824,8 +838,23 @@ function setLocation(path, isOneDrive) {
     setSearchScope('folder');
   }
 
-  showToast(`Verzeichnis gewählt: ${path}`, 'info');
-  executeSearch();
+  const hasActiveCriteria = Boolean(
+    (document.getElementById('search-query')?.value.trim() || '') ||
+    (state.currentCategory && state.currentCategory !== 'all') ||
+    (document.getElementById('custom-extensions')?.value.trim() || '') ||
+    (document.getElementById('filter-min-size')?.value.trim() || '') ||
+    (document.getElementById('max-size-input')?.value.trim() || '') ||
+    (document.getElementById('filter-date-from')?.value.trim() || '') ||
+    (document.getElementById('filter-date-to')?.value.trim() || '')
+  );
+
+  if (hasActiveCriteria) {
+    showToast(`Verzeichnis gewählt: ${path}`, 'info');
+    executeSearch();
+  } else {
+    cancelActiveSearch();
+    showToast(`Suchbereich gewählt: ${path}`, 'info');
+  }
 }
 
 function onOneDriveToggleChange() {
@@ -864,6 +893,14 @@ async function executeSearch() {
     return;
   }
 
+  // Eventuell noch laufende vorherige Suche sofort abbrechen
+  if (_activeSearchController) {
+    try { _activeSearchController.abort(); } catch (_) {}
+  }
+  const controller = new AbortController();
+  _activeSearchController = controller;
+  const mySeq = ++_activeSearchSeq;
+
   // UI Vorbereiten (Loading)
   document.getElementById('search-spinner').classList.remove('hidden');
   document.getElementById('empty-state').classList.add('hidden');
@@ -879,6 +916,7 @@ async function executeSearch() {
     const response = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         directory: directory,
         query: query,
@@ -894,6 +932,9 @@ async function executeSearch() {
     });
 
     const data = await response.json();
+    if (mySeq !== _activeSearchSeq || data.cancelled) {
+      return;
+    }
     state.lastSearchedCategory = state.currentCategory || 'all';
     if (data.search_history) state.searchHistory = data.search_history;
     if (data.saved_searches) state.savedSearches = data.saved_searches;
@@ -920,10 +961,21 @@ async function executeSearch() {
       renderResults();
     }
   } catch (err) {
+    if (err && err.name === 'AbortError') {
+      return;
+    }
+    if (mySeq !== _activeSearchSeq) {
+      return;
+    }
     showToast(`Fehler bei der Suche: ${err.message}`, 'error');
     document.getElementById('empty-state').classList.remove('hidden');
   } finally {
-    document.getElementById('search-spinner').classList.add('hidden');
+    if (mySeq === _activeSearchSeq) {
+      if (_activeSearchController === controller) {
+        _activeSearchController = null;
+      }
+      document.getElementById('search-spinner').classList.add('hidden');
+    }
   }
 }
 

@@ -267,8 +267,28 @@ def upload_file_route():
     res = file_service.save_uploaded_file(uploaded_file, target_dir)
     return jsonify(res)
 
+_search_cancel_lock = threading.Lock()
+_active_search_stop_event = None
+
+
+@app.route("/api/search/cancel", methods=["POST"])
+def cancel_search():
+    global _active_search_stop_event
+    with _search_cancel_lock:
+        if _active_search_stop_event is not None:
+            _active_search_stop_event.set()
+    return jsonify({"cancelled": True})
+
+
 @app.route("/api/search", methods=["POST"])
 def search():
+    global _active_search_stop_event
+    my_stop_event = threading.Event()
+    with _search_cancel_lock:
+        if _active_search_stop_event is not None:
+            _active_search_stop_event.set()
+        _active_search_stop_event = my_stop_event
+
     data = request.get_json() or {}
     directory = data.get("directory", "THIS_PC")
     query = data.get("query", "")
@@ -307,8 +327,11 @@ def search():
         modified_after_ts=mod_after_ts,
         modified_before_ts=mod_before_ts,
         only_onedrive=only_onedrive,
-        max_results=max_results
+        max_results=max_results,
+        stop_event=my_stop_event,
     )
+    if my_stop_event.is_set():
+        return jsonify({"cancelled": True, "count": 0, "results": []})
     elapsed = round(time.time() - start_t, 3)
 
     total_bytes = sum(f["size"] for f in results)
