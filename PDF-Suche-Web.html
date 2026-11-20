@@ -456,7 +456,7 @@
     .col-dir { width: 32%; color: var(--text-muted); }
     .col-size { width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
     .col-date { width: 136px; text-align: center; font-variant-numeric: tabular-nums; color: var(--text-sec); }
-    .col-act { width: 92px; text-align: right; }
+    .col-act { width: 122px; text-align: right; }
 
     .icon-btn {
       width: 28px;
@@ -680,7 +680,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.1</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.2</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -707,6 +707,10 @@
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
           </svg>
           <span>Ordner wählen…</span>
+        </button>
+
+        <button id="btn-reopen-last" type="button" class="btn btn-soft btn-lg hidden" onclick="reopenLastDirectory()" title="Zuletzt gewählten Ordner mit einem Klick wieder öffnen">
+          <span>↺ Letzten Ordner öffnen</span>
         </button>
 
         <button id="btn-rescan" type="button" class="btn btn-soft btn-lg hidden" onclick="rescanCurrentFolder()" title="Ordner erneut einlesen, falls zwischenzeitlich neue PDFs dazugekommen sind (für die Suche nicht nötig)">
@@ -839,7 +843,9 @@
       <aside id="preview-card" class="preview-card">
         <div class="preview-head">
           <div id="preview-title" class="preview-title">PDF-Vorschau</div>
-          <div style="display:flex; gap:6px; shrink:0;">
+          <div style="display:flex; gap:6px; flex-shrink:0;">
+            <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActivePdfPath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad</button>
+            <button id="btn-preview-dl" type="button" class="btn" disabled onclick="downloadActivePdf()" title="Kopie herunterladen (z. B. zum Öffnen in System-App)">⬇ Öffnen/Laden</button>
             <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActivePdfInNewTab()">↗ Neuer Tab</button>
             <button id="btn-preview-rename" type="button" class="btn" disabled onclick="openSingleRenameForActive()">✏️ Umbenennen</button>
           </div>
@@ -944,6 +950,128 @@
     };
 
     const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information', 'node_modules', '.git', '__pycache__']);
+    const IDB_NAME = 'pdf_suche_pro_web_v1';
+    const IDB_STORE = 'handles';
+    let savedLastHandle = null;
+
+    function openHandleDb() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) { resolve(null); return; }
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveLastDirectoryHandle(handle, displayName) {
+      try {
+        const db = await openHandleDb();
+        if (!db) return;
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put({ handle, name: displayName }, 'last_dir');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+        savedLastHandle = handle;
+        localStorage.setItem('pdf_suche_last_folder_name', displayName || '');
+      } catch (_) {}
+    }
+
+    async function loadLastDirectoryHandle() {
+      try {
+        const db = await openHandleDb();
+        if (!db) return null;
+        return await new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get('last_dir');
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        });
+      } catch (_) {
+        return null;
+      }
+    }
+
+    async function activateDirectoryHandle(handle, askPermission = true) {
+      let canWrite = true;
+      if (handle.queryPermission) {
+        let permW = await handle.queryPermission({ mode: 'readwrite' });
+        if (permW !== 'granted' && askPermission && handle.requestPermission) {
+          try {
+            permW = await handle.requestPermission({ mode: 'readwrite' });
+          } catch (_) {}
+        }
+        if (permW === 'granted') {
+          canWrite = true;
+        } else {
+          canWrite = false;
+          let permR = await handle.queryPermission({ mode: 'read' });
+          if (permR !== 'granted' && askPermission && handle.requestPermission) {
+            permR = await handle.requestPermission({ mode: 'read' });
+          }
+          if (permR !== 'granted') return false;
+        }
+      }
+      state.rootHandle = handle;
+      const rawName = (handle.name || '').trim();
+      state.rootName = (!rawName || rawName === '\\' || rawName === '/') ? 'Gewähltes Laufwerk' : rawName;
+      state.canWrite = canWrite;
+      document.getElementById('btn-reopen-last').classList.add('hidden');
+      document.getElementById('btn-rescan').classList.remove('hidden');
+      await saveLastDirectoryHandle(handle, state.rootName);
+      if (!canWrite) {
+        showModeNotice('ℹ️ Schreibfreigabe wurde nicht erteilt – PDFs können gesucht &amp; geöffnet werden, Umbenennen ist schreibgeschützt.');
+      } else {
+        showModeNotice('');
+      }
+      await scanDirectoryHandle(handle);
+      return true;
+    }
+
+    async function reopenLastDirectory() {
+      if (!savedLastHandle) {
+        await pickDirectory();
+        return;
+      }
+      try {
+        const ok = await activateDirectoryHandle(savedLastHandle, true);
+        if (!ok) toast('Ordner-Freigabe wurde abgebrochen.', 'err');
+      } catch (err) {
+        toast(`Letzter Ordner konnte nicht geöffnet werden: ${err.message}`, 'err');
+      }
+    }
+
+    async function initLastDirectoryOnStartup() {
+      if (!window.showDirectoryPicker || !window.isSecureContext) return;
+      const rec = await loadLastDirectoryHandle();
+      if (!rec || !rec.handle) return;
+      savedLastHandle = rec.handle;
+      const disp = rec.name || localStorage.getItem('pdf_suche_last_folder_name') || 'Letzter Ordner';
+      // 1) Falls Browser-Berechtigung noch aktiv ist, direkt automatisch einlesen!
+      try {
+        const permW = await savedLastHandle.queryPermission({ mode: 'readwrite' });
+        const permR = permW === 'granted' ? 'granted' : await savedLastHandle.queryPermission({ mode: 'read' });
+        if (permR === 'granted') {
+          await activateDirectoryHandle(savedLastHandle, false);
+          return;
+        }
+      } catch (_) {}
+      // 2) Sonst 1-Klick-Button anzeigen (Browser verlangt nach Neustart 1 Benutzer-Klick)
+      const btn = document.getElementById('btn-reopen-last');
+      if (btn) {
+        btn.querySelector('span').textContent = `↺ Letzten Ordner öffnen (${disp})`;
+        btn.classList.remove('hidden');
+      }
+      const hint = document.getElementById('folder-hint');
+      if (hint) {
+        hint.textContent = `Letzter Ordner gemerkt: ${disp} – 1 Klick zum Öffnen`;
+      }
+    }
 
     function toast(msg, kind = 'info') {
       const box = document.getElementById('toast-box');
@@ -1004,24 +1132,7 @@
             handle = await window.showDirectoryPicker({ mode: 'read' });
             canWrite = false;
           }
-          if (canWrite && handle.queryPermission) {
-            const perm = await handle.queryPermission({ mode: 'readwrite' });
-            if (perm !== 'granted' && handle.requestPermission) {
-              const req = await handle.requestPermission({ mode: 'readwrite' });
-              canWrite = (req === 'granted');
-            }
-          }
-          state.rootHandle = handle;
-          const rawName = (handle.name || '').trim();
-          state.rootName = (!rawName || rawName === '\\' || rawName === '/') ? 'Gewähltes Laufwerk' : rawName;
-          state.canWrite = canWrite;
-          document.getElementById('btn-rescan').classList.remove('hidden');
-          if (!canWrite) {
-            showModeNotice('ℹ️ Schreibfreigabe wurde nicht erteilt – PDFs können gesucht &amp; geöffnet werden, Umbenennen ist schreibgeschützt.');
-          } else {
-            showModeNotice('');
-          }
-          await scanDirectoryHandle(handle);
+          await activateDirectoryHandle(handle, true);
           return;
         } catch (err) {
           if (err && err.name === 'AbortError') return;
@@ -1322,6 +1433,13 @@
         tdAct.className = 'col-act';
         tdAct.onclick = e => e.stopPropagation();
 
+        const btnCopy = document.createElement('button');
+        btnCopy.type = 'button';
+        btnCopy.className = 'icon-btn';
+        btnCopy.title = 'Ordnerpfad kopieren (für Windows Explorer: Strg+L, Strg+V)';
+        btnCopy.textContent = '📋';
+        btnCopy.onclick = () => copyPdfPath(item);
+
         const btnOpen = document.createElement('button');
         btnOpen.type = 'button';
         btnOpen.className = 'icon-btn';
@@ -1337,6 +1455,7 @@
         btnRen.textContent = '✏️';
         btnRen.onclick = () => openSingleRenameModal(item);
 
+        tdAct.appendChild(btnCopy);
         tdAct.appendChild(btnOpen);
         tdAct.appendChild(btnRen);
 
@@ -1425,6 +1544,8 @@
         state.activeBlobUrl = null;
       }
       document.getElementById('preview-title').textContent = 'PDF-Vorschau';
+      document.getElementById('btn-preview-copy').disabled = true;
+      document.getElementById('btn-preview-dl').disabled = true;
       document.getElementById('btn-preview-tab').disabled = true;
       document.getElementById('btn-preview-rename').disabled = true;
       document.getElementById('preview-body').innerHTML = '<div class="empty-box"><div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div></div>';
@@ -1440,11 +1561,53 @@
         const blobUrl = URL.createObjectURL(file);
         state.activeBlobUrl = blobUrl;
         document.getElementById('preview-title').textContent = item.name;
+        document.getElementById('btn-preview-copy').disabled = false;
+        document.getElementById('btn-preview-dl').disabled = false;
         document.getElementById('btn-preview-tab').disabled = false;
         document.getElementById('btn-preview-rename').disabled = !state.canWrite;
         document.getElementById('preview-body').innerHTML = `<iframe src="${blobUrl}" title="${item.name.replace(/"/g, '&quot;')}"></iframe>`;
       } catch (err) {
         toast(`PDF konnte nicht geladen werden: ${err.message}`, 'err');
+      }
+    }
+
+    async function copyPdfPath(item) {
+      const folderPart = (item.dir && item.dir !== '(Hauptordner)') ? item.dir : (state.rootName || item.name);
+      try {
+        await navigator.clipboard.writeText(folderPart);
+        toast(`Pfad kopiert: ${folderPart}`, 'ok');
+      } catch (_) {
+        const ta = document.createElement('textarea');
+        ta.value = folderPart;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+        toast(`Pfad kopiert: ${folderPart}`, 'ok');
+      }
+    }
+
+    function copyActivePdfPath() {
+      const item = state.allPdfs.find(x => x.id === state.activeId);
+      if (item) copyPdfPath(item);
+    }
+
+    async function downloadActivePdf() {
+      const item = state.allPdfs.find(x => x.id === state.activeId);
+      if (!item) return;
+      try {
+        const file = await getFileObject(item);
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = item.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        toast(`„${item.name}“ geladen – kann über die Browser-Downloadleiste direkt in der System-App geöffnet werden.`, 'ok');
+      } catch (err) {
+        toast(`Download fehlgeschlagen: ${err.message}`, 'err');
       }
     }
 
@@ -1624,6 +1787,10 @@
     function closeModal(id) {
       document.getElementById(id).classList.add('hidden');
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initLastDirectoryOnStartup();
+    });
   </script>
 </body>
 </html>
