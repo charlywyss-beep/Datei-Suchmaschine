@@ -595,6 +595,27 @@
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
     }
+    .basepath-input {
+      height: 30px;
+      width: 240px;
+      padding: 0 9px;
+      border-radius: 7px;
+      border: 1px solid var(--border-input);
+      background: #ffffff;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .basepath-input::placeholder {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .basepath-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+    }
     .preview-body {
       flex: 1;
       background: #f8fafc;
@@ -767,7 +788,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.5</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.6</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -829,6 +850,14 @@
       <div id="path-bar" class="path-bar hidden" style="margin-bottom: 8px;">
         <div class="path-breadcrumbs" id="path-breadcrumbs"></div>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <input
+            id="base-path-prefix"
+            type="text"
+            class="basepath-input"
+            placeholder="Optionaler Basis-Pfad (z. B. C:\Users\01\…)"
+            title="Browser verbirgt den Laufwerksbuchstaben – hier einmalig den Windows-Basis-Pfad eintragen (wird gespeichert), dann zeigt und kopiert die App den kompletten Pfad!"
+            oninput="onBasePathPrefixChanged(this.value)"
+          >
           <label for="subfolder-filter" style="font-size:12px; font-weight:700; color:#475569; cursor:default;">Unterordner:</label>
           <select id="subfolder-filter" class="subfolder-select" onchange="onSubfolderChanged(this.value)">
             <option value="">Alle Unterordner</option>
@@ -1046,6 +1075,7 @@
       timeframe: '',
       sizePreset: '',
       activeSubfolder: '',
+      basePathPrefix: '',
       scanning: false,
       cancelRequested: false,
       singleRenameId: null,
@@ -1429,7 +1459,46 @@
       applyFilters();
     }
 
+    function getBasePathStorageKey(rootName) {
+      return `pdf_suche_base_prefix::${(rootName || '').toLowerCase()}`;
+    }
+
+    function loadSavedBasePathPrefix(rootName) {
+      let val = '';
+      try { val = localStorage.getItem(getBasePathStorageKey(rootName)) || ''; } catch (_) {}
+      state.basePathPrefix = val.trim();
+      const inp = document.getElementById('base-path-prefix');
+      if (inp) inp.value = state.basePathPrefix;
+    }
+
+    function onBasePathPrefixChanged(val) {
+      state.basePathPrefix = (val || '').trim();
+      if (state.rootName) {
+        try { localStorage.setItem(getBasePathStorageKey(state.rootName), state.basePathPrefix); } catch (_) {}
+      }
+      updatePathBar();
+      const actItem = state.allPdfs.find(x => x.id === state.activeId);
+      const sp = document.getElementById('preview-subpath');
+      if (sp && actItem) {
+        sp.textContent = `📂 ${formatFullFolderPath(actItem.dir)}`;
+      }
+    }
+
+    function formatRootDisplayPath() {
+      const pref = (state.basePathPrefix || '').replace(/[\\/]+$/, '');
+      if (pref) return pref;
+      return state.rootName || '';
+    }
+
+    function formatFullFolderPath(subDir) {
+      const root = formatRootDisplayPath();
+      if (!subDir || subDir === '(Hauptordner)') return root;
+      if (!root) return subDir;
+      return `${root}\\${subDir}`;
+    }
+
     function rebuildSubfolderDropdown() {
+      loadSavedBasePathPrefix(state.rootName);
       const bar = document.getElementById('path-bar');
       const sel = document.getElementById('subfolder-filter');
       if (!bar || !sel) return;
@@ -1459,16 +1528,17 @@
       const bc = document.getElementById('path-breadcrumbs');
       if (!bc || !state.rootName) return;
       const actItem = state.allPdfs.find(x => x.id === state.activeId);
+      const rootDisp = formatRootDisplayPath();
       let html = `<span>📂 Aktueller Pfad:</span>`;
       if (state.activeSubfolder) {
-        html += `<button type="button" class="crumb-link" onclick="onSubfolderChanged('')" title="Zurück zu allen Unterordnern">${state.rootName}</button>`;
-        html += `<span style="color:#94a3b8;">›</span><span class="crumb-current">${state.activeSubfolder}</span>`;
+        html += `<button type="button" class="crumb-link" onclick="onSubfolderChanged('')" title="Zurück zu allen Unterordnern">${rootDisp}</button>`;
+        html += `<span style="color:#94a3b8;">\\</span><span class="crumb-current">${state.activeSubfolder}</span>`;
       } else {
-        html += `<span class="crumb-current">${state.rootName}</span>`;
+        html += `<span class="crumb-current">${rootDisp}</span>`;
       }
       if (actItem) {
-        const sub = (actItem.dir && actItem.dir !== '(Hauptordner)') ? `${actItem.dir}\\` : '';
-        html += `<span style="color:#cbd5e1; margin:0 4px;">|</span><span style="color:#475569;">Ausgewählt:</span> <span class="crumb-current" style="color:#1d4ed8;">${sub}${actItem.name}</span>`;
+        const fullDir = formatFullFolderPath(actItem.dir);
+        html += `<span style="color:#cbd5e1; margin:0 4px;">|</span><span style="color:#475569;">Ausgewählt:</span> <span class="crumb-current" style="color:#1d4ed8;">${fullDir}\\${actItem.name}</span>`;
       }
       bc.innerHTML = html;
     }
@@ -1723,7 +1793,7 @@
         state.activeBlobUrl = blobUrl;
         document.getElementById('preview-title').textContent = item.name;
         const sp = document.getElementById('preview-subpath');
-        if (sp) sp.textContent = `📂 ${state.rootName} › ${item.dir}`;
+        if (sp) sp.textContent = `📂 ${formatFullFolderPath(item.dir)}`;
         document.getElementById('btn-preview-copy').disabled = false;
         document.getElementById('btn-preview-tab').disabled = false;
         document.getElementById('btn-preview-rename').disabled = !state.canWrite;
@@ -1734,7 +1804,7 @@
     }
 
     async function copyPdfPath(item) {
-      const folderPart = (item.dir && item.dir !== '(Hauptordner)') ? item.dir : (state.rootName || item.name);
+      const folderPart = formatFullFolderPath(item.dir);
       try {
         await navigator.clipboard.writeText(folderPart);
         toast(`Pfad kopiert: ${folderPart}`, 'ok');
