@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PDF-Suche Pro (Web Standalone)</title>
+  <script src="./vendor/pdfjs/pdf.min.js"></script>
   <style>
     :root {
       --bg: #f1f5f9;
@@ -691,17 +692,50 @@
     }
     .preview-body {
       flex: 1;
-      background: #f8fafc;
+      background: #e2e8f0;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       position: relative;
+      overflow: auto;
+      padding: 10px;
     }
     .preview-body iframe {
       width: 100%;
       height: 100%;
       border: none;
       background: #ffffff;
+    }
+    .pdf-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--divider);
+      font-size: 12px;
+    }
+    .pdf-toolbar .btn {
+      height: 28px;
+      padding: 0 9px;
+      font-size: 12px;
+    }
+    .pdf-page-info {
+      font-weight: 700;
+      color: var(--text);
+      min-width: 78px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      cursor: default;
+    }
+    #pdf-render-canvas {
+      display: block;
+      margin: auto;
+      background: #ffffff;
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.18);
+      border-radius: 3px;
     }
     .empty-box {
       padding: 42px 24px;
@@ -861,7 +895,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.11</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.12</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -1060,6 +1094,18 @@
             <button id="btn-preview-max" type="button" class="btn" onclick="togglePreviewMaximize()" title="PDF-Vorschau bildschirmfüllend anzeigen (ideal für Querformat / Montagezeichnungen, Esc zum Schließen)">⛶ Vollbild</button>
           </div>
         </div>
+        <div id="pdf-toolbar" class="pdf-toolbar hidden">
+          <button type="button" class="btn" id="btn-pdf-prev" onclick="pdfStepPage(-1)" title="Vorherige Seite (←)">◀</button>
+          <span id="pdf-page-info" class="pdf-page-info">Seite 1 / 1</span>
+          <button type="button" class="btn" id="btn-pdf-next" onclick="pdfStepPage(1)" title="Nächste Seite (→)">▶</button>
+          <span style="color:#cbd5e1; margin:0 2px;">|</span>
+          <button type="button" class="btn" onclick="pdfChangeZoom(-0.2)" title="Verkleinern">−</button>
+          <span id="pdf-zoom-info" class="pdf-page-info" style="min-width:48px;">100%</span>
+          <button type="button" class="btn" onclick="pdfChangeZoom(0.2)" title="Vergrößern">+</button>
+          <button type="button" class="btn" id="btn-pdf-fit" onclick="pdfSetFitMode('fit')" title="Ganze Seite einpassen">Anpassen</button>
+          <button type="button" class="btn" id="btn-pdf-fitw" onclick="pdfSetFitMode('width')" title="Auf volle Breite anpassen">Breite</button>
+          <button type="button" class="btn" onclick="pdfRotate90()" title="Um 90° drehen (ideal für Montagezeichnungen)">↻ Drehen</button>
+        </div>
         <div id="preview-body" class="preview-body">
           <div class="empty-box">
             <div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div>
@@ -1159,6 +1205,12 @@
       scanning: false,
       cancelRequested: false,
       singleRenameId: null,
+      pdfDoc: null,
+      pdfPageNum: 1,
+      pdfFitMode: 'fit', // 'fit' | 'width' | 'manual'
+      pdfScale: 1.0,
+      pdfRotation: 0,
+      pdfLoadSeq: 0,
     };
 
     const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information', 'node_modules', '.git', '__pycache__']);
@@ -1979,6 +2031,11 @@
 
     function clearActivePreview() {
       state.activeId = null;
+      state.pdfLoadSeq += 1;
+      if (state.pdfDoc) {
+        try { state.pdfDoc.destroy(); } catch (_) {}
+        state.pdfDoc = null;
+      }
       if (state.activeBlobUrl) {
         URL.revokeObjectURL(state.activeBlobUrl);
         state.activeBlobUrl = null;
@@ -1986,24 +2043,98 @@
       document.getElementById('preview-title').textContent = 'PDF-Vorschau';
       const sp = document.getElementById('preview-subpath');
       if (sp) sp.textContent = 'Kein PDF ausgewählt';
+      const tb = document.getElementById('pdf-toolbar');
+      if (tb) tb.classList.add('hidden');
       document.getElementById('btn-preview-copy').disabled = true;
       document.getElementById('btn-preview-tab').disabled = true;
       document.getElementById('btn-preview-dl').disabled = true;
       document.getElementById('btn-preview-rename').disabled = true;
-      document.getElementById('preview-body').innerHTML = '<div class="empty-box"><div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div></div>';
+      document.getElementById('preview-body').innerHTML = '<div class="empty-box" style="margin:auto;"><div>Klicke links auf eine PDF-Zeile, um sie hier direkt anzuzeigen.</div></div>';
       updatePathBar();
+    }
+
+    async function renderCurrentPdfPage() {
+      if (!state.pdfDoc) return;
+      const body = document.getElementById('preview-body');
+      let canvas = document.getElementById('pdf-render-canvas');
+      if (!canvas) {
+        body.innerHTML = '<canvas id="pdf-render-canvas"></canvas>';
+        canvas = document.getElementById('pdf-render-canvas');
+      }
+      const seq = state.pdfLoadSeq;
+      try {
+        const page = await state.pdfDoc.getPage(state.pdfPageNum);
+        if (seq !== state.pdfLoadSeq) return;
+        const baseVp = page.getViewport({ scale: 1, rotation: state.pdfRotation });
+        const availW = Math.max(220, body.clientWidth - 24);
+        const availH = Math.max(220, body.clientHeight - 24);
+
+        let scale = state.pdfScale;
+        if (state.pdfFitMode === 'fit') {
+          scale = Math.min(availW / baseVp.width, availH / baseVp.height);
+        } else if (state.pdfFitMode === 'width') {
+          scale = availW / baseVp.width;
+        }
+        scale = Math.max(0.2, Math.min(4.0, scale));
+        state.pdfScale = scale;
+
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const vp = page.getViewport({ scale: scale * dpr, rotation: state.pdfRotation });
+        canvas.width = Math.floor(vp.width);
+        canvas.height = Math.floor(vp.height);
+        canvas.style.width = `${Math.floor(vp.width / dpr)}px`;
+        canvas.style.height = `${Math.floor(vp.height / dpr)}px`;
+
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+
+        document.getElementById('pdf-page-info').textContent = `Seite ${state.pdfPageNum} / ${state.pdfDoc.numPages}`;
+        document.getElementById('pdf-zoom-info').textContent = `${Math.round(scale * 100)}%`;
+        document.getElementById('btn-pdf-prev').disabled = state.pdfPageNum <= 1;
+        document.getElementById('btn-pdf-next').disabled = state.pdfPageNum >= state.pdfDoc.numPages;
+        document.getElementById('btn-pdf-fit').classList.toggle('btn-active', state.pdfFitMode === 'fit');
+        document.getElementById('btn-pdf-fitw').classList.toggle('btn-active', state.pdfFitMode === 'width');
+      } catch (err) {
+        toast(`PDF-Seite konnte nicht gerendert werden: ${err.message}`, 'err');
+      }
+    }
+
+    function pdfStepPage(delta) {
+      if (!state.pdfDoc) return;
+      const next = state.pdfPageNum + delta;
+      if (next >= 1 && next <= state.pdfDoc.numPages) {
+        state.pdfPageNum = next;
+        renderCurrentPdfPage();
+      }
+    }
+
+    function pdfChangeZoom(delta) {
+      if (!state.pdfDoc) return;
+      state.pdfFitMode = 'manual';
+      state.pdfScale = Math.max(0.25, Math.min(4.0, (state.pdfScale || 1) + delta));
+      renderCurrentPdfPage();
+    }
+
+    function pdfSetFitMode(mode) {
+      state.pdfFitMode = mode;
+      renderCurrentPdfPage();
+    }
+
+    function pdfRotate90() {
+      if (!state.pdfDoc) return;
+      state.pdfRotation = (state.pdfRotation + 90) % 360;
+      renderCurrentPdfPage();
     }
 
     async function showPdfPreview(item) {
       state.activeId = item.id;
+      const mySeq = ++state.pdfLoadSeq;
       updatePathBar();
       renderTable();
       if (!state.previewVisible) return;
       try {
         const file = await getFileObject(item);
-        if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
-        const blobUrl = URL.createObjectURL(file);
-        state.activeBlobUrl = blobUrl;
+        if (mySeq !== state.pdfLoadSeq) return;
         document.getElementById('preview-title').textContent = item.name;
         const sp = document.getElementById('preview-subpath');
         if (sp) sp.textContent = `📂 ${formatFullFolderPath(item.dir)}`;
@@ -2011,7 +2142,31 @@
         document.getElementById('btn-preview-tab').disabled = false;
         document.getElementById('btn-preview-dl').disabled = false;
         document.getElementById('btn-preview-rename').disabled = !state.canWrite;
-        document.getElementById('preview-body').innerHTML = `<iframe src="${blobUrl}#navpanes=0&view=Fit" title="${item.name.replace(/"/g, '&quot;')}"></iframe>`;
+
+        if (window.pdfjsLib) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.js';
+          if (state.pdfDoc) {
+            try { state.pdfDoc.destroy(); } catch (_) {}
+            state.pdfDoc = null;
+          }
+          document.getElementById('preview-body').innerHTML = '<div class="empty-box" style="margin:auto;"><div>Lade PDF…</div></div>';
+          const buf = await file.arrayBuffer();
+          if (mySeq !== state.pdfLoadSeq) return;
+          const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+          if (mySeq !== state.pdfLoadSeq) { try { doc.destroy(); } catch (_) {} return; }
+          state.pdfDoc = doc;
+          state.pdfPageNum = 1;
+          state.pdfRotation = 0;
+          state.pdfFitMode = 'fit';
+          document.getElementById('pdf-toolbar').classList.remove('hidden');
+          await renderCurrentPdfPage();
+        } else {
+          document.getElementById('pdf-toolbar').classList.add('hidden');
+          if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
+          const blobUrl = URL.createObjectURL(file);
+          state.activeBlobUrl = blobUrl;
+          document.getElementById('preview-body').innerHTML = `<iframe src="${blobUrl}#navpanes=0&view=Fit" title="${item.name.replace(/"/g, '&quot;')}"></iframe>`;
+        }
       } catch (err) {
         toast(`PDF konnte nicht geladen werden: ${err.message}`, 'err');
       }
@@ -2093,6 +2248,7 @@
       } else if (document.fullscreenElement === card && document.exitFullscreen) {
         try { await document.exitFullscreen(); } catch (_) {}
       }
+      setTimeout(() => { if (state.pdfDoc) renderCurrentPdfPage(); }, 90);
     }
 
     function togglePreviewPane() {
@@ -2262,6 +2418,14 @@
         const card = document.getElementById('preview-card');
         if (!document.fullscreenElement && card && card.classList.contains('maximized')) {
           togglePreviewMaximize(true);
+        } else if (state.pdfDoc) {
+          setTimeout(() => renderCurrentPdfPage(), 90);
+        }
+      });
+      window.addEventListener('resize', () => {
+        if (state.pdfDoc && state.pdfFitMode !== 'manual') {
+          clearTimeout(window.__pdfResizeT);
+          window.__pdfResizeT = setTimeout(() => renderCurrentPdfPage(), 120);
         }
       });
       document.addEventListener('keydown', e => {
@@ -2270,6 +2434,9 @@
           if (card && card.classList.contains('maximized')) {
             togglePreviewMaximize(true);
           }
+        } else if (state.pdfDoc && document.activeElement?.tagName !== 'INPUT') {
+          if (e.key === 'ArrowLeft') pdfStepPage(-1);
+          if (e.key === 'ArrowRight') pdfStepPage(1);
         }
       });
     });
