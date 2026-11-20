@@ -464,7 +464,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.0</span></h1>
+        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.1</span></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -493,6 +493,10 @@
           <span>Ordner wählen…</span>
         </button>
 
+        <button id="btn-pick-readonly" type="button" class="btn btn-lg" onclick="pickDirectoryReadOnly()" title="Öffnet auch Windows-Standardordner wie Dokumente, Desktop oder Downloads (ohne Umbenennen)">
+          <span>📂 Dokumente / Nur-Lesen</span>
+        </button>
+
         <button id="btn-reopen-last" type="button" class="btn btn-soft btn-lg hidden" onclick="reopenLastDirectory()" title="Zuletzt gewählten Ordner mit einem Klick wieder öffnen">
           <span>↺ Letzten Ordner öffnen</span>
         </button>
@@ -515,7 +519,7 @@
             id="search-input"
             type="text"
             class="main-input"
-            placeholder="Dateiname oder Unterordner filtern (z. B. Rechnung 2026, Zeichnung)…"
+            placeholder="Dateiname oder Stichwort suchen (z. B. Rechnung 2026)…"
             oninput="applyFilters()"
           >
           <button type="button" class="input-clear" title="Suchfeld leeren" onclick="clearSearchInput()">✕</button>
@@ -1204,6 +1208,26 @@
       }
     }
 
+    function pickDirectoryReadOnly() {
+      const inp = document.getElementById('fallback-folder-input');
+      if (!inp) return;
+      inp.value = '';
+      inp.click();
+    }
+
+    function adoptSearchAsBasePath() {
+      const searchEl = document.getElementById('search-input');
+      const val = (searchEl ? searchEl.value : '').trim();
+      if (val) {
+        const bp = document.getElementById('base-path-prefix');
+        if (bp) bp.value = val;
+        onBasePathPrefixChanged(val);
+      }
+      if (searchEl) searchEl.value = '';
+      applyFilters();
+      showToast('Basis-Pfad übernommen & Suchfeld geleert');
+    }
+
     function handleFallbackFiles(fileList) {
       if (!fileList || fileList.length === 0) return;
       state.rootHandle = null;
@@ -1241,9 +1265,10 @@
 
       state.rootName = firstRoot;
       state.activeSubfolder = '';
+      loadSavedBasePathPrefix(firstRoot);
       document.getElementById('folder-hint').textContent = `✓ Geladen: ${firstRoot} · ${state.allFiles.length} Dateien`;
       document.getElementById('folder-hint').classList.add('loaded');
-      showModeNotice('ℹ️ Lese-Modus (lokal über file:// geöffnet): Suchen &amp; Vorschau funktionieren voll – für direktes Umbenennen bitte über <strong>GitHub Pages (https://)</strong> in Edge/Chrome öffnen.');
+      showModeNotice('ℹ️ <strong>Nur-Lesen-Modus</strong> aktiv (funktioniert auch für Dokumente, Desktop &amp; Downloads): Suchen, Vorschau &amp; Download laufen voll – für direktes Umbenennen bitte „Ordner wählen…“ für einen Unterordner nutzen.');
       updateCategoryCounts();
       rebuildSubfolderDropdown();
       updatePathBar();
@@ -1477,7 +1502,13 @@
         return;
       }
       if (state.filteredFiles.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Keine Treffer für den aktuellen Filter</h3><div>Passe den Suchbegriff an oder klicke auf <strong>„Filter leeren“</strong>.</div></div></td></tr>`;
+        const rawQ = (document.getElementById('search-input').value || '').trim();
+        const looksLikePath = /^[a-zA-Z]:[\\/]|^\\\\/.test(rawQ);
+        if (looksLikePath) {
+          tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Ordnerpfad im Suchfeld erkannt</h3><div style="margin-bottom:10px;">Das obere Suchfeld filtert nach <strong>Dateinamen</strong> – nicht nach dem Windows-Ordnerpfad.<br>Die <strong>${state.allFiles.length} Dateien</strong> aus „${escapeHtml(state.rootName)}“ sind bereits geladen.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn btn-primary" onclick="adoptSearchAsBasePath()">Als Basis-Pfad übernehmen &amp; alle anzeigen</button><button type="button" class="btn" onclick="clearSearchInput()">Suchfeld leeren</button></div></div></td></tr>`;
+        } else {
+          tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Keine Treffer für den aktuellen Filter</h3><div>Passe den Suchbegriff an oder klicke auf <strong>„Filter leeren“</strong>.</div></div></td></tr>`;
+        }
         return;
       }
 
