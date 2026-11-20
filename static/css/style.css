@@ -1857,3 +1857,29 @@ html.light #location-shortcuts .fa-folder {
 html.light #theme-toggle-btn .fa-sun {
   color: #2563eb !important;
 }
+
+/* 6. v1.7.38: Toast-Meldungen im Light Mode immer kontrastreich & lesbar */
+html.light #toast-container > div {
+  background-color: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14) !important;
+}
+html.light #toast-container > div span {
+  color: #0f172a !important;
+}
+html.light #toast-container > div[class*="border-emerald"] {
+  background-color: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+html.light #toast-container > div[class*="border-emerald"] span {
+  color: #065f46 !important;
+}
+html.light #toast-container > div[class*="border-red"] {
+  background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+}
+html.light #toast-container > div[class*="border-red"] span {
+  color: #991b1b !important;
+}

@@ -849,11 +849,9 @@ function setLocation(path, isOneDrive) {
   );
 
   if (hasActiveCriteria) {
-    showToast(`Verzeichnis gewählt: ${path}`, 'info');
     executeSearch();
   } else {
     cancelActiveSearch();
-    showToast(`Suchbereich gewählt: ${path}`, 'info');
   }
 }
 
