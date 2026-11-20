@@ -258,14 +258,84 @@ function setSearchScope(scope) {
   }
 }
 
-// Rendert alle Schnellzugriff-Buttons (System + Gespeicherte eigene Favoriten)
+// Rendert alle Schnellzugriff-Buttons:
+// 1. Alles auf PC (Laufwerke C:, D:, E:, USB_Stick + PC-Ordner) -> 2. Netzwerk -> 3. Alles in Cloud -> 4. Neue Zeile: Gespeicherte Pfade
 function renderLocationShortcuts() {
   const container = document.getElementById('location-shortcuts');
   if (!container) return;
 
   container.innerHTML = '';
 
-  // 1. OneDrive Privat
+  const driveLocs = [];
+  const pcFolderLocs = [];
+  (state.systemLocations || []).forEach(loc => {
+    if (loc.id.startsWith('onedrive') || loc.id === 'transfer_hub' || loc.id === 'icloud_drive' || loc.id === 'gdrive') return;
+    if (loc.id === 'c_drive' || loc.id.startsWith('drive_')) {
+      driveLocs.push(loc);
+    } else {
+      pcFolderLocs.push(loc);
+    }
+  });
+
+  // 1a. Alle lokalen Laufwerke (Festplatte C:, Laufwerk D:, Laufwerk E:, ...)
+  driveLocs.forEach(loc => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
+    btn.innerHTML = `<i class="fa-solid fa-hard-drive text-slate-400"></i><span>${loc.name}</span>`;
+    btn.onclick = () => setLocation(loc.path, false);
+    container.appendChild(btn);
+  });
+
+  // 1b. Dynamischer USB_Stick Schnell-Button direkt neben den Laufwerken
+  if (state.usbStickDir) {
+    const driveLabel = state.usbStickDir.slice(0, 2);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-700/80 transition shadow-sm';
+    btn.title = `USB-Stick Datenordner (${state.usbStickDir}) – erkennt Laufwerksbuchstaben automatisch`;
+    btn.innerHTML = `<i class="fa-solid fa-hard-drive text-cyan-400"></i><span>USB_Stick (${driveLabel})</span>`;
+    btn.onclick = async () => {
+      await refreshUsbStickShortcut();
+      setLocation(state.usbStickDir || `${driveLabel}\\USB_Stick`, false);
+    };
+    container.appendChild(btn);
+  }
+
+  // 1c. Lokale PC-Ordner (Dokumente, Downloads, Desktop, Bilder)
+  pcFolderLocs.forEach(loc => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
+    let iconHtml = '<i class="fa-solid fa-folder text-blue-400"></i>';
+    if (loc.icon === 'download') iconHtml = '<i class="fa-solid fa-download text-emerald-400"></i>';
+    if (loc.icon === 'monitor') iconHtml = '<i class="fa-solid fa-desktop text-blue-400"></i>';
+    if (loc.icon === 'image') iconHtml = '<i class="fa-solid fa-image text-purple-400"></i>';
+
+    btn.innerHTML = `${iconHtml}<span>${loc.name}</span>`;
+    btn.onclick = () => setLocation(loc.path, false);
+    container.appendChild(btn);
+  });
+
+  // 2. Netzwerk-Pfade
+  (state.networkPaths || []).forEach(net => {
+    const wrap = document.createElement('div');
+    wrap.className = 'inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-950/40 p-0.5 shadow-sm group';
+    wrap.innerHTML = `
+      <button type="button" class="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-emerald-200 hover:text-white transition" title="${net.path}">
+        <i class="fa-solid fa-network-wired text-emerald-400 text-[11px]"></i>
+        <span>${net.name}</span>
+      </button>
+      <button type="button" class="px-1.5 py-0.5 text-[11px] text-emerald-400 hover:text-red-400 hover:bg-red-500/20 rounded transition" title="Diesen Netzwerkpfad löschen">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    `;
+    wrap.querySelector('button:first-child').onclick = () => setLocation(net.path, false);
+    wrap.querySelector('button:last-child').onclick = (e) => deleteNetworkPath(net.id, net.name, e);
+    container.appendChild(wrap);
+  });
+
+  // 3. Alles in Cloud (OneDrive Privat, OneDrive Geschäft, iCloud Drive, Google Drive)
   const odPers = state.onedriveInfo?.personal;
   if (odPers && odPers.exists) {
     const btn = document.createElement('button');
@@ -277,7 +347,6 @@ function renderLocationShortcuts() {
     container.appendChild(btn);
   }
 
-  // 2. OneDrive Geschäftlich
   const odBiz = state.onedriveInfo?.business;
   const bizWrapper = document.createElement('div');
   bizWrapper.className = 'inline-flex rounded-lg border border-purple-800/80 bg-purple-950/60 p-0.5';
@@ -293,7 +362,6 @@ function renderLocationShortcuts() {
   bizWrapper.querySelector('button').onclick = () => setLocation(odBiz?.path || 'C:\\Users\\01\\OneDrive - Geschaeft', 'business');
   container.appendChild(bizWrapper);
 
-  // 3. iCloud Drive
   const icloud = state.onedriveInfo?.icloud || state.systemLocations?.find(l => l.id === 'icloud_drive');
   if (icloud && icloud.exists) {
     const btn = document.createElement('button');
@@ -305,7 +373,6 @@ function renderLocationShortcuts() {
     container.appendChild(btn);
   }
 
-  // 4. Google Drive
   const gdrive = state.onedriveInfo?.gdrive || state.systemLocations?.find(l => l.id === 'gdrive');
   const gdriveWrapper = document.createElement('div');
   gdriveWrapper.className = 'inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-950/50 p-0.5 shadow-sm group';
@@ -327,94 +394,32 @@ function renderLocationShortcuts() {
   };
   container.appendChild(gdriveWrapper);
 
-  // 5. Standard-Ordner (ohne Festplatten/Laufwerke, damit Laufwerke geschlossen nebeneinander stehen)
-  const driveLocs = [];
-  state.systemLocations.forEach(loc => {
-    if (loc.id.startsWith('onedrive') || loc.id === 'transfer_hub' || loc.id === 'icloud_drive' || loc.id === 'gdrive') return;
-    if (loc.id === 'c_drive' || loc.id.startsWith('drive_')) {
-      driveLocs.push(loc);
-      return;
-    }
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
-    let iconHtml = '<i class="fa-solid fa-folder text-amber-400"></i>';
-    if (loc.icon === 'download') iconHtml = '<i class="fa-solid fa-download text-emerald-400"></i>';
-    if (loc.icon === 'monitor') iconHtml = '<i class="fa-solid fa-desktop text-blue-400"></i>';
-    if (loc.icon === 'image') iconHtml = '<i class="fa-solid fa-image text-purple-400"></i>';
+  // 4. Neue Zeile: Gespeicherte Pfade (Favoriten)
+  const visibleFavs = (state.savedPaths || []).filter(
+    fav => !(fav.id === 'fav_d_doc' && (state.systemLocations || []).some(l => l.id === 'd_documents'))
+  );
+  if (visibleFavs.length > 0) {
+    const favRowBreak = document.createElement('div');
+    favRowBreak.className = 'basis-full h-0';
+    container.appendChild(favRowBreak);
 
-    btn.innerHTML = `${iconHtml}<span>${loc.name}</span>`;
-    btn.onclick = () => setLocation(loc.path, false);
-    container.appendChild(btn);
-  });
-
-  // Zeilenumbruch, damit alle Laufwerke (C:, D:, E:, ...) + USB_Stick & Favoriten sauber nebeneinander stehen
-  const rowBreak = document.createElement('div');
-  rowBreak.className = 'basis-full h-0';
-  container.appendChild(rowBreak);
-
-  // 6. Alle lokalen Laufwerke geschlossen nebeneinander (C:, D:, E:, ...)
-  driveLocs.forEach(loc => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition';
-    btn.innerHTML = `<i class="fa-solid fa-hard-drive text-slate-400"></i><span>${loc.name}</span>`;
-    btn.onclick = () => setLocation(loc.path, false);
-    container.appendChild(btn);
-  });
-
-  // 7. Dynamischer USB_Stick Schnell-Button direkt neben den Laufwerken
-  if (state.usbStickDir) {
-    const driveLabel = state.usbStickDir.slice(0, 2);
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'loc-btn flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-700/80 transition shadow-sm';
-    btn.title = `USB-Stick Datenordner (${state.usbStickDir}) – erkennt Laufwerksbuchstaben automatisch`;
-    btn.innerHTML = `<i class="fa-solid fa-hard-drive text-cyan-400"></i><span>USB_Stick (${driveLabel})</span>`;
-    btn.onclick = async () => {
-      await refreshUsbStickShortcut();
-      setLocation(state.usbStickDir || `${driveLabel}\\USB_Stick`, false);
-    };
-    container.appendChild(btn);
+    visibleFavs.forEach(fav => {
+      const wrap = document.createElement('div');
+      wrap.className = 'inline-flex items-center rounded-lg border border-amber-500/50 bg-amber-950/40 p-0.5 shadow-sm group';
+      wrap.innerHTML = `
+        <button type="button" class="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-amber-300 hover:text-white transition" title="${toGermanDisplayPath(fav.path)}">
+          <i class="fa-solid fa-star text-amber-400 text-[11px]"></i>
+          <span>${fav.name}</span>
+        </button>
+        <button type="button" class="px-1.5 py-0.5 text-[11px] text-amber-400 hover:text-red-400 hover:bg-red-500/20 rounded transition" title="Diesen Favorit löschen">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      `;
+      wrap.querySelector('button:first-child').onclick = () => setLocation(fav.path, false);
+      wrap.querySelector('button:last-child').onclick = (e) => deleteSavedPath(fav.id, fav.name, e);
+      container.appendChild(wrap);
+    });
   }
-
-  // 5. Gespeicherte Pfade (Favoriten)
-  (state.savedPaths || []).forEach(fav => {
-    // Falls Dokumente (D:) schon in den System-Buttons vorhanden ist, kein Duplikat anzeigen
-    if (fav.id === 'fav_d_doc' && state.systemLocations.some(l => l.id === 'd_documents')) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'inline-flex items-center rounded-lg border border-amber-500/50 bg-amber-950/40 p-0.5 shadow-sm group';
-    wrap.innerHTML = `
-      <button type="button" class="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-amber-300 hover:text-white transition" title="${toGermanDisplayPath(fav.path)}">
-        <i class="fa-solid fa-star text-amber-400 text-[11px]"></i>
-        <span>${fav.name}</span>
-      </button>
-      <button type="button" class="px-1.5 py-0.5 text-[11px] text-amber-400 hover:text-red-400 hover:bg-red-500/20 rounded transition" title="Diesen Favorit löschen">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    `;
-    wrap.querySelector('button:first-child').onclick = () => setLocation(fav.path, false);
-    wrap.querySelector('button:last-child').onclick = (e) => deleteSavedPath(fav.id, fav.name, e);
-    container.appendChild(wrap);
-  });
-
-  // 6. Gespeicherte Netzwerk-Pfade
-  state.networkPaths.forEach(net => {
-    const wrap = document.createElement('div');
-    wrap.className = 'inline-flex items-center rounded-lg border border-emerald-500/40 bg-emerald-950/40 p-0.5 shadow-sm group';
-    wrap.innerHTML = `
-      <button type="button" class="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-emerald-200 hover:text-white transition" title="${net.path}">
-        <i class="fa-solid fa-network-wired text-emerald-400 text-[11px]"></i>
-        <span>${net.name}</span>
-      </button>
-      <button type="button" class="px-1.5 py-0.5 text-[11px] text-emerald-400 hover:text-red-400 hover:bg-red-500/20 rounded transition" title="Diesen Netzwerkpfad löschen">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    `;
-    wrap.querySelector('button:first-child').onclick = () => setLocation(net.path, false);
-    wrap.querySelector('button:last-child').onclick = (e) => deleteNetworkPath(net.id, net.name, e);
-    container.appendChild(wrap);
-  });
 }
 
 // Netzwerk-Freigaben Modal Funktionen

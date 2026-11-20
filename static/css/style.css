@@ -1606,6 +1606,14 @@ html.dark #target-directory {
 html.dark #target-directory:focus {
   color: #f8fafc !important;
 }
+html.dark #search-query::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+}
+html.dark #search-query:focus::placeholder {
+  color: #f8fafc !important;
+  font-weight: 500 !important;
+}
 html.dark #search-query:focus,
 html.dark #target-directory:focus {
   border-color: #3b82f6 !important;
@@ -1655,6 +1663,11 @@ html.light #search-query::placeholder,
 html.light #target-directory::placeholder {
   color: #64748b !important;
   font-weight: 400 !important;
+}
+html.light #search-query:focus::placeholder,
+html.light #target-directory:focus::placeholder {
+  color: #0f172a !important;
+  font-weight: 500 !important;
 }
 html.light button[onclick*="analyzeDuplicatesFromSearch"] {
   background-color: #f5f3ff !important;
