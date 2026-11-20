@@ -464,7 +464,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.3</span></h1>
+        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.4</span></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -997,10 +997,20 @@
 
     async function removeSavedFolderById(id) {
       const entry = savedFoldersList.find(x => x.id === id);
+      if (!entry) return;
+      let savedBase = '';
+      try { savedBase = (localStorage.getItem(getBasePathStorageKey(entry.name)) || '').trim(); } catch (_) {}
+      const label = savedBase || toGermanFolderLabel(entry.name);
+      const confirmed = window.confirm(
+        `Gemerkten Ordner „${label}“ wirklich aus der Liste entfernen?\n\n` +
+        `Hinweis: Es wird nur die Verknüpfung (inkl. gespeichertem Basis-Pfad) in der Web-App entfernt – auf deiner Festplatte werden keine Dateien gelöscht.`
+      );
+      if (!confirmed) return;
       savedFoldersList = savedFoldersList.filter(x => x.id !== id);
       await saveSavedFoldersList();
-      if (entry) { try { localStorage.removeItem(getBasePathStorageKey(entry.name)); } catch (_) {} }
+      try { localStorage.removeItem(getBasePathStorageKey(entry.name)); } catch (_) {}
       renderSavedFoldersRow();
+      toast(`Gemerkter Ordner entfernt: ${label}`, 'ok');
     }
 
     async function saveLastDirectoryHandle(handle, displayName) {
