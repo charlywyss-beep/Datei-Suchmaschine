@@ -409,7 +409,8 @@
       box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
     }
     .table-scroll {
-      max-height: 62vh;
+      max-height: calc(100vh - 140px);
+      min-height: 460px;
       overflow: auto;
     }
     table {
@@ -479,7 +480,7 @@
     }
     .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    /* PDF-Vorschau rechts */
+    /* PDF-Vorschau rechts (nutzt volle Fensterhöhe + optional maximierbar) */
     .preview-card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -487,9 +488,22 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      height: 62vh;
-      min-height: 420px;
+      position: sticky;
+      top: 66px;
+      height: calc(100vh - 82px);
+      min-height: 520px;
       box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+    }
+    .preview-card.maximized {
+      position: fixed;
+      top: 10px;
+      right: 12px;
+      bottom: 10px;
+      width: min(72vw, 1180px);
+      height: auto;
+      z-index: 55;
+      box-shadow: 0 20px 55px rgba(15, 23, 42, 0.30);
+      border: 1.5px solid var(--accent);
     }
     .preview-head {
       padding: 10px 14px;
@@ -680,7 +694,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.3</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.4</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -843,10 +857,11 @@
       <aside id="preview-card" class="preview-card">
         <div class="preview-head">
           <div id="preview-title" class="preview-title">PDF-Vorschau</div>
-          <div style="display:flex; gap:6px; flex-shrink:0;">
-            <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActivePdfPath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad</button>
-            <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActivePdfInNewTab()">↗ Neuer Tab</button>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0;">
+            <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActivePdfPath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad kopieren</button>
+            <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActivePdfInNewTab()">↗ Öffnen in Tab</button>
             <button id="btn-preview-rename" type="button" class="btn" disabled onclick="openSingleRenameForActive()">✏️ Umbenennen</button>
+            <button id="btn-preview-max" type="button" class="btn" onclick="togglePreviewMaximize()" title="PDF-Vorschau auf volle Fensterhöhe vergrößern / zurücksetzen">⤢ Maximieren</button>
           </div>
         </div>
         <div id="preview-body" class="preview-body">
@@ -1609,9 +1624,23 @@
       if (item) openSingleRenameModal(item);
     }
 
+    function togglePreviewMaximize() {
+      const card = document.getElementById('preview-card');
+      const btn = document.getElementById('btn-preview-max');
+      const isMax = card.classList.toggle('maximized');
+      btn.textContent = isMax ? '⤡ Normal' : '⤢ Maximieren';
+      btn.classList.toggle('btn-active', isMax);
+    }
+
     function togglePreviewPane() {
       state.previewVisible = !state.previewVisible;
-      document.getElementById('preview-card').classList.toggle('hidden', !state.previewVisible);
+      const card = document.getElementById('preview-card');
+      if (!state.previewVisible && card.classList.contains('maximized')) {
+        card.classList.remove('maximized');
+        const btnMax = document.getElementById('btn-preview-max');
+        if (btnMax) { btnMax.textContent = '⤢ Maximieren'; btnMax.classList.remove('btn-active'); }
+      }
+      card.classList.toggle('hidden', !state.previewVisible);
       document.getElementById('workspace-split').classList.toggle('with-preview', state.previewVisible);
       document.getElementById('btn-toggle-preview').classList.toggle('btn-active', state.previewVisible);
       if (state.previewVisible && state.activeId) {
