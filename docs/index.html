@@ -464,7 +464,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.4</span></h1>
+        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.5</span></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -482,7 +482,13 @@
     <section class="section-card">
       <div class="section-header">
         <span class="section-title">1. Ordner &amp; Dokumenten-Suche</span>
-        <span id="folder-hint" class="section-hint">Wähle zuerst einen Ordner auf deinem PC oder Netzlaufwerk</span>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:#334155; background:#f8fafc; border:1px solid #cbd5e1; border-radius:7px; padding:3px 9px; cursor:pointer; user-select:none;" title="Verhindert automatische OneDrive-/iCloud-Downloads beim Scannen: liest nur Ordner & Dateinamen blitzschnell ein – erst beim Anklicken einer Datei wird die Vorschau geladen (für OneDrive/iCloud automatisch aktiv)">
+            <input id="chk-cloud-safe" type="checkbox" style="margin:0; cursor:pointer;" onchange="onCloudSafeToggle(this.checked)">
+            <span>☁️ Cloud-Schonmodus</span>
+          </label>
+          <span id="folder-hint" class="section-hint">Wähle zuerst einen Ordner auf deinem PC oder Netzlaufwerk</span>
+        </div>
       </div>
 
       <div class="input-row" style="margin-bottom: 10px;">
@@ -876,11 +882,24 @@
     }
 
     function formatBytes(b) {
+      if (b === null || b === undefined) return '—';
       if (!b) return '0 B';
       if (b < 1024) return `${b} B`;
       if (b < 1024 * 1024) return `${Math.max(1, Math.round(b / 1024))} KB`;
       if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
       return `${(b / (1024 * 1024 * 1024)).toFixed(2).replace('.', ',')} GB`;
+    }
+
+    function isCloudFolderName(name, basePath = '') {
+      const hay = `${name || ''} ${basePath || ''}`.toLowerCase();
+      return /(onedrive|icloud|dropbox|google\s*drive|gdrive|sharepoint|nextcloud|owncloud|pcloud|hidrive|box\s*sync|magenta\s*cloud)/.test(hay);
+    }
+
+    function onCloudSafeToggle(checked) {
+      state.cloudSafeManual = !!checked;
+      if (state.rootHandle && !state.scanning) {
+        toast(checked ? 'Cloud-Schonmodus aktiviert – für sofortige Wirkung „Neu einlesen“ klicken' : 'Cloud-Schonmodus deaktiviert – bei „Neu einlesen“ werden Größe & Datum wieder geladen', 'ok');
+      }
     }
 
     function formatDate(ts) {
@@ -1068,6 +1087,7 @@
       const rawName = (handle.name || '').trim();
       state.rootName = (!rawName || rawName === '\\' || rawName === '/') ? 'Gewähltes Laufwerk' : toGermanFolderLabel(rawName);
       state.canWrite = canWrite;
+      loadSavedBasePathPrefix(state.rootName);
       document.getElementById('btn-reopen-last').classList.add('hidden');
       document.getElementById('btn-rescan').classList.remove('hidden');
       await saveLastDirectoryHandle(handle, state.rootName);
@@ -1159,9 +1179,17 @@
       const btnCancel = document.getElementById('btn-cancel-scan');
       const hint = document.getElementById('folder-hint');
       const dispName = state.rootName || 'Gewählter Ordner';
+      const autoCloud = isCloudFolderName(state.rootName, state.basePathPrefix);
+      const chkCloud = document.getElementById('chk-cloud-safe');
+      const cloudSafe = !!(autoCloud || state.cloudSafeManual || (chkCloud && chkCloud.checked));
+      state.cloudSafeMode = cloudSafe;
+      if (chkCloud && autoCloud) chkCloud.checked = true;
+      if (cloudSafe) {
+        showModeNotice(`☁️ <strong>Cloud-Schonmodus aktiv („${escapeHtml(dispName)}“):</strong> Es werden nur Ordner &amp; Dateinamen blitzschnell eingelesen – <strong>kein OneDrive-/Cloud-Download</strong> beim Scannen. Erst beim Anklicken einer Datei wird deren Vorschau geladen.`);
+      }
       btnCancel.classList.remove('hidden');
       hint.classList.remove('loaded');
-      hint.textContent = `Durchsuche „${dispName}“…`;
+      hint.textContent = cloudSafe ? `☁️ Schnell-Scan „${dispName}“…` : `Durchsuche „${dispName}“…`;
 
       const queue = [{ handle: rootHandle, relDir: '' }];
       let counter = 0;
@@ -1180,7 +1208,13 @@
               } else if (entry.kind === 'file') {
                 if (name.startsWith('~$') || name.toLowerCase() === 'desktop.ini' || name.toLowerCase() === 'thumbs.db') continue;
                 try {
-                  const file = await entry.getFile();
+                  let fSize = null;
+                  let fMtime = null;
+                  if (!cloudSafe) {
+                    const file = await entry.getFile();
+                    fSize = file.size || 0;
+                    fMtime = file.lastModified || 0;
+                  }
                   counter += 1;
                   const ext = getExt(name);
                   const cat = getCategoryForExt(ext);
@@ -1192,8 +1226,8 @@
                     cat,
                     dir: relDir || '(Hauptordner)',
                     relPath,
-                    size: file.size || 0,
-                    mtime: file.lastModified || 0,
+                    size: fSize,
+                    mtime: fMtime,
                     fileHandle: entry,
                     parentHandle: handle,
                     fileObj: null,
@@ -1203,7 +1237,7 @@
               const now = performance.now();
               if (now - lastPaint > 120) {
                 lastPaint = now;
-                hint.textContent = `Durchsuche „${dispName}“… ${counter} Dateien gefunden`;
+                hint.textContent = `${cloudSafe ? '☁️ Schnell-Scan' : 'Durchsuche'} „${dispName}“… ${counter} Dateien gefunden`;
               }
             }
           } catch (_) {}
@@ -1491,16 +1525,16 @@
           const hay = `${item.name} ${item.dir} ${item.ext}`.toLowerCase();
           if (!terms.every(t => hay.includes(t))) return false;
         }
-        if (fromTs !== null && item.mtime < fromTs) return false;
-        if (toTs !== null && item.mtime > toTs) return false;
-        if (minBytes !== null && item.size < minBytes) return false;
+        if (fromTs !== null && (item.mtime === null || item.mtime < fromTs)) return false;
+        if (toTs !== null && (item.mtime === null || item.mtime > toTs)) return false;
+        if (minBytes !== null && (item.size === null || item.size < minBytes)) return false;
         return true;
       });
 
       const dir = state.sortAsc ? 1 : -1;
       list.sort((a, b) => {
-        if (state.sortCol === 'size') return (a.size - b.size) * dir;
-        if (state.sortCol === 'mtime') return (a.mtime - b.mtime) * dir;
+        if (state.sortCol === 'size') return ((a.size || 0) - (b.size || 0)) * dir;
+        if (state.sortCol === 'mtime') return ((a.mtime || 0) - (b.mtime || 0)) * dir;
         return String(a[state.sortCol] || '').localeCompare(String(b[state.sortCol] || ''), 'de', { sensitivity: 'base' }) * dir;
       });
 
@@ -1510,9 +1544,12 @@
 
     function renderTable() {
       const tbody = document.getElementById('file-tbody');
-      const totalSize = state.filteredFiles.reduce((s, it) => s + (it.size || 0), 0);
+      const knownSizes = state.filteredFiles.filter(it => it.size !== null && it.size !== undefined);
+      const totalSize = knownSizes.reduce((s, it) => s + (it.size || 0), 0);
       document.getElementById('stat-shown').textContent = state.filteredFiles.length;
-      document.getElementById('stat-size').textContent = formatBytes(totalSize);
+      document.getElementById('stat-size').textContent = (state.cloudSafeMode && knownSizes.length === 0 && state.filteredFiles.length > 0)
+        ? '☁️ Cloud-Schonmodus'
+        : formatBytes(totalSize);
       updateSelectionUI();
 
       if (state.allFiles.length === 0) {
@@ -1812,6 +1849,11 @@
       try {
         const file = await getFileObject(item);
         if (mySeq !== state.pdfLoadSeq) return;
+        if (file && (item.size === null || item.mtime === null)) {
+          item.size = file.size || 0;
+          item.mtime = file.lastModified || 0;
+          renderTable();
+        }
 
         // 1. PDF (PDF.js)
         if (ext === 'pdf') {
