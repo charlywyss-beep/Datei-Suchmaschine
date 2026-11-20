@@ -861,7 +861,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.10</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.11</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -2077,7 +2077,7 @@
       if (item) openSingleRenameModal(item);
     }
 
-    function togglePreviewMaximize(forceOff = false) {
+    async function togglePreviewMaximize(forceOff = false) {
       const card = document.getElementById('preview-card');
       const btn = document.getElementById('btn-preview-max');
       const isMax = forceOff ? false : !card.classList.contains('maximized');
@@ -2085,6 +2085,14 @@
       btn.textContent = isMax ? '⤡ Schließen (Esc)' : '⛶ Vollbild';
       btn.classList.toggle('btn-active', isMax);
       document.body.style.overflow = isMax ? 'hidden' : '';
+
+      if (isMax) {
+        if (card.requestFullscreen && !document.fullscreenElement) {
+          try { await card.requestFullscreen(); } catch (_) {}
+        }
+      } else if (document.fullscreenElement === card && document.exitFullscreen) {
+        try { await document.exitFullscreen(); } catch (_) {}
+      }
     }
 
     function togglePreviewPane() {
@@ -2250,6 +2258,12 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       initLastDirectoryOnStartup();
+      document.addEventListener('fullscreenchange', () => {
+        const card = document.getElementById('preview-card');
+        if (!document.fullscreenElement && card && card.classList.contains('maximized')) {
+          togglePreviewMaximize(true);
+        }
+      });
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
           const card = document.getElementById('preview-card');
