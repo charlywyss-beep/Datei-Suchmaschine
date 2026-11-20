@@ -148,9 +148,19 @@
       cursor: default;
     }
     .section-hint {
-      font-size: 11.5px;
-      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #1e293b;
+      background: #f8fafc;
+      border: 1px solid var(--divider);
+      padding: 3px 10px;
+      border-radius: 7px;
       cursor: default;
+    }
+    .section-hint.loaded {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1e3a8a;
     }
 
     /* Eingabefelder */
@@ -670,7 +680,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.0</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.1</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -699,8 +709,8 @@
           <span>Ordner wählen…</span>
         </button>
 
-        <button id="btn-rescan" type="button" class="btn btn-soft btn-lg hidden" onclick="rescanCurrentFolder()">
-          <span>↻ Aktualisieren</span>
+        <button id="btn-rescan" type="button" class="btn btn-soft btn-lg hidden" onclick="rescanCurrentFolder()" title="Ordner erneut einlesen, falls zwischenzeitlich neue PDFs dazugekommen sind (für die Suche nicht nötig)">
+          <span>↻ Neu einlesen</span>
         </button>
 
         <button id="btn-cancel-scan" type="button" class="btn btn-lg hidden" onclick="cancelScan()">
@@ -1002,7 +1012,8 @@
             }
           }
           state.rootHandle = handle;
-          state.rootName = handle.name || 'Gewählter Ordner';
+          const rawName = (handle.name || '').trim();
+          state.rootName = (!rawName || rawName === '\\' || rawName === '/') ? 'Gewähltes Laufwerk' : rawName;
           state.canWrite = canWrite;
           document.getElementById('btn-rescan').classList.remove('hidden');
           if (!canWrite) {
@@ -1042,8 +1053,10 @@
 
       const btnCancel = document.getElementById('btn-cancel-scan');
       const hint = document.getElementById('folder-hint');
+      const dispName = state.rootName || 'Gewählter Ordner';
       btnCancel.classList.remove('hidden');
-      hint.textContent = `Durchsuche „${rootHandle.name}“ nach PDFs…`;
+      hint.classList.remove('loaded');
+      hint.textContent = `Durchsuche „${dispName}“ nach PDFs…`;
 
       const queue = [{ handle: rootHandle, relDir: '' }];
       let counter = 0;
@@ -1080,7 +1093,7 @@
               const now = performance.now();
               if (now - lastPaint > 120) {
                 lastPaint = now;
-                hint.textContent = `Durchsuche „${rootHandle.name}“… ${counter} PDFs gefunden`;
+                hint.textContent = `Durchsuche „${dispName}“… ${counter} PDFs gefunden`;
               }
             }
           } catch (_) {}
@@ -1088,9 +1101,10 @@
       } finally {
         state.scanning = false;
         btnCancel.classList.add('hidden');
+        hint.classList.add('loaded');
         hint.textContent = state.cancelRequested
-          ? `Scan gestoppt – ${state.allPdfs.length} PDFs aus „${rootHandle.name}“ geladen`
-          : `Ordner „${rootHandle.name}“ geladen (${state.allPdfs.length} PDFs)`;
+          ? `Scan gestoppt · ${dispName} · ${state.allPdfs.length} PDFs`
+          : `✓ Geladen: ${dispName} · ${state.allPdfs.length} PDFs`;
         updateModeBadge();
         applyFilters();
       }
