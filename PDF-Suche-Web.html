@@ -496,14 +496,13 @@
     }
     .preview-card.maximized {
       position: fixed;
-      top: 10px;
-      right: 12px;
-      bottom: 10px;
-      width: min(72vw, 1180px);
-      height: auto;
-      z-index: 55;
-      box-shadow: 0 20px 55px rgba(15, 23, 42, 0.30);
-      border: 1.5px solid var(--accent);
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      z-index: 75;
+      box-shadow: none;
+      border: none;
     }
     .preview-head {
       padding: 10px 14px;
@@ -862,7 +861,7 @@
         </svg>
       </div>
       <div>
-        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.9</span></h1>
+        <h1>PDF-Suche Pro <span class="brand-badge">Web v1.10</span></h1>
         <p class="brand-sub">PDFs lokal im Browser suchen, direkt öffnen &amp; umbenennen – ganz ohne .exe oder Installation</p>
       </div>
     </div>
@@ -1058,7 +1057,7 @@
             <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActivePdfInNewTab()">↗ Öffnen in Tab</button>
             <button id="btn-preview-dl" type="button" class="btn" disabled onclick="downloadActivePdf()" title="Kopie herunterladen (im Browser ggf. ‚Dateien dieses Typs immer öffnen‘ für automatisches Öffnen in PDF-Standard-App aktivieren)">⬇ Download</button>
             <button id="btn-preview-rename" type="button" class="btn" disabled onclick="openSingleRenameForActive()">✏️ Umbenennen</button>
-            <button id="btn-preview-max" type="button" class="btn" onclick="togglePreviewMaximize()" title="PDF-Vorschau auf volle Fensterhöhe vergrößern / zurücksetzen">⤢ Maximieren</button>
+            <button id="btn-preview-max" type="button" class="btn" onclick="togglePreviewMaximize()" title="PDF-Vorschau bildschirmfüllend anzeigen (ideal für Querformat / Montagezeichnungen, Esc zum Schließen)">⛶ Vollbild</button>
           </div>
         </div>
         <div id="preview-body" class="preview-body">
@@ -2012,7 +2011,7 @@
         document.getElementById('btn-preview-tab').disabled = false;
         document.getElementById('btn-preview-dl').disabled = false;
         document.getElementById('btn-preview-rename').disabled = !state.canWrite;
-        document.getElementById('preview-body').innerHTML = `<iframe src="${blobUrl}" title="${item.name.replace(/"/g, '&quot;')}"></iframe>`;
+        document.getElementById('preview-body').innerHTML = `<iframe src="${blobUrl}#navpanes=0&view=Fit" title="${item.name.replace(/"/g, '&quot;')}"></iframe>`;
       } catch (err) {
         toast(`PDF konnte nicht geladen werden: ${err.message}`, 'err');
       }
@@ -2062,7 +2061,7 @@
       try {
         const file = await getFileObject(item);
         const url = URL.createObjectURL(file);
-        window.open(url, '_blank', 'noopener');
+        window.open(`${url}#navpanes=0&view=Fit`, '_blank', 'noopener');
       } catch (err) {
         toast(`PDF konnte nicht geöffnet werden: ${err.message}`, 'err');
       }
@@ -2078,21 +2077,21 @@
       if (item) openSingleRenameModal(item);
     }
 
-    function togglePreviewMaximize() {
+    function togglePreviewMaximize(forceOff = false) {
       const card = document.getElementById('preview-card');
       const btn = document.getElementById('btn-preview-max');
-      const isMax = card.classList.toggle('maximized');
-      btn.textContent = isMax ? '⤡ Normal' : '⤢ Maximieren';
+      const isMax = forceOff ? false : !card.classList.contains('maximized');
+      card.classList.toggle('maximized', isMax);
+      btn.textContent = isMax ? '⤡ Schließen (Esc)' : '⛶ Vollbild';
       btn.classList.toggle('btn-active', isMax);
+      document.body.style.overflow = isMax ? 'hidden' : '';
     }
 
     function togglePreviewPane() {
       state.previewVisible = !state.previewVisible;
       const card = document.getElementById('preview-card');
       if (!state.previewVisible && card.classList.contains('maximized')) {
-        card.classList.remove('maximized');
-        const btnMax = document.getElementById('btn-preview-max');
-        if (btnMax) { btnMax.textContent = '⤢ Maximieren'; btnMax.classList.remove('btn-active'); }
+        togglePreviewMaximize(true);
       }
       card.classList.toggle('hidden', !state.previewVisible);
       document.getElementById('workspace-split').classList.toggle('with-preview', state.previewVisible);
@@ -2251,6 +2250,14 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       initLastDirectoryOnStartup();
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          const card = document.getElementById('preview-card');
+          if (card && card.classList.contains('maximized')) {
+            togglePreviewMaximize(true);
+          }
+        }
+      });
     });
   </script>
 </body>
