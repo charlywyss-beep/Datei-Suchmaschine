@@ -464,7 +464,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.1</span></h1>
+        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.2</span></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1225,7 +1225,7 @@
       }
       if (searchEl) searchEl.value = '';
       applyFilters();
-      showToast('Basis-Pfad übernommen & Suchfeld geleert');
+      toast('Basis-Pfad übernommen & Suchfeld geleert', 'ok');
     }
 
     function handleFallbackFiles(fileList) {
@@ -1320,6 +1320,8 @@
       const actItem = state.allFiles.find(x => x.id === state.activeId);
       const sp = document.getElementById('preview-subpath');
       if (sp && actItem) sp.textContent = `📂 ${formatFullFolderPath(actItem.dir)}`;
+      updatePreviewCopyButton(actItem || null);
+      renderTable();
     }
 
     function clearBasePathPrefix() {
@@ -1564,7 +1566,9 @@
         const btnCopy = document.createElement('button');
         btnCopy.type = 'button';
         btnCopy.className = 'icon-btn';
-        btnCopy.title = 'Ordnerpfad kopieren';
+        const fullDir = formatFullFolderPath(item.dir);
+        btnCopy.title = getCopyPathTooltip(item);
+        btnCopy.style.opacity = hasFullWindowsPath(fullDir) ? '' : '0.45';
         btnCopy.textContent = '📋';
         btnCopy.onclick = () => copyFilePath(item);
 
@@ -1673,6 +1677,8 @@
       document.getElementById('pdf-toolbar').classList.add('hidden');
       document.getElementById('xlsx-toolbar').classList.add('hidden');
       document.getElementById('btn-preview-copy').disabled = true;
+      document.getElementById('btn-preview-copy').style.opacity = '';
+      document.getElementById('btn-preview-copy').title = 'Keine Datei ausgewählt';
       document.getElementById('btn-preview-tab').disabled = true;
       document.getElementById('btn-preview-dl').disabled = true;
       document.getElementById('btn-preview-rename').disabled = true;
@@ -1782,6 +1788,7 @@
       document.getElementById('preview-title').textContent = item.name;
       document.getElementById('preview-subpath').textContent = `📂 ${formatFullFolderPath(item.dir)}`;
       document.getElementById('btn-preview-copy').disabled = false;
+      updatePreviewCopyButton(item);
       document.getElementById('btn-preview-tab').disabled = false;
       document.getElementById('btn-preview-dl').disabled = false;
       document.getElementById('btn-preview-rename').disabled = !state.canWrite;
@@ -1889,11 +1896,49 @@
       }
     }
 
+    function hasFullWindowsPath(pathStr) {
+      return /^[a-zA-Z]:[\\/]|^\\\\/.test((pathStr || '').trim());
+    }
+
+    function getCopyPathTooltip(item) {
+      if (!item) return 'Keine Datei ausgewählt';
+      const p = formatFullFolderPath(item.dir);
+      if (hasFullWindowsPath(p)) {
+        return `Kopiert für Windows Explorer:\n${p}`;
+      }
+      return `Kein vollständiger Windows-Pfad (nur „${p}“).\nTrage oben rechts einmalig den Basis-Pfad ein (z. B. C:\\Users\\01\\…), damit der Explorer-Pfad kopiert werden kann.`;
+    }
+
+    function updatePreviewCopyButton(item) {
+      const btn = document.getElementById('btn-preview-copy');
+      if (!btn) return;
+      if (!item) {
+        btn.disabled = true;
+        btn.style.opacity = '';
+        btn.title = 'Keine Datei ausgewählt';
+        return;
+      }
+      const p = formatFullFolderPath(item.dir);
+      const hasFull = hasFullWindowsPath(p);
+      btn.disabled = false;
+      btn.style.opacity = hasFull ? '' : '0.55';
+      btn.title = getCopyPathTooltip(item);
+    }
+
     async function copyFilePath(item) {
       const folderPart = formatFullFolderPath(item.dir);
+      if (!hasFullWindowsPath(folderPart)) {
+        const bp = document.getElementById('base-path-prefix');
+        if (bp) {
+          bp.focus();
+          bp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        toast(`Kein vollständiger Pfad (nur „${folderPart}“) – bitte oben rechts einmalig den Basis-Pfad (z. B. C:\\Users\\01\\…) eintragen`, 'err');
+        return;
+      }
       try {
         await navigator.clipboard.writeText(folderPart);
-        toast(`Pfad kopiert: ${folderPart}`, 'ok');
+        toast(`Explorer-Pfad kopiert: ${folderPart}`, 'ok');
       } catch (_) {
         const ta = document.createElement('textarea');
         ta.value = folderPart;
@@ -1901,7 +1946,7 @@
         ta.select();
         document.execCommand('copy');
         ta.remove();
-        toast(`Pfad kopiert: ${folderPart}`, 'ok');
+        toast(`Explorer-Pfad kopiert: ${folderPart}`, 'ok');
       }
     }
     function copyActiveFilePath() { const item = state.allFiles.find(x => x.id === state.activeId); if (item) copyFilePath(item); }
