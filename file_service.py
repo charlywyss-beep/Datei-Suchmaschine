@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.52"
+APP_VERSION = "v1.7.53"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -1171,6 +1171,22 @@ def batch_rename_preview(files, rule_type, params):
                 candidate = re.sub(r"\s{2,}", " ", candidate).strip()
             if candidate.strip():
                 new_stem = candidate.strip()
+                # Automatischer Plex-/VLC-Untertitel-Schutz (.idx, .sub, .srt, .ass, .vtt):
+                # Verhindert Namenskonflikte zwischen Komplett- und Forced-Untertiteln beim Einkürzen!
+                if not is_dir and ext.lower() in {".idx", ".sub", ".srt", ".ass", ".ssa", ".vtt"} and new_stem != stem:
+                    orig_low = stem.lower()
+                    has_forced = bool(re.search(r"(?:^|[._\-\s])forced(?:$|[._\-\s])", orig_low))
+                    has_de = bool(re.search(r"(?:^|[._\-\s])(german|deutsch|ger|deu|de)(?:$|[._\-\s])", orig_low))
+                    has_en = bool(re.search(r"(?:^|[._\-\s])(english|eng|en)(?:$|[._\-\s])", orig_low))
+                    tag_parts = []
+                    if has_de and not re.search(r"(?:^|[._\-\s])de$", new_stem.lower()):
+                        tag_parts.append("de")
+                    elif not has_de and has_en and not re.search(r"(?:^|[._\-\s])en$", new_stem.lower()):
+                        tag_parts.append("en")
+                    if has_forced and not new_stem.lower().endswith(".forced"):
+                        tag_parts.append("forced")
+                    if tag_parts:
+                        new_stem = f"{new_stem}.{'.'.join(tag_parts)}"
 
         new_name = f"{new_stem}{ext}"
         dir_name = os.path.dirname(f["path"])
