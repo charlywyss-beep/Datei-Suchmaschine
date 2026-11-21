@@ -118,10 +118,10 @@
     <!-- ========================================== -->
     <!-- TAB 1: DATEISUCHE & FILTER MASKE          -->
     <!-- ========================================== -->
-    <section id="view-search" class="space-y-3.5">
+    <section id="view-search" class="space-y-2">
       
       <!-- BEREICH 1: Suchbegriff, Gespeicherte Suchen & Verlauf -->
-      <div class="glass-card ui-section-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-3.5">
+      <div class="glass-card ui-section-card rounded-2xl px-4 py-2.5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-2">
         
         <!-- Haupt-Suchleiste mit Action Button -->
         <div class="flex flex-col md:flex-row gap-2.5 items-stretch">
@@ -133,7 +133,7 @@
               type="text" 
               id="search-query" 
               placeholder="Datei- oder Ordnernamen eingeben (z.B. Rechnung, Serien, Hauskauf, 2026)..." 
-              class="ui-main-input w-full pl-12 pr-10 py-3.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base transition shadow-inner font-medium"
+              class="ui-main-input w-full pl-12 pr-10 py-2.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base transition shadow-inner font-medium"
               onkeydown="if(event.key === 'Enter') { event.preventDefault(); executeSearch(); }"
             >
             <button 
@@ -181,14 +181,14 @@
             <div id="saved-searches-list" class="flex flex-wrap items-center gap-1.5"></div>
           </div>
 
-          <!-- Such-History (Letzte Suchbegriffe) -->
-          <div id="recent-searches-row" class="hidden flex flex-wrap items-center justify-between gap-2">
-            <div class="flex flex-wrap items-center gap-1.5 flex-1">
-              <span class="ui-readout-label text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mr-1">
+          <!-- Such-History (Letzte Suchbegriffe – einzeilig kompakt) -->
+          <div id="recent-searches-row" class="hidden flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto pb-0.5">
+              <span class="ui-readout-label text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mr-1 shrink-0">
                 <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i>
                 <span>Such-History:</span>
               </span>
-              <div id="recent-searches-list" class="flex flex-wrap items-center gap-1.5"></div>
+              <div id="recent-searches-list" class="flex flex-nowrap items-center gap-1.5"></div>
             </div>
             <button
               type="button"
@@ -204,7 +204,7 @@
       </div>
 
       <!-- BEREICH 2: Dateityp-Schnellfilter -->
-      <div class="glass-card ui-section-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-3">
+      <div class="glass-card ui-section-card rounded-2xl px-4 py-2.5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-2">
         <div class="ui-section-header flex items-center justify-between gap-2">
           <label class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5 cursor-default">
             <i class="fa-solid fa-filter text-indigo-400"></i>
@@ -276,7 +276,7 @@
       </div>
 
       <!-- BEREICH 3: Suchbereich (Laufwerks-Eingabe zuoberst, dann Schnellwahl & Speicherorte) -->
-      <div class="glass-card ui-section-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-3.5">
+      <div class="glass-card ui-section-card rounded-2xl px-4 py-2.5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-2">
         <div class="ui-section-header flex flex-col md:flex-row md:items-center justify-between gap-2">
           <label for="target-directory" class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5 cursor-default">
             <i class="fa-solid fa-compass text-indigo-400"></i>
@@ -296,7 +296,7 @@
               id="target-directory" 
               value="Dieser PC (Alle lokalen Laufwerke: C:\, D:\)" 
               placeholder="Laufwerk oder Suchverzeichnis eingeben (z.B. C:\, D:\01\Documents\...)"
-              class="ui-main-input w-full pl-12 pr-10 py-3.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base transition shadow-inner font-medium"
+              class="ui-main-input w-full pl-12 pr-10 py-2.5 bg-slate-950/70 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base transition shadow-inner font-medium"
               onkeydown="if(event.key === 'Enter') { event.preventDefault(); executeSearch(); }"
             >
             <button
@@ -398,17 +398,22 @@
         </div>
       </div>
 
-      <!-- BEREICH 4: Zeit- & Größenfilter -->
-      <div class="glass-card ui-section-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-3">
-        <div class="ui-section-header flex items-center justify-between gap-2">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5 cursor-default">
+      <!-- BEREICH 4: Zeit- & Größenfilter (standardmäßig kompakt eingeklappt, damit Suchergebnisse sofort sichtbar sind) -->
+      <div class="glass-card ui-section-card rounded-2xl px-4 py-2 border border-slate-800/80 bg-slate-900/60 shadow-xl">
+        <button type="button" id="btn-toggle-quick-filters" onclick="toggleQuickFiltersPanel()" class="ui-section-header w-full flex items-center justify-between gap-2 text-left cursor-pointer py-0.5">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
             <i class="fa-solid fa-calendar-days text-indigo-400"></i>
-            <span>Zeit- &amp; Größenfilter:</span>
+            <span>Zeit- &amp; Größenfilter</span>
+            <span id="quick-filters-active-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-600/20 text-blue-400 border border-blue-500/40 normal-case">Aktiv</span>
           </span>
-        </div>
+          <span id="quick-filters-toggle-label" class="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+            <span>Aufklappen</span>
+            <i id="quick-filters-chevron" class="fa-solid fa-chevron-down text-[10px] transition-transform"></i>
+          </span>
+        </button>
 
         <!-- Fluent Schnellfilter-Raster (Zeitraum, Änderungsdatum Von/Bis, Dateigröße) -->
-        <div id="fluent-quick-filters" class="space-y-2 text-xs">
+        <div id="fluent-quick-filters" class="hidden space-y-2 text-xs pt-2.5 mt-2 border-t border-slate-800/60">
           <!-- Zeile 1: Zeitraum -->
           <div class="flex flex-wrap items-center gap-2">
             <span class="w-[112px] shrink-0 font-bold text-slate-300 cursor-default">Zeitraum:</span>

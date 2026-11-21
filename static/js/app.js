@@ -4723,3 +4723,46 @@ function closeTransferProgressModal() {
   window.addEventListener('blur', hideMenu);
   window.addEventListener('scroll', hideMenu, true);
 })();
+
+// ============================================================================
+// KOMPAKTER ZEIT- & GRÖSSENFILTER (Standardmäßig eingeklappt für mehr Platz)
+// ============================================================================
+function toggleQuickFiltersPanel(forceOpen) {
+  const panel = document.getElementById('fluent-quick-filters');
+  const lbl = document.getElementById('quick-filters-toggle-label');
+  const chev = document.getElementById('quick-filters-chevron');
+  if (!panel) return;
+  const open = typeof forceOpen === 'boolean' ? forceOpen : panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !open);
+  if (lbl) {
+    const sp = lbl.querySelector('span');
+    if (sp) sp.textContent = open ? 'Einklappen' : 'Aufklappen';
+  }
+  if (chev) chev.style.transform = open ? 'rotate(180deg)' : '';
+  try { localStorage.setItem('dsm_quick_filters_open', open ? '1' : '0'); } catch (_) {}
+}
+
+function updateQuickFiltersActiveBadge() {
+  const badge = document.getElementById('quick-filters-active-badge');
+  if (!badge) return;
+  const dFrom = (document.getElementById('filter-date-from')?.value || '').trim();
+  const dTo = (document.getElementById('filter-date-to')?.value || '').trim();
+  const minSz = (document.getElementById('filter-min-size')?.value || '').trim();
+  const hasActive = !!(dFrom || dTo || minSz);
+  badge.classList.toggle('hidden', !hasActive);
+}
+
+(function initQuickFiltersCollapse() {
+  try {
+    if (localStorage.getItem('dsm_quick_filters_open') === '1') {
+      toggleQuickFiltersPanel(true);
+    }
+  } catch (_) {}
+  ['filter-date-from', 'filter-date-to', 'filter-min-size'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', updateQuickFiltersActiveBadge);
+      el.addEventListener('change', updateQuickFiltersActiveBadge);
+    }
+  });
+})();
