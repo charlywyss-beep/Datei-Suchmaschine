@@ -3056,6 +3056,9 @@ function onRenameTrimModeChange() {
     } else if (mode === 'max_len') {
       lbl.textContent = 'Maximale Zeichenlänge (ohne Endung):';
       inp.placeholder = 'z. B. 30';
+    } else if (mode === 'folder_from_largest_file') {
+      lbl.textContent = 'Optional ab Text abschneiden (leer = ganzer Dateiname):';
+      inp.placeholder = 'Leer lassen, oder z. B. .german';
     }
   }
   updateRenamePreview();

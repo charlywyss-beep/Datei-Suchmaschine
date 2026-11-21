@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.53"
+APP_VERSION = "v1.7.54"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -1166,6 +1166,50 @@ def batch_rename_preview(files, rule_type, params):
                         candidate = stem[:n].rstrip(" ._-")
                 except ValueError:
                     pass
+            elif trim_mode == "folder_from_largest_file" and is_dir:
+                folder_path = f.get("path", "")
+                if folder_path and os.path.isdir(folder_path):
+                    video_exts = {".mkv", ".mp4", ".avi", ".mov", ".wmv", ".m4v", ".ts", ".m2ts", ".iso"}
+                    junk_exts = {".nfo", ".txt", ".jpg", ".jpeg", ".png", ".gif", ".idx", ".sub", ".srt", ".ass", ".ssa", ".vtt", ".bat", ".url", ".sfv", ".md5"}
+                    best_video = None  # (size, name)
+                    best_any = None    # (size, name)
+                    try:
+                        with os.scandir(folder_path) as it_dir:
+                            for ent in it_dir:
+                                if not ent.is_file():
+                                    continue
+                                fn = ent.name
+                                fn_low = fn.lower()
+                                if fn.startswith("._") or fn.startswith("~$") or fn_low in ("desktop.ini", "thumbs.db"):
+                                    continue
+                                try:
+                                    sz = ent.stat().st_size
+                                except Exception:
+                                    sz = 0
+                                # Kleine macOS/Rest-Dateien mit führendem Unterstrich (< 100 KB) ignorieren
+                                if fn.startswith("_") and sz < 100 * 1024:
+                                    continue
+                                _, fext = os.path.splitext(fn_low)
+                                if fext in junk_exts:
+                                    continue
+                                if "sample" in fn_low and sz < 100 * 1024 * 1024:
+                                    continue
+                                if fext in video_exts:
+                                    if best_video is None or sz > best_video[0]:
+                                        best_video = (sz, fn)
+                                if best_any is None or sz > best_any[0]:
+                                    best_any = (sz, fn)
+                    except Exception:
+                        pass
+                    chosen = best_video or best_any
+                    if chosen:
+                        base_stem = os.path.splitext(chosen[1])[0].strip()
+                        if raw_val:
+                            pos = base_stem.lower().find(raw_val.lower())
+                            if pos > 0:
+                                base_stem = base_stem[:pos].rstrip(" ._-")
+                        if base_stem:
+                            candidate = base_stem
             if clean_sep:
                 candidate = re.sub(r"[._]+", " ", candidate)
                 candidate = re.sub(r"\s{2,}", " ", candidate).strip()
