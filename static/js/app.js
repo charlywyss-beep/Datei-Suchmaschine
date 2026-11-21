@@ -4082,7 +4082,7 @@ async function confirmTargetFolderModal() {
   });
 
   try {
-    const res = await fetch('/api/copy-or-move-files', {
+    const res = await fetch('/api/transfer/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -4093,20 +4093,257 @@ async function confirmTargetFolderModal() {
       })
     });
     const d = await res.json();
-    closeTargetFolderModal();
-    if (d.success) {
-      const verb = mode === 'move' ? 'verschoben' : 'kopiert';
-      showToast(`✅ ${d.processed_count} Datei(en) erfolgreich nach „${d.target_dir}“ ${verb}!`, 'success');
-      if (mode === 'move' && Array.isArray(d.processed)) {
-        const movedMap = new Map(d.processed.filter(x => !x.unchanged).map(x => [x.src, x.dest]));
-        if (movedMap.size > 0) {
-          executeSearch();
-        }
-      }
-    } else {
-      showToast(d.error || 'Kopieren/Verschieben fehlgeschlagen', 'error');
+    if (!d.success || !d.job_id) {
+      showToast(d.error || 'Kopieren/Verschieben konnte nicht gestartet werden.', 'error');
+      return;
     }
+    closeTargetFolderModal();
+    openTransferProgressModal(d.job_id, mode, targetDir, items.length);
   } catch (err) {
-    showToast(`Fehler beim Kopieren/Verschieben: ${err.message}`, 'error');
+    showToast(`Fehler beim Starten: ${err.message}`, 'error');
   }
+}
+
+// ============================================================================
+// LIVE TRANSFER-FORTSCHRITT, ABBRECHEN & ZURÜCK (RÜCKGÄNGIG)
+// ============================================================================
+let _activeTransferJobId = null;
+let _activeTransferTargetDir = '';
+let _activeTransferMode = 'copy';
+let _transferPollTimer = null;
+let _transferNeedsRefresh = false;
+
+function _fmtTransferBytes(b) {
+  const n = Math.max(0, Number(b) || 0);
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1).replace('.', ',')} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2).replace('.', ',')} GB`;
+}
+
+function _fmtTransferDuration(sec) {
+  if (sec === null || sec === undefined || Number.isNaN(sec)) return 'Berechne…';
+  const s = Math.max(0, Math.round(sec));
+  if (s < 60) return `${s} Sek.`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (m < 60) return `${m} Min. ${r} Sek.`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return `${h} Std. ${rm} Min.`;
+}
+
+function openTransferProgressModal(jobId, mode, targetDir, totalItems) {
+  _activeTransferJobId = jobId;
+  _activeTransferTargetDir = targetDir || '';
+  _activeTransferMode = mode === 'move' ? 'move' : 'copy';
+  _transferNeedsRefresh = false;
+
+  const modal = document.getElementById('modal-transfer-progress');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+
+  document.body.style.cursor = 'progress';
+  document.getElementById('tp-title').textContent = _activeTransferMode === 'move'
+    ? 'Dateien werden verschoben…'
+    : 'Dateien werden kopiert…';
+  document.getElementById('tp-target').textContent = `Ziel: ${_activeTransferTargetDir}`;
+  document.getElementById('tp-current-file').textContent = 'Starte Übertragung…';
+  document.getElementById('tp-count').textContent = `0 / ${totalItems || 0}`;
+  document.getElementById('tp-percent-text').textContent = '0 %';
+  document.getElementById('tp-bar-total').style.width = '0%';
+  document.getElementById('tp-bar-file').style.width = '0%';
+  document.getElementById('tp-file-bytes').textContent = '0 B / 0 B';
+  document.getElementById('tp-bytes').textContent = '0 B / 0 B';
+  document.getElementById('tp-speed').textContent = '— MB/s';
+  document.getElementById('tp-eta').textContent = 'Berechne…';
+  document.getElementById('tp-elapsed').textContent = 'Laufzeit: 0 Sek.';
+
+  const icon = document.getElementById('tp-icon');
+  const iconWrap = document.getElementById('tp-icon-wrap');
+  icon.className = 'fa-solid fa-spinner fa-spin text-lg';
+  iconWrap.className = 'w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center shrink-0 text-blue-400';
+
+  document.getElementById('tp-summary').classList.add('hidden');
+  document.getElementById('tp-btn-x').classList.add('hidden');
+  document.getElementById('tp-btn-cancel').classList.remove('hidden');
+  document.getElementById('tp-btn-cancel').disabled = false;
+  document.getElementById('tp-btn-cancel-undo').classList.remove('hidden');
+  document.getElementById('tp-btn-cancel-undo').disabled = false;
+  document.getElementById('tp-btn-undo').classList.add('hidden');
+  document.getElementById('tp-btn-open-dir').classList.add('hidden');
+  document.getElementById('tp-btn-close').classList.add('hidden');
+
+  if (_transferPollTimer) clearInterval(_transferPollTimer);
+  _pollTransferStatus();
+  _transferPollTimer = setInterval(_pollTransferStatus, 250);
+}
+
+async function _pollTransferStatus() {
+  if (!_activeTransferJobId) return;
+  try {
+    const res = await fetch(`/api/transfer/status/${encodeURIComponent(_activeTransferJobId)}`);
+    const d = await res.json();
+    if (!d.success) return;
+
+    _activeTransferTargetDir = d.target_dir || _activeTransferTargetDir;
+    const isRunning = d.status === 'running' || d.status === 'rolling_back';
+    const verb = d.mode === 'move' ? 'verschoben' : 'kopiert';
+
+    document.getElementById('tp-target').textContent = `Ziel: ${_activeTransferTargetDir}`;
+    document.getElementById('tp-current-file').textContent = d.current_file
+      ? `${d.status === 'rolling_back' ? 'Hole zurück: ' : ''}${d.current_file}`
+      : (isRunning ? 'Arbeite…' : 'Abgeschlossen');
+    document.getElementById('tp-count').textContent = `${d.current_index} / ${d.total_items}`;
+    document.getElementById('tp-percent-text').textContent = `${String(d.percent).replace('.', ',')} %`;
+    document.getElementById('tp-bar-total').style.width = `${d.percent}%`;
+    document.getElementById('tp-bar-file').style.width = `${d.file_percent}%`;
+    document.getElementById('tp-file-bytes').textContent = `${_fmtTransferBytes(d.file_copied_bytes)} / ${_fmtTransferBytes(d.file_total_bytes)}`;
+    document.getElementById('tp-bytes').textContent = `${_fmtTransferBytes(d.copied_bytes)} / ${_fmtTransferBytes(d.total_bytes)}`;
+    document.getElementById('tp-speed').textContent = d.speed_mb_s > 0 ? `${String(d.speed_mb_s).replace('.', ',')} MB/s` : '— MB/s';
+    document.getElementById('tp-eta').textContent = isRunning ? _fmtTransferDuration(d.eta_seconds) : 'Fertig';
+    document.getElementById('tp-elapsed').textContent = `Laufzeit: ${_fmtTransferDuration(d.elapsed_seconds)}`;
+
+    const icon = document.getElementById('tp-icon');
+    const iconWrap = document.getElementById('tp-icon-wrap');
+
+    if (d.status === 'rolling_back') {
+      document.getElementById('tp-title').textContent = '↩ Rückgängig machen – hole Dateien zurück…';
+      icon.className = 'fa-solid fa-spinner fa-spin text-lg';
+      iconWrap.className = 'w-10 h-10 rounded-xl bg-sky-600/20 border border-sky-500/40 flex items-center justify-center shrink-0 text-sky-400';
+      document.getElementById('tp-btn-cancel').classList.add('hidden');
+      document.getElementById('tp-btn-cancel-undo').classList.add('hidden');
+      document.getElementById('tp-btn-undo').classList.add('hidden');
+      document.getElementById('tp-btn-open-dir').classList.add('hidden');
+      document.getElementById('tp-btn-close').classList.add('hidden');
+      document.getElementById('tp-btn-x').classList.add('hidden');
+      return;
+    }
+
+    if (!isRunning) {
+      if (_transferPollTimer) {
+        clearInterval(_transferPollTimer);
+        _transferPollTimer = null;
+      }
+      document.body.style.cursor = '';
+
+      document.getElementById('tp-btn-cancel').classList.add('hidden');
+      document.getElementById('tp-btn-cancel-undo').classList.add('hidden');
+      document.getElementById('tp-btn-close').classList.remove('hidden');
+      document.getElementById('tp-btn-x').classList.remove('hidden');
+
+      const summary = document.getElementById('tp-summary');
+      summary.classList.remove('hidden');
+
+      if (d.status === 'done') {
+        document.getElementById('tp-title').textContent = `✅ Fertig! ${d.processed_count} Datei(en) ${verb}`;
+        icon.className = 'fa-solid fa-circle-check text-lg';
+        iconWrap.className = 'w-10 h-10 rounded-xl bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center shrink-0 text-emerald-400';
+        summary.className = 'rounded-xl border border-emerald-500/40 bg-emerald-950/40 text-emerald-200 px-3.5 py-3 text-xs leading-relaxed';
+        const errHint = d.error_count > 0 ? `<br><span class="text-rose-300">⚠️ ${d.error_count} Fehler aufgetreten (${escapeHtml(d.errors[0]?.error || '')}).</span>` : '';
+        summary.innerHTML = `<strong>${d.processed_count} von ${d.total_items} Datei(en)</strong> (${_fmtTransferBytes(d.total_bytes)}) wurden in <strong>${_fmtTransferDuration(d.elapsed_seconds)}</strong> erfolgreich nach <code class="font-mono">${escapeHtml(d.target_dir)}</code> ${verb}.${errHint}`;
+        document.getElementById('tp-btn-open-dir').classList.remove('hidden');
+        if (d.can_undo) document.getElementById('tp-btn-undo').classList.remove('hidden');
+        showToast(`✅ Fertig: ${d.processed_count} Datei(en) nach „${d.target_dir}“ ${verb}!`, 'success');
+        if (d.mode === 'move' && d.processed_count > 0) _transferNeedsRefresh = true;
+      } else if (d.status === 'cancelled') {
+        document.getElementById('tp-title').textContent = '⏹ Übertragung abgebrochen';
+        icon.className = 'fa-solid fa-ban text-lg';
+        iconWrap.className = 'w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-400';
+        summary.className = 'rounded-xl border border-amber-500/40 bg-amber-950/35 text-amber-200 px-3.5 py-3 text-xs leading-relaxed';
+        summary.innerHTML = `Abgebrochen nach <strong>${d.processed_count} von ${d.total_items} Datei(en)</strong>. Eine angefangene Datei wurde sauber entfernt.`
+          + (d.can_undo ? '<br>Mit <strong>„Zurück (Rückgängig)“</strong> kannst du die bereits übertragenen Dateien wieder zurückholen.' : '');
+        if (d.processed_count > 0) document.getElementById('tp-btn-open-dir').classList.remove('hidden');
+        if (d.can_undo) document.getElementById('tp-btn-undo').classList.remove('hidden');
+        if (d.mode === 'move' && d.processed_count > 0) _transferNeedsRefresh = true;
+      } else if (d.status === 'rolled_back') {
+        document.getElementById('tp-title').textContent = '↩ Rückgängig abgeschlossen';
+        icon.className = 'fa-solid fa-rotate-left text-lg';
+        iconWrap.className = 'w-10 h-10 rounded-xl bg-sky-600/20 border border-sky-500/40 flex items-center justify-center shrink-0 text-sky-400';
+        summary.className = 'rounded-xl border border-sky-500/40 bg-sky-950/40 text-sky-200 px-3.5 py-3 text-xs leading-relaxed';
+        const uErr = (d.undo_errors && d.undo_errors.length > 0) ? `<br><span class="text-rose-300">⚠️ ${d.undo_errors.length} Hinweis(e): ${escapeHtml(d.undo_errors[0].error || '')}</span>` : '';
+        summary.innerHTML = `<strong>${d.undo_done} von ${d.undo_total} Datei(en)</strong> wurden erfolgreich wieder an den ursprünglichen Ort zurückgeholt / entfernt.${uErr}`;
+        document.getElementById('tp-btn-undo').classList.add('hidden');
+        document.getElementById('tp-btn-open-dir').classList.add('hidden');
+        showToast(`↩ ${d.undo_done} Datei(en) rückgängig gemacht.`, 'info');
+        _transferNeedsRefresh = true;
+      } else {
+        document.getElementById('tp-title').textContent = '⚠️ Übertragung mit Fehlern beendet';
+        icon.className = 'fa-solid fa-triangle-exclamation text-lg';
+        iconWrap.className = 'w-10 h-10 rounded-xl bg-rose-600/20 border border-rose-500/40 flex items-center justify-center shrink-0 text-rose-400';
+        summary.className = 'rounded-xl border border-rose-500/40 bg-rose-950/40 text-rose-200 px-3.5 py-3 text-xs leading-relaxed';
+        summary.innerHTML = escapeHtml((d.errors && d.errors[0]?.error) || 'Unbekannter Fehler beim Kopieren/Verschieben.');
+      }
+
+      if (_transferNeedsRefresh) {
+        _transferNeedsRefresh = false;
+        try { executeSearch(); } catch (_) {}
+      }
+    }
+  } catch (_) {}
+}
+
+async function cancelActiveTransfer(autoUndo = false) {
+  if (!_activeTransferJobId) return;
+  const btnC = document.getElementById('tp-btn-cancel');
+  const btnU = document.getElementById('tp-btn-cancel-undo');
+  if (btnC) btnC.disabled = true;
+  if (btnU) btnU.disabled = true;
+  document.getElementById('tp-title').textContent = autoUndo
+    ? 'Breche ab & hole Dateien zurück…'
+    : 'Breche Übertragung ab…';
+  try {
+    await fetch(`/api/transfer/cancel/${encodeURIComponent(_activeTransferJobId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auto_undo: !!autoUndo })
+    });
+  } catch (err) {
+    showToast(`Abbruch-Fehler: ${err.message}`, 'error');
+  }
+}
+
+async function undoActiveTransfer() {
+  if (!_activeTransferJobId) return;
+  const btn = document.getElementById('tp-btn-undo');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch(`/api/transfer/undo/${encodeURIComponent(_activeTransferJobId)}`, { method: 'POST' });
+    const d = await res.json();
+    if (!d.success) {
+      showToast(d.error || 'Rückgängig fehlgeschlagen', 'error');
+      if (btn) btn.disabled = false;
+      return;
+    }
+    document.body.style.cursor = 'progress';
+    document.getElementById('tp-summary').classList.add('hidden');
+    if (_transferPollTimer) clearInterval(_transferPollTimer);
+    _pollTransferStatus();
+    _transferPollTimer = setInterval(_pollTransferStatus, 250);
+  } catch (err) {
+    showToast(`Rückgängig-Fehler: ${err.message}`, 'error');
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function openTransferTargetDir() {
+  if (!_activeTransferTargetDir) return;
+  try {
+    await fetch('/api/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: _activeTransferTargetDir })
+    });
+  } catch (_) {}
+}
+
+function closeTransferProgressModal() {
+  if (_transferPollTimer) {
+    clearInterval(_transferPollTimer);
+    _transferPollTimer = null;
+  }
+  document.body.style.cursor = '';
+  const modal = document.getElementById('modal-transfer-progress');
+  if (modal) modal.classList.add('hidden');
+  _activeTransferJobId = null;
 }

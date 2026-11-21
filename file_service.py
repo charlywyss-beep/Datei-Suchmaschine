@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.38"
+APP_VERSION = "v1.7.39"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -3252,6 +3252,493 @@ def copy_or_move_files(
         "processed": processed,
         "errors": errors,
     }
+
+
+# ============================================================================
+# ASYNCHRONER TRANSFER-MANAGER (Live-Fortschritt, Restzeit, Abbrechen, Zurück)
+# ============================================================================
+_TRANSFER_JOBS: dict[str, dict] = {}
+_TRANSFER_LOCK = threading.Lock()
+_TRANSFER_CHUNK_SIZE = 2 * 1024 * 1024  # 2 MB Chunks für flüssigen Fortschritt & schnelles Abbrechen
+
+
+def _calc_path_size_bytes(path: str) -> int:
+    try:
+        if os.path.isfile(path):
+            return max(0, os.path.getsize(path))
+        if os.path.isdir(path):
+            total = 0
+            for root, _, files in os.walk(path):
+                for fn in files:
+                    try:
+                        total += max(0, os.path.getsize(os.path.join(root, fn)))
+                    except Exception:
+                        pass
+            return total
+    except Exception:
+        pass
+    return 0
+
+
+def _copy_file_chunked(
+    src: str,
+    dest: str,
+    cancel_event: threading.Event,
+    on_chunk=None,
+) -> bool:
+    """Kopiert eine Datei in 2-MB-Blöcken. Bei Abbruch wird die unvollständige Zieldatei gelöscht."""
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    file_total = 0
+    try:
+        file_total = max(0, os.path.getsize(src))
+    except Exception:
+        pass
+    file_copied = 0
+    try:
+        with open(src, "rb") as fsrc, open(dest, "wb") as fdst:
+            while True:
+                if cancel_event.is_set():
+                    break
+                buf = fsrc.read(_TRANSFER_CHUNK_SIZE)
+                if not buf:
+                    break
+                fdst.write(buf)
+                n = len(buf)
+                file_copied += n
+                if on_chunk:
+                    on_chunk(n, file_copied, file_total)
+        if cancel_event.is_set():
+            try:
+                if os.path.exists(dest):
+                    os.remove(dest)
+            except Exception:
+                pass
+            return False
+        try:
+            shutil.copystat(src, dest)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        try:
+            if os.path.exists(dest):
+                os.remove(dest)
+        except Exception:
+            pass
+        raise
+
+
+def _copy_dir_chunked(
+    src_dir: str,
+    dest_dir: str,
+    cancel_event: threading.Event,
+    on_chunk=None,
+    on_file=None,
+) -> bool:
+    os.makedirs(dest_dir, exist_ok=True)
+    for root, dirs, files in os.walk(src_dir):
+        if cancel_event.is_set():
+            return False
+        rel = os.path.relpath(root, src_dir)
+        target_root = dest_dir if rel == "." else os.path.join(dest_dir, rel)
+        os.makedirs(target_root, exist_ok=True)
+        for fn in files:
+            if cancel_event.is_set():
+                return False
+            s_file = os.path.join(root, fn)
+            d_file = os.path.join(target_root, fn)
+            if on_file:
+                on_file(fn, _calc_path_size_bytes(s_file))
+            ok = _copy_file_chunked(s_file, d_file, cancel_event, on_chunk=on_chunk)
+            if not ok:
+                return False
+    return True
+
+
+def _run_undo_for_job(job: dict):
+    """Macht alle bereits abgeschlossenen Kopier-/Verschiebe-Schritte eines Jobs rückgängig."""
+    processed = list(job.get("processed") or [])
+    reversible = [p for p in reversed(processed) if not p.get("unchanged")]
+    total_undo_bytes = sum(_calc_path_size_bytes(p["dest"]) for p in reversible if os.path.exists(p["dest"]))
+
+    undo_cancel = threading.Event()
+    start_t = time.monotonic()
+    last_speed_t = start_t
+    last_speed_b = 0
+
+    with _TRANSFER_LOCK:
+        job["status"] = "rolling_back"
+        job["undo_total"] = len(reversible)
+        job["undo_done"] = 0
+        job["undo_errors"] = []
+        job["total_bytes"] = total_undo_bytes
+        job["copied_bytes"] = 0
+        job["file_total_bytes"] = 0
+        job["file_copied_bytes"] = 0
+        job["speed_mb_s"] = 0.0
+        job["eta_seconds"] = None
+        job["current_index"] = 0
+        job["total_items"] = len(reversible)
+        job["current_file"] = ""
+
+    def _on_undo_chunk(n_bytes, f_copied, f_total):
+        nonlocal last_speed_t, last_speed_b
+        now = time.monotonic()
+        with _TRANSFER_LOCK:
+            job["copied_bytes"] += n_bytes
+            job["file_copied_bytes"] = f_copied
+            job["file_total_bytes"] = f_total
+            dt = now - last_speed_t
+            if dt >= 0.35:
+                diff = job["copied_bytes"] - last_speed_b
+                inst = max(0.0, (diff / (1024 * 1024)) / max(0.01, dt))
+                prev = job["speed_mb_s"]
+                job["speed_mb_s"] = inst if prev <= 0 else (prev * 0.65 + inst * 0.35)
+                last_speed_t = now
+                last_speed_b = job["copied_bytes"]
+                rem = max(0, job["total_bytes"] - job["copied_bytes"])
+                if job["speed_mb_s"] > 0.05:
+                    job["eta_seconds"] = rem / (job["speed_mb_s"] * 1024 * 1024)
+            job["elapsed_seconds"] = now - start_t
+
+    done_cnt = 0
+    undo_errors = []
+    for idx, rec in enumerate(reversible, start=1):
+        src = rec["src"]
+        dest = rec["dest"]
+        op_mode = rec.get("mode") or job.get("mode", "copy")
+        is_dir = bool(rec.get("is_dir"))
+        fname = os.path.basename(dest.rstrip("\\/")) or dest
+        fsize = _calc_path_size_bytes(dest) if os.path.exists(dest) else 0
+
+        with _TRANSFER_LOCK:
+            job["current_index"] = idx
+            job["current_file"] = fname
+            job["file_copied_bytes"] = 0
+            job["file_total_bytes"] = fsize
+
+        try:
+            if not os.path.exists(dest):
+                continue
+            if op_mode == "copy":
+                if is_dir or os.path.isdir(dest):
+                    shutil.rmtree(dest, ignore_errors=False)
+                else:
+                    os.remove(dest)
+                with _TRANSFER_LOCK:
+                    job["copied_bytes"] += fsize
+                done_cnt += 1
+            else:
+                # Verschieben rückgängig: dest zurück nach src
+                os.makedirs(os.path.dirname(src), exist_ok=True)
+                restore_target = src if not os.path.exists(src) else _unique_dest_path(os.path.dirname(src), os.path.basename(src))
+                moved_fast = False
+                try:
+                    os.rename(dest, restore_target)
+                    moved_fast = True
+                    with _TRANSFER_LOCK:
+                        job["copied_bytes"] += fsize
+                except OSError:
+                    pass
+                if not moved_fast:
+                    if is_dir or os.path.isdir(dest):
+                        _copy_dir_chunked(dest, restore_target, undo_cancel, on_chunk=_on_undo_chunk)
+                        shutil.rmtree(dest, ignore_errors=False)
+                    else:
+                        _copy_file_chunked(dest, restore_target, undo_cancel, on_chunk=_on_undo_chunk)
+                        os.remove(dest)
+                done_cnt += 1
+        except Exception as exc:
+            undo_errors.append({"path": dest, "error": str(exc)})
+
+        with _TRANSFER_LOCK:
+            job["undo_done"] = done_cnt
+            job["undo_errors"] = list(undo_errors)
+
+    with _TRANSFER_LOCK:
+        job["status"] = "rolled_back"
+        job["undo_done"] = done_cnt
+        job["undo_errors"] = undo_errors
+        job["eta_seconds"] = 0.0
+        job["elapsed_seconds"] = time.monotonic() - start_t
+        job["can_undo"] = False
+
+
+def start_transfer_job(
+    items: list,
+    target_base_dir: str,
+    mode: str = "copy",
+    use_category_subfolder: bool = False,
+) -> dict:
+    """Startet einen asynchronen Kopier-/Verschiebe-Job mit Byte-Fortschritt, Restzeit, Abbrechen & Zurück."""
+    base_dir = resolve_german_alias_path((target_base_dir or "").strip())
+    if not base_dir:
+        return {"success": False, "error": "Kein Zielordner angegeben."}
+
+    abs_base = os.path.abspath(base_dir)
+    ok_write, err_write = _check_dir_writable(abs_base)
+    if not ok_write:
+        return {"success": False, "error": f"Keine Schreibrechte im Zielordner '{abs_base}': {err_write}"}
+
+    op_mode = "move" if str(mode).lower() == "move" else "copy"
+    prepared = []
+    pre_errors = []
+    total_bytes = 0
+
+    for entry in (items or []):
+        if isinstance(entry, str):
+            src_path = entry
+            target_sub = ""
+        elif isinstance(entry, dict):
+            src_path = entry.get("path") or ""
+            target_sub = (entry.get("target_sub") or "").strip().strip("\\/")
+        else:
+            continue
+        if not src_path or not os.path.exists(src_path):
+            pre_errors.append({"path": src_path, "error": "Quelldatei nicht gefunden"})
+            continue
+        src_abs = os.path.abspath(src_path)
+        is_dir = os.path.isdir(src_abs)
+        sz = _calc_path_size_bytes(src_abs)
+        total_bytes += sz
+        prepared.append({
+            "src": src_abs,
+            "target_sub": target_sub,
+            "is_dir": is_dir,
+            "size": sz,
+            "name": os.path.basename(src_abs.rstrip("\\/")) or src_abs,
+        })
+
+    if not prepared:
+        return {
+            "success": False,
+            "error": pre_errors[0]["error"] if pre_errors else "Keine gültigen Quelldateien gefunden.",
+        }
+
+    job_id = f"tr_{int(time.time() * 1000)}_{hashlib.md5(f'{abs_base}{time.monotonic()}'.encode()).hexdigest()[:6]}"
+    cancel_ev = threading.Event()
+    job = {
+        "job_id": job_id,
+        "status": "running",
+        "mode": op_mode,
+        "target_dir": abs_base,
+        "use_category_subfolder": bool(use_category_subfolder),
+        "total_items": len(prepared),
+        "current_index": 0,
+        "current_file": prepared[0]["name"],
+        "total_bytes": total_bytes,
+        "copied_bytes": 0,
+        "file_total_bytes": prepared[0]["size"],
+        "file_copied_bytes": 0,
+        "speed_mb_s": 0.0,
+        "eta_seconds": None,
+        "elapsed_seconds": 0.0,
+        "processed": [],
+        "errors": list(pre_errors),
+        "cancel_event": cancel_ev,
+        "auto_undo": False,
+        "can_undo": False,
+        "undo_total": 0,
+        "undo_done": 0,
+        "undo_errors": [],
+        "created_at": time.monotonic(),
+    }
+
+    with _TRANSFER_LOCK:
+        # Alte abgeschlossene Jobs aufräumen (max 25 behalten)
+        if len(_TRANSFER_JOBS) > 25:
+            old_ids = sorted(_TRANSFER_JOBS.keys(), key=lambda k: _TRANSFER_JOBS[k].get("created_at", 0))
+            for oid in old_ids[:-20]:
+                if _TRANSFER_JOBS[oid].get("status") not in ("running", "rolling_back"):
+                    _TRANSFER_JOBS.pop(oid, None)
+        _TRANSFER_JOBS[job_id] = job
+
+    def _worker():
+        start_t = time.monotonic()
+        last_speed_t = start_t
+        last_speed_b = 0
+
+        def _on_chunk(n_bytes, f_copied, f_total):
+            nonlocal last_speed_t, last_speed_b
+            now = time.monotonic()
+            with _TRANSFER_LOCK:
+                job["copied_bytes"] += n_bytes
+                job["file_copied_bytes"] = f_copied
+                job["file_total_bytes"] = f_total
+                job["elapsed_seconds"] = now - start_t
+                dt = now - last_speed_t
+                if dt >= 0.35:
+                    diff = job["copied_bytes"] - last_speed_b
+                    inst = max(0.0, (diff / (1024 * 1024)) / max(0.01, dt))
+                    prev = job["speed_mb_s"]
+                    job["speed_mb_s"] = inst if prev <= 0 else (prev * 0.65 + inst * 0.35)
+                    last_speed_t = now
+                    last_speed_b = job["copied_bytes"]
+                    rem = max(0, job["total_bytes"] - job["copied_bytes"])
+                    if job["speed_mb_s"] > 0.05:
+                        job["eta_seconds"] = rem / (job["speed_mb_s"] * 1024 * 1024)
+
+        def _on_subfile(fn, fsz):
+            with _TRANSFER_LOCK:
+                job["current_file"] = fn
+                job["file_copied_bytes"] = 0
+                job["file_total_bytes"] = fsz
+
+        for idx, it in enumerate(prepared, start=1):
+            if cancel_ev.is_set():
+                break
+            src_abs = it["src"]
+            target_sub = it["target_sub"]
+            is_dir = it["is_dir"]
+            fsize = it["size"]
+
+            with _TRANSFER_LOCK:
+                job["current_index"] = idx
+                job["current_file"] = it["name"]
+                job["file_copied_bytes"] = 0
+                job["file_total_bytes"] = fsize
+                job["elapsed_seconds"] = time.monotonic() - start_t
+
+            try:
+                if target_sub and os.path.isabs(target_sub):
+                    dest_dir = target_sub
+                elif use_category_subfolder and target_sub:
+                    dest_dir = os.path.join(abs_base, target_sub.replace("/", os.sep))
+                else:
+                    dest_dir = abs_base
+
+                os.makedirs(dest_dir, exist_ok=True)
+                dest_path = _unique_dest_path(dest_dir, it["name"])
+
+                if os.path.normcase(os.path.dirname(src_abs)) == os.path.normcase(os.path.abspath(dest_dir)) and op_mode == "move":
+                    with _TRANSFER_LOCK:
+                        job["processed"].append({"src": src_abs, "dest": src_abs, "is_dir": is_dir, "mode": op_mode, "unchanged": True})
+                        job["copied_bytes"] += fsize
+                    continue
+
+                if op_mode == "copy":
+                    if is_dir:
+                        ok = _copy_dir_chunked(src_abs, dest_path, cancel_ev, on_chunk=_on_chunk, on_file=_on_subfile)
+                    else:
+                        ok = _copy_file_chunked(src_abs, dest_path, cancel_ev, on_chunk=_on_chunk)
+                    if not ok and cancel_ev.is_set():
+                        break
+                else:
+                    moved_fast = False
+                    try:
+                        os.rename(src_abs, dest_path)
+                        moved_fast = True
+                        with _TRANSFER_LOCK:
+                            job["copied_bytes"] += fsize
+                            job["file_copied_bytes"] = fsize
+                    except OSError:
+                        pass
+                    if not moved_fast:
+                        if is_dir:
+                            ok = _copy_dir_chunked(src_abs, dest_path, cancel_ev, on_chunk=_on_chunk, on_file=_on_subfile)
+                            if not ok and cancel_ev.is_set():
+                                try:
+                                    if os.path.exists(dest_path):
+                                        shutil.rmtree(dest_path, ignore_errors=True)
+                                except Exception:
+                                    pass
+                                break
+                            shutil.rmtree(src_abs, ignore_errors=False)
+                        else:
+                            ok = _copy_file_chunked(src_abs, dest_path, cancel_ev, on_chunk=_on_chunk)
+                            if not ok and cancel_ev.is_set():
+                                break
+                            os.remove(src_abs)
+
+                with _TRANSFER_LOCK:
+                    job["processed"].append({"src": src_abs, "dest": dest_path, "is_dir": is_dir, "mode": op_mode, "unchanged": False})
+                    job["can_undo"] = True
+            except Exception as exc:
+                with _TRANSFER_LOCK:
+                    job["errors"].append({"path": src_abs, "error": str(exc)})
+
+        with _TRANSFER_LOCK:
+            was_cancelled = cancel_ev.is_set()
+            do_auto_undo = bool(job.get("auto_undo")) and len([p for p in job["processed"] if not p.get("unchanged")]) > 0
+            job["elapsed_seconds"] = time.monotonic() - start_t
+            job["eta_seconds"] = 0.0
+            if not do_auto_undo:
+                job["status"] = "cancelled" if was_cancelled else ("done" if (len(job["processed"]) > 0 or len(job["errors"]) == 0) else "error")
+
+        if do_auto_undo:
+            _run_undo_for_job(job)
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return {"success": True, "job_id": job_id}
+
+
+def get_transfer_job_status(job_id: str) -> dict:
+    with _TRANSFER_LOCK:
+        job = _TRANSFER_JOBS.get(job_id)
+        if not job:
+            return {"success": False, "error": "Transfer-Job nicht gefunden"}
+        total_b = max(0, job["total_bytes"])
+        copied_b = min(total_b, max(0, job["copied_bytes"])) if total_b > 0 else max(0, job["copied_bytes"])
+        pct = (copied_b / total_b * 100.0) if total_b > 0 else (
+            (job["current_index"] / max(1, job["total_items"])) * 100.0 if job["status"] == "running" else 100.0
+        )
+        f_total = max(0, job["file_total_bytes"])
+        f_copied = min(f_total, max(0, job["file_copied_bytes"])) if f_total > 0 else 0
+        f_pct = (f_copied / f_total * 100.0) if f_total > 0 else 0.0
+        return {
+            "success": True,
+            "job_id": job_id,
+            "status": job["status"],
+            "mode": job["mode"],
+            "target_dir": job["target_dir"],
+            "total_items": job["total_items"],
+            "current_index": job["current_index"],
+            "current_file": job["current_file"],
+            "total_bytes": total_b,
+            "copied_bytes": copied_b,
+            "percent": round(min(100.0, max(0.0, pct)), 1),
+            "file_total_bytes": f_total,
+            "file_copied_bytes": f_copied,
+            "file_percent": round(min(100.0, max(0.0, f_pct)), 1),
+            "speed_mb_s": round(job["speed_mb_s"], 1),
+            "eta_seconds": None if job["eta_seconds"] is None else max(0, int(round(job["eta_seconds"]))),
+            "elapsed_seconds": max(0, int(round(job["elapsed_seconds"]))),
+            "processed_count": len(job["processed"]),
+            "error_count": len(job["errors"]),
+            "processed": list(job["processed"]),
+            "errors": list(job["errors"]),
+            "can_undo": bool(job.get("can_undo")) and len([p for p in job["processed"] if not p.get("unchanged")]) > 0,
+            "undo_total": job.get("undo_total", 0),
+            "undo_done": job.get("undo_done", 0),
+            "undo_errors": list(job.get("undo_errors") or []),
+        }
+
+
+def cancel_transfer_job(job_id: str, auto_undo: bool = False) -> dict:
+    with _TRANSFER_LOCK:
+        job = _TRANSFER_JOBS.get(job_id)
+        if not job:
+            return {"success": False, "error": "Transfer-Job nicht gefunden"}
+        if auto_undo:
+            job["auto_undo"] = True
+        ev = job.get("cancel_event")
+        if ev:
+            ev.set()
+        return {"success": True, "auto_undo": bool(auto_undo)}
+
+
+def undo_transfer_job(job_id: str) -> dict:
+    with _TRANSFER_LOCK:
+        job = _TRANSFER_JOBS.get(job_id)
+        if not job:
+            return {"success": False, "error": "Transfer-Job nicht gefunden"}
+        if job["status"] in ("running", "rolling_back"):
+            return {"success": False, "error": "Vorgang läuft noch."}
+        if not job.get("can_undo"):
+            return {"success": False, "error": "Keine rückgängig machbaren Dateien vorhanden."}
+        job["status"] = "rolling_back"
+    threading.Thread(target=_run_undo_for_job, args=(job,), daemon=True).start()
+    return {"success": True}
 
 
 def get_rich_file_preview_info(path: str) -> dict:

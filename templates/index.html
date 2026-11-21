@@ -1010,6 +1010,102 @@
   </div>
 
   <!-- ========================================== -->
+  <!-- MODAL: TRANSFER-FORTSCHRITT (LIVE + UNDO)  -->
+  <!-- ========================================== -->
+  <div id="modal-transfer-progress" class="fixed inset-0 z-[60] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700/80 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div id="tp-icon-wrap" class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center shrink-0 text-blue-400">
+            <i id="tp-icon" class="fa-solid fa-spinner fa-spin text-lg"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 id="tp-title" class="text-base font-bold text-white truncate">Dateien werden übertragen…</h3>
+            <p id="tp-target" class="text-[11px] text-slate-400 font-mono truncate">Ziel: —</p>
+          </div>
+        </div>
+        <button type="button" id="tp-btn-x" onclick="closeTransferProgressModal()" class="hidden text-slate-400 hover:text-white transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Aktuelle Datei & Gesamt-Fortschritt -->
+      <div id="tp-progress-section" class="space-y-3">
+        <div class="flex items-center justify-between text-xs gap-2">
+          <span id="tp-current-file" class="text-slate-200 font-medium truncate">Vorbereitung…</span>
+          <span id="tp-count" class="text-slate-400 font-mono shrink-0">0 / 0</span>
+        </div>
+
+        <!-- Gesamt-Balken -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Gesamtfortschritt</span>
+            <span id="tp-percent-text" class="font-mono font-semibold text-blue-400">0 %</span>
+          </div>
+          <div class="w-full h-3 rounded-full bg-slate-800 border border-slate-700/70 overflow-hidden">
+            <div id="tp-bar-total" class="h-full bg-blue-500 transition-all duration-200 rounded-full" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Aktuelle Datei Balken -->
+        <div id="tp-file-bar-wrap" class="space-y-1">
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>Aktuelle Datei</span>
+            <span id="tp-file-bytes" class="font-mono">0 B / 0 B</span>
+          </div>
+          <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+            <div id="tp-bar-file" class="h-full bg-sky-400 transition-all duration-150 rounded-full" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Live-Kennzahlen: Datenmenge, Tempo, Restzeit -->
+        <div class="grid grid-cols-3 gap-2 pt-1 text-center">
+          <div class="rounded-xl bg-slate-950/70 border border-slate-800 px-2.5 py-2">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500">Übertragen</div>
+            <div id="tp-bytes" class="text-xs font-mono font-semibold text-slate-200 mt-0.5">0 B / 0 B</div>
+          </div>
+          <div class="rounded-xl bg-slate-950/70 border border-slate-800 px-2.5 py-2">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500">Tempo</div>
+            <div id="tp-speed" class="text-xs font-mono font-semibold text-emerald-400 mt-0.5">— MB/s</div>
+          </div>
+          <div class="rounded-xl bg-slate-950/70 border border-slate-800 px-2.5 py-2">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500">Restzeit</div>
+            <div id="tp-eta" class="text-xs font-mono font-semibold text-sky-400 mt-0.5">Berechne…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Abschluss- / Status-Banner -->
+      <div id="tp-summary" class="hidden rounded-xl border px-3.5 py-3 text-xs leading-relaxed"></div>
+
+      <!-- Aktionen -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800">
+        <div id="tp-elapsed" class="text-[11px] text-slate-500 font-mono">Laufzeit: 0 Sek.</div>
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Während Transfer läuft -->
+          <button type="button" id="tp-btn-cancel" onclick="cancelActiveTransfer(false)" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 text-xs font-semibold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-stop text-rose-400"></i><span>Abbrechen</span>
+          </button>
+          <button type="button" id="tp-btn-cancel-undo" onclick="cancelActiveTransfer(true)" class="px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-200 border border-rose-500/40 text-xs font-semibold transition flex items-center gap-1.5" title="Stoppt sofort und holt bereits übertragene Dateien direkt wieder zurück">
+            <i class="fa-solid fa-rotate-left"></i><span>Abbrechen &amp; Zurück</span>
+          </button>
+
+          <!-- Nach Abschluss / Abbruch -->
+          <button type="button" id="tp-btn-undo" onclick="undoActiveTransfer()" class="hidden px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-xs font-semibold transition flex items-center gap-1.5" title="Alle übertragenen Dateien wieder an den ursprünglichen Ort zurückholen">
+            <i class="fa-solid fa-rotate-left text-sky-400"></i><span>Zurück (Rückgängig)</span>
+          </button>
+          <button type="button" id="tp-btn-open-dir" onclick="openTransferTargetDir()" class="hidden px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-xs font-semibold transition flex items-center gap-1.5">
+            <i class="fa-regular fa-folder-open text-amber-400"></i><span>Zielordner öffnen</span>
+          </button>
+          <button type="button" id="tp-btn-close" onclick="closeTransferProgressModal()" class="hidden px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition">
+            Schließen
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
   <!-- MODAL: EINZEL-UMBENENNUNG                 -->
   <!-- ========================================== -->
   <div id="modal-single-rename" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">

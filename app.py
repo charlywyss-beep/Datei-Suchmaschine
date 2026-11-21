@@ -588,6 +588,42 @@ def api_copy_or_move_files():
     return jsonify(res), status_code
 
 
+@app.route("/api/transfer/start", methods=["POST"])
+def api_transfer_start():
+    data = request.get_json(silent=True) or {}
+    items = data.get("items") or data.get("paths") or []
+    target_dir = (data.get("target_dir") or "").strip()
+    mode = data.get("mode", "copy")
+    use_category_subfolder = bool(data.get("use_category_subfolder", False))
+    res = file_service.start_transfer_job(
+        items=items,
+        target_base_dir=target_dir,
+        mode=mode,
+        use_category_subfolder=use_category_subfolder,
+    )
+    return jsonify(res), (200 if res.get("success") else 400)
+
+
+@app.route("/api/transfer/status/<job_id>", methods=["GET"])
+def api_transfer_status(job_id):
+    res = file_service.get_transfer_job_status(job_id)
+    return jsonify(res), (200 if res.get("success") else 404)
+
+
+@app.route("/api/transfer/cancel/<job_id>", methods=["POST"])
+def api_transfer_cancel(job_id):
+    data = request.get_json(silent=True) or {}
+    auto_undo = bool(data.get("auto_undo", False))
+    res = file_service.cancel_transfer_job(job_id, auto_undo=auto_undo)
+    return jsonify(res), (200 if res.get("success") else 404)
+
+
+@app.route("/api/transfer/undo/<job_id>", methods=["POST"])
+def api_transfer_undo(job_id):
+    res = file_service.undo_transfer_job(job_id)
+    return jsonify(res), (200 if res.get("success") else 400)
+
+
 @app.route("/api/handoff-seven-folder", methods=["POST"])
 def api_handoff_seven_folder():
     """Übergibt markierte Dateien oder einen Ordner an 7-Ordner-Pro (startet es bei Bedarf automatisch)."""
