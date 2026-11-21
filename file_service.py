@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.50"
+APP_VERSION = "v1.7.51"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -1188,9 +1188,16 @@ def batch_rename_preview(files, rule_type, params):
     return preview
 
 def execute_batch_rename(preview_items):
-    """Wendet die Batch-Umbenennung an"""
+    """Wendet die Batch-Umbenennung an (tiefste Pfade / Dateien immer zuerst, danach übergeordnete Ordner)."""
     results = {"success": [], "errors": []}
-    for item in preview_items:
+    ordered = sorted(
+        (preview_items or []),
+        key=lambda it: (
+            -len(os.path.normpath(it.get("original_path") or "").split(os.sep)),
+            -len(it.get("original_path") or ""),
+        ),
+    )
+    for item in ordered:
         if not item.get("changed", True):
             continue
         old_path = item["original_path"]
