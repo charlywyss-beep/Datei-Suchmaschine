@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.57"
+APP_VERSION = "v1.7.58"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -3204,13 +3204,26 @@ def send_to_seven_folder(paths=None, folder_path: str | None = None, target_dir:
 
     try:
         app_cwd = os.path.dirname(base_cmd[-1]) or None
-        proc = subprocess.Popen(cmd, cwd=app_cwd, creationflags=creation_flags)
+        launched_via_shell = False
         if os.name == "nt":
             try:
                 import ctypes
-                ctypes.windll.user32.AllowSetForegroundWindow(int(proc.pid))
+                exe_path = cmd[0]
+                params_str = subprocess.list2cmdline(cmd[1:]) if len(cmd) > 1 else ""
+                # ShellExecuteW startet exakt wie ein Doppelklick im Explorer -> Taskleisten-Icon & Fokus stimmen immer!
+                rc = ctypes.windll.shell32.ShellExecuteW(None, "open", exe_path, params_str, app_cwd, 1)
+                if rc and int(rc) > 32:
+                    launched_via_shell = True
             except Exception:
-                pass
+                launched_via_shell = False
+        if not launched_via_shell:
+            proc = subprocess.Popen(cmd, cwd=app_cwd, creationflags=creation_flags)
+            if os.name == "nt":
+                try:
+                    import ctypes
+                    ctypes.windll.user32.AllowSetForegroundWindow(int(proc.pid))
+                except Exception:
+                    pass
     except Exception as exc:
         return {"success": False, "error": f"7-Ordner-Pro konnte nicht gestartet werden: {exc}"}
 
