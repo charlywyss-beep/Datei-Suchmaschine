@@ -782,8 +782,8 @@
     <!-- ========================================== -->
     <!-- TAB 3: MASSEN-UMBENENNUNG (BATCH RENAME)  -->
     <!-- ========================================== -->
-    <section id="view-rename" class="hidden space-y-4">
-      <div class="glass-card rounded-2xl p-4 sm:p-5 border border-slate-800/80 bg-slate-900/60 shadow-xl space-y-4">
+    <section id="view-rename" class="hidden">
+      <div class="glass-card rounded-2xl p-4 border border-slate-800/80 bg-slate-900/60 shadow-xl flex flex-col gap-3 h-[calc(100vh-84px)]">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
@@ -930,8 +930,8 @@
         </div>
 
         <!-- Live-Vorschau Tabelle -->
-        <div class="space-y-3">
-          <div class="flex items-center justify-between text-xs flex-wrap gap-2">
+        <div class="flex-1 min-h-0 flex flex-col gap-2">
+          <div class="flex items-center justify-between text-xs flex-wrap gap-2 shrink-0">
             <h4 class="font-semibold text-slate-300 flex items-center gap-2">
               <i class="fa-solid fa-eye text-indigo-400"></i>
               <span>Live Vorher-Nachher Vorschau</span>
@@ -940,7 +940,7 @@
             <span id="rename-change-count" class="text-slate-400">0 Änderungen erkannt</span>
           </div>
 
-          <div id="rename-selection-bar" class="hidden flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl border border-blue-500/40 bg-blue-500/10 text-xs">
+          <div id="rename-selection-bar" class="hidden shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl border border-blue-500/40 bg-blue-500/10 text-xs">
             <span id="rename-selection-label" class="font-medium text-blue-300 truncate"></span>
             <div class="flex items-center gap-2 shrink-0">
               <button type="button" onclick="applySelectedTextCutFrom()" class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition">
@@ -952,7 +952,7 @@
             </div>
           </div>
 
-          <div class="max-h-[calc(100vh-455px)] min-h-[240px] overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/70" onmouseup="onRenameTableMouseUp()">
+          <div class="flex-1 min-h-0 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/70" onmouseup="onRenameTableMouseUp()">
             <table class="w-full text-left border-collapse text-xs">
               <thead class="sticky top-0 bg-slate-900 text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-800">
                 <tr>
@@ -968,8 +968,8 @@
           </div>
         </div>
 
-        <!-- Ausführen Button -->
-        <div class="flex justify-end gap-3 pt-2">
+        <!-- Ausführen Button (immer am unteren Rand sichtbar) -->
+        <div class="flex justify-end gap-3 pt-1 shrink-0">
           <button onclick="switchTab('search')" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
             Abbrechen
           </button>
