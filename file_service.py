@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.42"
+APP_VERSION = "v1.7.43"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):

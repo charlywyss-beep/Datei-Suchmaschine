@@ -2728,6 +2728,111 @@ function setRenameRule(rule, btn) {
   document.getElementById('rule-form-date').classList.toggle('hidden', rule !== 'date');
   document.getElementById('rule-form-case').classList.toggle('hidden', rule !== 'case');
 
+  if (rule === 'trim') renderRenameTrimSuggestions();
+  updateRenamePreview();
+}
+
+let _renameSelectedSnippet = '';
+
+function _stripTrailingExtFromSnippet(txt) {
+  return (txt || '').replace(/\.[a-zA-Z0-9]{2,5}$/, '').trim();
+}
+
+function renderRenameTrimSuggestions() {
+  const box = document.getElementById('rename-trim-suggestions');
+  if (!box) return;
+  const files = state.renameFiles || [];
+  if (files.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+  const tokenCounts = new Map();
+  files.forEach(f => {
+    const name = (f.name || '').replace(/\.[^.]+$/, '');
+    const matches = name.match(/[._ -][a-zA-Z0-9]{2,16}/g) || [];
+    const seenInFile = new Set();
+    matches.forEach(m => {
+      const low = m.toLowerCase();
+      // Episode-Marker wie .s01e01 oder reine kurze Zahlen überspringen
+      if (/^[._ -]s\d+e\d+$/i.test(low) || /^[._ -]\d{1,2}$/.test(low)) return;
+      if (!seenInFile.has(low)) {
+        seenInFile.add(low);
+        tokenCounts.set(low, (tokenCounts.get(low) || 0) + 1);
+      }
+    });
+  });
+
+  const minCount = files.length >= 2 ? 2 : 1;
+  const top = [...tokenCounts.entries()]
+    .filter(([, cnt]) => cnt >= minCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+
+  if (top.length === 0) {
+    box.classList.add('hidden');
+    return;
+  }
+
+  box.innerHTML = `<span class="text-[11px] font-semibold text-slate-400 mr-1">1-Klick Vorschläge:</span>` +
+    top.map(([tok, cnt]) => `
+      <button type="button" onclick="applyTrimSuggestion('${escapeJs(tok)}')"
+        class="px-2.5 py-1 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-[11px] font-semibold transition"
+        title="Schneidet bei ${cnt} Datei(en) alles ab „${escapeHtml(tok)}“ weg">
+        ✂ ab ${escapeHtml(tok)} <span class="opacity-65">(${cnt})</span>
+      </button>
+    `).join('');
+  box.classList.remove('hidden');
+}
+
+function applyTrimSuggestion(token) {
+  const modeSel = document.getElementById('rename-trim-mode');
+  const inp = document.getElementById('rename-trim-value');
+  if (modeSel) modeSel.value = 'cut_from';
+  if (inp) inp.value = token;
+  onRenameTrimModeChange();
+}
+
+function onRenameTableMouseUp() {
+  const sel = (window.getSelection ? window.getSelection().toString() : '').trim();
+  const bar = document.getElementById('rename-selection-bar');
+  const lbl = document.getElementById('rename-selection-label');
+  if (!bar || !lbl) return;
+  const cleaned = _stripTrailingExtFromSnippet(sel);
+  if (!cleaned || cleaned.length < 2 || cleaned.includes('\n')) {
+    bar.classList.add('hidden');
+    _renameSelectedSnippet = '';
+    return;
+  }
+  _renameSelectedSnippet = cleaned;
+  const disp = cleaned.length > 40 ? `${cleaned.slice(0, 38)}…` : cleaned;
+  lbl.textContent = `Markiert: „${disp}“`;
+  bar.classList.remove('hidden');
+}
+
+function applySelectedTextCutFrom() {
+  if (!_renameSelectedSnippet) return;
+  // Wenn ein langer Rest wie ".german.bdrip.x264-aida" markiert wurde, erstes Segment (".german") nehmen, damit alle Dateien erfasst werden
+  const m = _renameSelectedSnippet.match(/^([._ -]?[a-zA-Z0-9]+)/);
+  const cutToken = (m && m[1].length >= 2) ? m[1] : _renameSelectedSnippet;
+  const trimBtn = document.querySelector('#rename-rules-tabs button[onclick*="\'trim\'"]');
+  setRenameRule('trim', trimBtn);
+  const modeSel = document.getElementById('rename-trim-mode');
+  const inp = document.getElementById('rename-trim-value');
+  if (modeSel) modeSel.value = 'cut_from';
+  if (inp) inp.value = cutToken;
+  document.getElementById('rename-selection-bar')?.classList.add('hidden');
+  onRenameTrimModeChange();
+}
+
+function applySelectedTextRemove() {
+  if (!_renameSelectedSnippet) return;
+  const repBtn = document.querySelector('#rename-rules-tabs button[onclick*="\'replace\'"]');
+  setRenameRule('replace', repBtn);
+  const inpSearch = document.getElementById('rename-search');
+  const inpRepl = document.getElementById('rename-replace');
+  if (inpSearch) inpSearch.value = _renameSelectedSnippet;
+  if (inpRepl) inpRepl.value = '';
+  document.getElementById('rename-selection-bar')?.classList.add('hidden');
   updateRenamePreview();
 }
 
