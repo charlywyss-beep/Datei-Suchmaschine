@@ -2993,6 +2993,17 @@ function applyTrimSuggestion(token) {
   onRenameTrimModeChange();
 }
 
+function _stripEpisodeTail(stem) {
+  const s = (stem || '').trim();
+  const m = s.match(/^(.*?)([._\-\s]*s\d{1,2}e\d{1,2}.*)$/i);
+  if (m && m[1].length >= 2) {
+    // Trennzeichen direkt vor s04e01 (z. B. "-") behalten, damit "4sf-det.grace.web.7p-" sauber ersetzt wird
+    const sepMatch = m[2].match(/^([._\-\s]+)/);
+    return m[1] + (sepMatch ? sepMatch[1] : '');
+  }
+  return s;
+}
+
 function _computeCommonRenamePrefix() {
   const files = state.renameFiles || [];
   if (files.length === 0) return '';
@@ -3002,16 +3013,18 @@ function _computeCommonRenamePrefix() {
     return isDir ? n : n.replace(/\.[^.]+$/, '');
   }).filter(Boolean);
   if (stems.length === 0) return '';
-  if (stems.length === 1) return stems[0];
-  let pref = stems[0];
-  for (let i = 1; i < stems.length; i++) {
+  if (stems.length === 1) return _stripEpisodeTail(stems[0]);
+
+  // Auch bei gemischtem führenden "_" (z. B. "_4sf-..." und "4sf-...") gemeinsamen Teil finden
+  const normStems = stems.map(s => s.replace(/^_+/, ''));
+  let pref = normStems[0];
+  for (let i = 1; i < normStems.length; i++) {
     let j = 0;
-    const maxL = Math.min(pref.length, stems[i].length);
-    while (j < maxL && pref[j].toLowerCase() === stems[i][j].toLowerCase()) j++;
+    const maxL = Math.min(pref.length, normStems[i].length);
+    while (j < maxL && pref[j].toLowerCase() === normStems[i][j].toLowerCase()) j++;
     pref = pref.slice(0, j);
     if (!pref) break;
   }
-  // Falls der gemeinsame Anfang mitten in einer Episodennummer wie "s04e0" endet, davor abschneiden
   pref = pref.replace(/s\d+e\d*$/i, '').replace(/\d+$/, '');
   return pref.length >= 2 ? pref : '';
 }
@@ -3028,7 +3041,7 @@ function renderRenameReplaceSuggestions() {
     `<button type="button" onclick="applyReplaceSuggestion('${escapeJs(pref)}')" ` +
     `class="px-2.5 py-1 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-[11px] font-semibold transition" ` +
     `title="Übernimmt „${escapeHtml(pref)}“ direkt ins Suchfeld">` +
-    `🔍 Gemeinsamer Anfang: „${escapeHtml(pref)}“</button>` +
+    `🔍 Gemeinsamer Teil: „${escapeHtml(pref)}“</button>` +
     `<span class="text-[11px] text-slate-400 ml-1">(oder einfach unten einen Namen anklicken / markieren)</span>`;
   box.classList.remove('hidden');
 }
@@ -3051,7 +3064,7 @@ function onRenameRowFilenameClick(origName, isDir) {
   if (!stem) return;
   if (state.currentRenameRule === 'replace') {
     const pref = _computeCommonRenamePrefix();
-    const val = pref || stem;
+    const val = pref || _stripEpisodeTail(stem);
     const inp = document.getElementById('rename-search');
     if (inp) {
       inp.value = val;
