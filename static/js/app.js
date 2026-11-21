@@ -2761,7 +2761,9 @@ function openBatchRenameWithSelected() {
   }
 
   document.getElementById('rename-selected-count').textContent = state.renameFiles.length;
+  document.getElementById('rename-selection-bar')?.classList.add('hidden');
   switchTab('rename');
+  renderRenameTrimSuggestions();
   updateRenamePreview();
 }
 
@@ -2967,17 +2969,17 @@ async function updateRenamePreview() {
       tr.className = 'border-b border-slate-800/60 hover:bg-slate-900/40';
 
       const statusBadge = item.conflict
-        ? '<span class="text-[10px] bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded font-bold">Konflikt</span>'
+        ? '<span class="inline-block whitespace-nowrap text-[10px] bg-red-500/20 text-red-300 px-2 py-0.5 rounded font-bold">Konflikt</span>'
         : item.changed
-          ? '<span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-bold">Ändert sich</span>'
-          : '<span class="text-[10px] text-slate-500">Unverändert</span>';
+          ? '<span class="inline-block whitespace-nowrap text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-bold">Ändert sich</span>'
+          : '<span class="inline-block whitespace-nowrap text-[10px] text-slate-500">Unverändert</span>';
 
       tr.innerHTML = `
-        <td class="py-2.5 px-4 text-slate-400 truncate max-w-xs" title="${item.original_name}">${item.original_name}</td>
-        <td class="py-2.5 px-4 font-semibold ${item.changed ? 'text-indigo-300' : 'text-slate-300'} truncate max-w-xs" title="${item.new_name}">
+        <td class="py-1.5 px-4 text-slate-400 truncate max-w-xs" title="${item.original_name}">${item.original_name}</td>
+        <td class="py-1.5 px-4 font-semibold ${item.changed ? 'text-indigo-300' : 'text-slate-300'} truncate max-w-xs" title="${item.new_name}">
           ${item.new_name}
         </td>
-        <td class="py-2.5 px-4 text-center">${statusBadge}</td>
+        <td class="py-1.5 px-4 text-center whitespace-nowrap">${statusBadge}</td>
       `;
       tbody.appendChild(tr);
     });
