@@ -2007,12 +2007,25 @@ html.light #modal-target-folder .tf-mode-btn.active {
 }
 
 /* 1-Klick Einkürzen-Chips & Maus-Markierungsleiste im Light Mode */
-html.light #rename-trim-suggestions button {
+html.light #rename-trim-suggestions span.inline-flex {
   background-color: #eff6ff !important;
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
 }
-html.light #rename-trim-suggestions button:hover {
+html.light #rename-trim-suggestions span.inline-flex button {
+  background-color: transparent !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+html.light #rename-trim-suggestions span.inline-flex button:hover {
+  background-color: #dbeafe !important;
+}
+html.light #rule-form-trim button[onclick*="saveCurrentTrimPreset"] {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+html.light #rule-form-trim button[onclick*="saveCurrentTrimPreset"]:hover {
   background-color: #dbeafe !important;
   border-color: #2563eb !important;
 }

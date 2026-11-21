@@ -2795,14 +2795,80 @@ function _stripTrailingExtFromSnippet(txt) {
   return (txt || '').replace(/\.[a-zA-Z0-9]{2,5}$/, '').trim();
 }
 
+function _loadSavedTrimPresets() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('dsm_saved_trim_presets') || '[]');
+    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string' && x.trim()) : [];
+  } catch (_) { return []; }
+}
+
+function _saveTrimPresets(list) {
+  try { localStorage.setItem('dsm_saved_trim_presets', JSON.stringify(list)); } catch (_) {}
+}
+
+function _loadIgnoredTrimTokens() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('dsm_ignored_trim_tokens') || '[]');
+    return new Set(Array.isArray(arr) ? arr.map(x => String(x).toLowerCase()) : []);
+  } catch (_) { return new Set(); }
+}
+
+function _saveIgnoredTrimTokens(setObj) {
+  try { localStorage.setItem('dsm_ignored_trim_tokens', JSON.stringify([...setObj])); } catch (_) {}
+}
+
+function saveCurrentTrimPreset() {
+  const inp = document.getElementById('rename-trim-value');
+  const val = (inp ? inp.value : '').trim();
+  if (!val) {
+    showToast('Bitte zuerst einen Text zum Speichern eingeben (z. B. .german)', 'warning');
+    return;
+  }
+  const saved = _loadSavedTrimPresets();
+  if (!saved.some(x => x.toLowerCase() === val.toLowerCase())) {
+    saved.push(val);
+    _saveTrimPresets(saved);
+    // Falls er früher ausgeblendet wurde, wieder aktivieren
+    const ignored = _loadIgnoredTrimTokens();
+    if (ignored.delete(val.toLowerCase())) _saveIgnoredTrimTokens(ignored);
+    showToast(`★ 1-Klick-Vorschlag „${val}“ gespeichert`, 'success');
+  } else {
+    showToast(`„${val}“ ist bereits gespeichert`, 'info');
+  }
+  renderRenameTrimSuggestions();
+}
+
+function deleteSavedTrimPreset(tok, ev) {
+  if (ev) ev.stopPropagation();
+  const saved = _loadSavedTrimPresets().filter(x => x.toLowerCase() !== String(tok).toLowerCase());
+  _saveTrimPresets(saved);
+  renderRenameTrimSuggestions();
+  showToast(`Gespeicherter Vorschlag „${tok}“ gelöscht`, 'info');
+}
+
+function hideAutoTrimToken(tok, ev) {
+  if (ev) ev.stopPropagation();
+  const ignored = _loadIgnoredTrimTokens();
+  ignored.add(String(tok).toLowerCase());
+  _saveIgnoredTrimTokens(ignored);
+  renderRenameTrimSuggestions();
+  showToast(`Auto-Vorschlag „${tok}“ entfernt`, 'info');
+}
+
+function resetIgnoredTrimTokens() {
+  _saveIgnoredTrimTokens(new Set());
+  renderRenameTrimSuggestions();
+  showToast('Alle ausgeblendeten Auto-Vorschläge wiederhergestellt', 'info');
+}
+
 function renderRenameTrimSuggestions() {
   const box = document.getElementById('rename-trim-suggestions');
   if (!box) return;
   const files = state.renameFiles || [];
-  if (files.length === 0) {
-    box.classList.add('hidden');
-    return;
-  }
+  const saved = _loadSavedTrimPresets();
+  const savedLower = new Set(saved.map(x => x.toLowerCase()));
+  const ignored = _loadIgnoredTrimTokens();
+
   const tokenCounts = new Map();
   files.forEach(f => {
     const name = (f.name || '').replace(/\.[^.]+$/, '');
@@ -2810,7 +2876,6 @@ function renderRenameTrimSuggestions() {
     const seenInFile = new Set();
     matches.forEach(m => {
       const low = m.toLowerCase();
-      // Episode-Marker wie .s01e01 oder reine kurze Zahlen überspringen
       if (/^[._ -]s\d+e\d+$/i.test(low) || /^[._ -]\d{1,2}$/.test(low)) return;
       if (!seenInFile.has(low)) {
         seenInFile.add(low);
@@ -2820,24 +2885,54 @@ function renderRenameTrimSuggestions() {
   });
 
   const minCount = files.length >= 2 ? 2 : 1;
-  const top = [...tokenCounts.entries()]
-    .filter(([, cnt]) => cnt >= minCount)
+  const autoList = [...tokenCounts.entries()]
+    .filter(([tok, cnt]) => cnt >= minCount && !savedLower.has(tok) && !ignored.has(tok))
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 8);
+    .slice(0, 7);
 
-  if (top.length === 0) {
+  if (saved.length === 0 && autoList.length === 0 && ignored.size === 0) {
     box.classList.add('hidden');
     return;
   }
 
-  box.innerHTML = `<span class="text-[11px] font-semibold text-slate-400 mr-1">1-Klick Vorschläge:</span>` +
-    top.map(([tok, cnt]) => `
-      <button type="button" onclick="applyTrimSuggestion('${escapeJs(tok)}')"
-        class="px-2.5 py-1 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-[11px] font-semibold transition"
-        title="Schneidet bei ${cnt} Datei(en) alles ab „${escapeHtml(tok)}“ weg">
-        ✂ ab ${escapeHtml(tok)} <span class="opacity-65">(${cnt})</span>
-      </button>
+  let html = '';
+  if (saved.length > 0) {
+    html += `<span class="text-[11px] font-semibold text-indigo-400 mr-1">★ Gespeichert:</span>`;
+    html += saved.map(tok => `
+      <span class="inline-flex items-center rounded-lg border border-indigo-500/50 bg-indigo-500/15 text-indigo-200 text-[11px] font-semibold overflow-hidden">
+        <button type="button" onclick="applyTrimSuggestion('${escapeJs(tok)}')"
+          class="px-2 py-1 hover:bg-indigo-500/25 transition"
+          title="Schneidet alles ab „${escapeHtml(tok)}“ weg">
+          ★ ✂ ab ${escapeHtml(tok)}
+        </button>
+        <button type="button" onclick="deleteSavedTrimPreset('${escapeJs(tok)}', event)"
+          class="px-1.5 py-1 hover:bg-rose-500/30 hover:text-rose-200 transition border-l border-indigo-500/30"
+          title="Gespeicherten Vorschlag „${escapeHtml(tok)}“ löschen">✕</button>
+      </span>
     `).join('');
+  }
+
+  if (autoList.length > 0) {
+    html += `<span class="text-[11px] font-semibold text-slate-400 ${saved.length ? 'ml-2' : ''} mr-1">1-Klick Vorschläge:</span>`;
+    html += autoList.map(([tok, cnt]) => `
+      <span class="inline-flex items-center rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-300 text-[11px] font-semibold overflow-hidden">
+        <button type="button" onclick="applyTrimSuggestion('${escapeJs(tok)}')"
+          class="px-2 py-1 hover:bg-blue-500/20 transition"
+          title="Schneidet bei ${cnt} Datei(en) alles ab „${escapeHtml(tok)}“ weg">
+          ✂ ab ${escapeHtml(tok)} <span class="opacity-65">(${cnt})</span>
+        </button>
+        <button type="button" onclick="hideAutoTrimToken('${escapeJs(tok)}', event)"
+          class="px-1.5 py-1 hover:bg-rose-500/30 hover:text-rose-200 transition border-l border-blue-500/30"
+          title="Vorschlag „${escapeHtml(tok)}“ dauerhaft entfernen">✕</button>
+      </span>
+    `).join('');
+  }
+
+  if (ignored.size > 0) {
+    html += `<button type="button" onclick="resetIgnoredTrimTokens()" class="ml-1 px-2 py-1 rounded-lg text-[10px] text-slate-400 hover:text-slate-200 border border-slate-700/70 transition" title="${ignored.size} ausgeblendete Auto-Vorschläge wieder anzeigen">↺ Ausgeblendete (${ignored.size})</button>`;
+  }
+
+  box.innerHTML = html;
   box.classList.remove('hidden');
 }
 

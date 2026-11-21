@@ -855,7 +855,12 @@
               </div>
               <div>
                 <label id="rename-trim-val-label" class="block text-slate-400 font-medium mb-1">Text ab dem abgeschnitten wird:</label>
-                <input type="text" id="rename-trim-value" placeholder="z. B. .german oder .720p" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+                <div class="flex items-center gap-1.5">
+                  <input type="text" id="rename-trim-value" placeholder="z. B. .german oder .720p" class="flex-1 min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+                  <button type="button" onclick="saveCurrentTrimPreset()" class="px-2.5 py-2 rounded-lg border border-blue-500/40 bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 font-semibold transition shrink-0 flex items-center gap-1" title="Aktuellen Text dauerhaft als 1-Klick-Vorschlag speichern">
+                    <i class="fa-solid fa-star text-[11px]"></i><span>Speichern</span>
+                  </button>
+                </div>
               </div>
               <div class="flex items-center pt-5">
                 <label class="inline-flex items-center gap-2 cursor-pointer">
@@ -947,7 +952,7 @@
             </div>
           </div>
 
-          <div class="max-h-[calc(100vh-340px)] min-h-[380px] overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/70" onmouseup="onRenameTableMouseUp()">
+          <div class="max-h-[calc(100vh-455px)] min-h-[240px] overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/70" onmouseup="onRenameTableMouseUp()">
             <table class="w-full text-left border-collapse text-xs">
               <thead class="sticky top-0 bg-slate-900 text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-800">
                 <tr>
