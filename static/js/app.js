@@ -3938,7 +3938,11 @@ function openTargetFolderModal(explicitPaths = null) {
     `).join('');
   }
 
-  setTargetFolderModalMode(state.targetModalMode || 'copy');
+  let savedMode = state.targetModalMode;
+  if (!savedMode) {
+    try { savedMode = localStorage.getItem('dsm_target_modal_mode') || 'copy'; } catch (_) { savedMode = 'copy'; }
+  }
+  setTargetFolderModalMode(savedMode);
   document.getElementById('modal-target-folder')?.classList.remove('hidden');
 }
 
@@ -3948,6 +3952,7 @@ function closeTargetFolderModal() {
 
 function setTargetFolderModalMode(mode) {
   state.targetModalMode = mode;
+  try { localStorage.setItem('dsm_target_modal_mode', mode); } catch (_) {}
   document.querySelectorAll('#modal-target-folder .tf-mode-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tfMode === mode);
     const active = btn.dataset.tfMode === mode;

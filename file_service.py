@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.40"
+APP_VERSION = "v1.7.41"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -3259,7 +3259,7 @@ def copy_or_move_files(
 # ============================================================================
 _TRANSFER_JOBS: dict[str, dict] = {}
 _TRANSFER_LOCK = threading.Lock()
-_TRANSFER_CHUNK_SIZE = 2 * 1024 * 1024  # 2 MB Chunks für flüssigen Fortschritt & schnelles Abbrechen
+_TRANSFER_CHUNK_SIZE = 8 * 1024 * 1024  # 8 MB Fallback-Chunks (Windows nutzt primär natives CopyFileExW)
 
 
 def _calc_path_size_bytes(path: str) -> int:
@@ -3280,14 +3280,89 @@ def _calc_path_size_bytes(path: str) -> int:
     return 0
 
 
+def _copy_file_windows_native(
+    src: str,
+    dest: str,
+    cancel_event: threading.Event,
+    on_chunk=None,
+) -> bool:
+    """Nutzt Windows' natives kernel32.CopyFileExW (Explorer-Kopier-Engine) mit Live-Fortschritt & Abbruch."""
+    import ctypes
+    from ctypes import wintypes
+
+    PROGRESS_CONTINUE = 0
+    PROGRESS_CANCEL = 1
+
+    LPPROGRESS_ROUTINE = ctypes.WINFUNCTYPE(
+        wintypes.DWORD,
+        ctypes.c_int64,   # TotalFileSize
+        ctypes.c_int64,   # TotalBytesTransferred
+        ctypes.c_int64,   # StreamSize
+        ctypes.c_int64,   # StreamBytesTransferred
+        wintypes.DWORD,   # dwStreamNumber
+        wintypes.DWORD,   # dwCallbackReason
+        wintypes.HANDLE,  # hSourceFile
+        wintypes.HANDLE,  # hDestinationFile
+        wintypes.LPVOID,  # lpData
+    )
+
+    last_transferred = 0
+    cancel_flag = ctypes.c_int(0)
+
+    def _progress_cb(total_size, total_transferred, _ss, _st, _sn, _reason, _hs, _hd, _data):
+        nonlocal last_transferred
+        if cancel_event.is_set():
+            cancel_flag.value = 1
+            return PROGRESS_CANCEL
+        delta = max(0, int(total_transferred) - last_transferred)
+        last_transferred = int(total_transferred)
+        if delta > 0 and on_chunk:
+            on_chunk(delta, last_transferred, max(0, int(total_size)))
+        return PROGRESS_CONTINUE
+
+    cb = LPPROGRESS_ROUTINE(_progress_cb)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CopyFileExW.argtypes = [
+        wintypes.LPCWSTR,
+        wintypes.LPCWSTR,
+        LPPROGRESS_ROUTINE,
+        wintypes.LPVOID,
+        ctypes.POINTER(ctypes.c_int),
+        wintypes.DWORD,
+    ]
+    kernel32.CopyFileExW.restype = wintypes.BOOL
+
+    ok = bool(kernel32.CopyFileExW(src, dest, cb, None, ctypes.byref(cancel_flag), 0))
+    if not ok:
+        err_code = ctypes.get_last_error()
+        if cancel_event.is_set() or err_code == 1235:  # ERROR_REQUEST_ABORTED
+            try:
+                if os.path.exists(dest):
+                    os.remove(dest)
+            except Exception:
+                pass
+            return False
+        raise OSError(err_code, f"CopyFileExW Fehler (Code {err_code})")
+    return True
+
+
 def _copy_file_chunked(
     src: str,
     dest: str,
     cancel_event: threading.Event,
     on_chunk=None,
 ) -> bool:
-    """Kopiert eine Datei in 2-MB-Blöcken. Bei Abbruch wird die unvollständige Zieldatei gelöscht."""
+    """Kopiert eine Datei maximal schnell (Windows-natives CopyFileExW, Fallback 8-MB-Chunks). Bei Abbruch wird die Teil-Datei gelöscht."""
     os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if os.name == "nt":
+        try:
+            return _copy_file_windows_native(src, dest, cancel_event, on_chunk=on_chunk)
+        except Exception:
+            if cancel_event.is_set():
+                return False
+            # Fallback auf 8-MB-Python-Chunk-Kopie
+            pass
+
     file_total = 0
     try:
         file_total = max(0, os.path.getsize(src))
@@ -3295,7 +3370,7 @@ def _copy_file_chunked(
         pass
     file_copied = 0
     try:
-        with open(src, "rb") as fsrc, open(dest, "wb") as fdst:
+        with open(src, "rb", buffering=_TRANSFER_CHUNK_SIZE) as fsrc, open(dest, "wb", buffering=_TRANSFER_CHUNK_SIZE) as fdst:
             while True:
                 if cancel_event.is_set():
                     break

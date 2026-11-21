@@ -1987,3 +1987,21 @@ html.light #modal-transfer-progress #tp-btn-cancel-undo {
   border-color: #fca5a5 !important;
   color: #b91c1c !important;
 }
+
+/* Speicher-Ordner Modal: Direkt kopieren / Direkt verschieben / Nur merken klar hervorheben */
+html.light #modal-target-folder .tf-mode-btn {
+  background-color: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+html.light #modal-target-folder .tf-mode-btn:hover {
+  background-color: #f8fafc !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+html.light #modal-target-folder .tf-mode-btn.active {
+  background-color: #eff6ff !important;
+  border: 2px solid #2563eb !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14) !important;
+}
