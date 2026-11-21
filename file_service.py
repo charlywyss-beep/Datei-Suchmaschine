@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.58"
+APP_VERSION = "v1.7.59"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -3197,6 +3197,63 @@ def send_to_seven_folder(paths=None, folder_path: str | None = None, target_dir:
         mode = "source"
 
     cmd.extend(["--theme", resolved_theme])
+
+    # Prüfen, ob bereits ein 7-Ordner-Pro-Fenster läuft -> direkt in das offene Fenster übergeben (kein doppeltes Fenster!)
+    try:
+        import tempfile
+        tmp_dir = tempfile.gettempdir()
+        pid_file = os.path.join(tmp_dir, "7ordner_pro_live_pid.json")
+        live_handoff = os.path.join(tmp_dir, "7ordner_pro_live_handoff.json")
+        live_pid = None
+        if os.path.isfile(pid_file):
+            with open(pid_file, "r", encoding="utf-8") as f:
+                pinfo = json.load(f)
+            cand_pid = int(pinfo.get("pid") or 0)
+            if cand_pid > 0 and (time.time() - float(pinfo.get("ts") or 0)) < 30.0:
+                if os.name == "nt":
+                    import ctypes
+                    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                    STILL_ACTIVE = 259
+                    h = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, cand_pid)
+                    if h:
+                        try:
+                            ec = ctypes.c_ulong(0)
+                            if ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(ec)) and ec.value == STILL_ACTIVE:
+                                live_pid = cand_pid
+                        finally:
+                            ctypes.windll.kernel32.CloseHandle(h)
+        if live_pid:
+            live_payload = {
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "source_app": "Datei-Suchmaschine",
+                "source_dir": common_src if clean_paths else "",
+                "folder_path": os.path.normpath(str(folder_path).strip()) if (not clean_paths and folder_path) else "",
+                "target_dir": os.path.normpath(target_dir) if target_dir else "",
+                "theme": resolved_theme,
+                "paths": clean_paths,
+            }
+            tmp_write = f"{live_handoff}.{os.getpid()}.tmp"
+            with open(tmp_write, "w", encoding="utf-8") as f:
+                json.dump(live_payload, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_write, live_handoff)
+            if os.name == "nt":
+                try:
+                    import ctypes
+                    ctypes.windll.user32.AllowSetForegroundWindow(int(live_pid))
+                except Exception:
+                    pass
+            return {
+                "success": True,
+                "mode": mode,
+                "count": len(clean_paths),
+                "folder": os.path.normpath(str(folder_path).strip()) if folder_path else "",
+                "handoff_file": live_handoff,
+                "app_cmd": base_cmd[0],
+                "launched": False,
+                "reused": True,
+            }
+    except Exception:
+        pass
 
     creation_flags = 0
     if os.name == "nt":
