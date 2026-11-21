@@ -1883,3 +1883,107 @@ html.light #toast-container > div[class*="border-red"] {
 html.light #toast-container > div[class*="border-red"] span {
   color: #991b1b !important;
 }
+
+/* 7. v1.7.40: Light-Mode Kontrast-Fix für Massen-Umbenennung, Formulare, Buttons & Modals */
+html.light #view-rename h2,
+html.light #view-rename h3,
+html.light #view-rename h4,
+html.light [id^="modal-"] h2,
+html.light [id^="modal-"] h3,
+html.light [id^="modal-"] h4 {
+  color: #0f172a !important;
+}
+
+html.light #rule-form-container,
+html.light #view-rename [class*="bg-slate-950"],
+html.light [id^="modal-"] [class*="bg-slate-950"] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light #view-rename label,
+html.light #view-rename span.text-slate-500,
+html.light [id^="modal-"] label {
+  color: #334155 !important;
+}
+
+html.light input[type="text"],
+html.light input[type="number"],
+html.light input[type="search"],
+html.light input[type="date"],
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1.5px solid #cbd5e1 !important;
+  caret-color: #0f172a !important;
+}
+
+html.light input[type="text"]::placeholder,
+html.light input[type="number"]::placeholder,
+html.light input[type="search"]::placeholder,
+html.light textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.light input[type="text"]:focus,
+html.light input[type="number"]:focus,
+html.light input[type="search"]:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #2563eb !important;
+  color: #0f172a !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16) !important;
+}
+
+html.light .rule-btn:not(.active),
+html.light #view-rename button.bg-slate-800,
+html.light #view-rename button[class*="bg-slate-800/"],
+html.light [id^="modal-"] button.bg-slate-800,
+html.light [id^="modal-"] button[class*="bg-slate-800/"] {
+  background-color: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+html.light .rule-btn:not(.active):hover,
+html.light #view-rename button.bg-slate-800:hover,
+html.light #view-rename button[class*="bg-slate-800/"]:hover,
+html.light [id^="modal-"] button.bg-slate-800:hover,
+html.light [id^="modal-"] button[class*="bg-slate-800/"]:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+html.light .rule-btn.active {
+  background-color: #eff6ff !important;
+  border: 1.5px solid #2563eb !important;
+  color: #1d4ed8 !important;
+}
+
+html.light #modal-transfer-progress .bg-slate-800 {
+  background-color: #e2e8f0 !important;
+}
+html.light #modal-transfer-progress #tp-current-file,
+html.light #modal-transfer-progress #tp-bytes {
+  color: #0f172a !important;
+}
+html.light #modal-transfer-progress #tp-speed {
+  color: #047857 !important;
+}
+html.light #modal-transfer-progress #tp-eta {
+  color: #1d4ed8 !important;
+}
+html.light #modal-transfer-progress #tp-summary {
+  background-color: #f0fdf4 !important;
+  border-color: #86efac !important;
+  color: #14532d !important;
+}
+html.light #modal-transfer-progress #tp-btn-cancel-undo {
+  background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  color: #b91c1c !important;
+}
