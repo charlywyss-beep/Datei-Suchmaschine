@@ -624,6 +624,106 @@ def api_transfer_undo(job_id):
     return jsonify(res), (200 if res.get("success") else 400)
 
 
+def _win_clipboard_read() -> str:
+    if os.name != "nt":
+        return ""
+    import ctypes
+    from ctypes import wintypes
+    CF_UNICODETEXT = 13
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    user32.OpenClipboard.argtypes = [wintypes.HWND]
+    user32.OpenClipboard.restype = wintypes.BOOL
+    user32.CloseClipboard.argtypes = []
+    user32.CloseClipboard.restype = wintypes.BOOL
+    user32.GetClipboardData.argtypes = [wintypes.UINT]
+    user32.GetClipboardData.restype = wintypes.HANDLE
+    kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalLock.restype = wintypes.LPVOID
+    kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalUnlock.restype = wintypes.BOOL
+
+    if not user32.OpenClipboard(None):
+        return ""
+    try:
+        handle = user32.GetClipboardData(CF_UNICODETEXT)
+        if not handle:
+            return ""
+        ptr = kernel32.GlobalLock(handle)
+        if not ptr:
+            return ""
+        try:
+            return ctypes.wstring_at(ptr)
+        finally:
+            kernel32.GlobalUnlock(handle)
+    finally:
+        user32.CloseClipboard()
+
+
+def _win_clipboard_write(text: str) -> bool:
+    if os.name != "nt":
+        return False
+    import ctypes
+    from ctypes import wintypes
+    CF_UNICODETEXT = 13
+    GMEM_MOVEABLE = 0x0002
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    user32.OpenClipboard.argtypes = [wintypes.HWND]
+    user32.OpenClipboard.restype = wintypes.BOOL
+    user32.EmptyClipboard.argtypes = []
+    user32.EmptyClipboard.restype = wintypes.BOOL
+    user32.CloseClipboard.argtypes = []
+    user32.CloseClipboard.restype = wintypes.BOOL
+    user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+    user32.SetClipboardData.restype = wintypes.HANDLE
+    kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+    kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
+    kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalLock.restype = wintypes.LPVOID
+    kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+    kernel32.GlobalUnlock.restype = wintypes.BOOL
+
+    data = (text or "").encode("utf-16-le") + b"\x00\x00"
+    if not user32.OpenClipboard(None):
+        return False
+    try:
+        user32.EmptyClipboard()
+        hmem = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
+        if not hmem:
+            return False
+        ptr = kernel32.GlobalLock(hmem)
+        if not ptr:
+            return False
+        try:
+            ctypes.memmove(ptr, data, len(data))
+        finally:
+            kernel32.GlobalUnlock(hmem)
+        user32.SetClipboardData(CF_UNICODETEXT, hmem)
+        return True
+    finally:
+        user32.CloseClipboard()
+
+
+@app.route("/api/clipboard/read", methods=["GET"])
+def api_clipboard_read():
+    try:
+        return jsonify({"success": True, "text": _win_clipboard_read()})
+    except Exception as exc:
+        return jsonify({"success": False, "text": "", "error": str(exc)}), 500
+
+
+@app.route("/api/clipboard/write", methods=["POST"])
+def api_clipboard_write():
+    data = request.get_json(silent=True) or {}
+    text = str(data.get("text") or "")
+    try:
+        ok = _win_clipboard_write(text)
+        return jsonify({"success": ok})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
 @app.route("/api/handoff-seven-folder", methods=["POST"])
 def api_handoff_seven_folder():
     """Übergibt markierte Dateien oder einen Ordner an 7-Ordner-Pro (startet es bei Bedarf automatisch)."""

@@ -4487,3 +4487,184 @@ function closeTransferProgressModal() {
   if (modal) modal.classList.add('hidden');
   _activeTransferJobId = null;
 }
+
+// ============================================================================
+// DEUTSCHES RECHTSKLICK-KONTEXTMENÜ FÜR ALLE EINGABEFELDER (Einfügen/Kopieren)
+// ============================================================================
+(function initInputContextMenu() {
+  let menuEl = null;
+  let activeInput = null;
+  let selStart = 0;
+  let selEnd = 0;
+  let pageSelectedText = '';
+
+  function ensureMenu() {
+    if (menuEl) return menuEl;
+    menuEl = document.createElement('div');
+    menuEl.id = 'dsm-input-context-menu';
+    menuEl.className = 'dsm-ctx-menu hidden';
+    document.body.appendChild(menuEl);
+    return menuEl;
+  }
+
+  function hideMenu() {
+    if (menuEl) menuEl.classList.add('hidden');
+  }
+
+  async function readClipboardReliable() {
+    try {
+      const res = await fetch('/api/clipboard/read');
+      const d = await res.json();
+      if (d && d.success && typeof d.text === 'string') return d.text;
+    } catch (_) {}
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        return await navigator.clipboard.readText();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  async function writeClipboardReliable(txt) {
+    try {
+      await fetch('/api/clipboard/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: txt || '' })
+      });
+      return;
+    } catch (_) {}
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(txt || '');
+      }
+    } catch (_) {}
+  }
+
+  function isEditableInput(el) {
+    if (!el) return false;
+    if (el.tagName === 'TEXTAREA' && !el.disabled && !el.readOnly) return true;
+    if (el.tagName === 'INPUT' && !el.disabled && !el.readOnly) {
+      const t = (el.type || 'text').toLowerCase();
+      return ['text', 'search', 'number', 'url', 'email', 'password'].includes(t);
+    }
+    return false;
+  }
+
+  function insertIntoInput(el, text) {
+    if (!el) return;
+    const val = el.value || '';
+    const s = Math.max(0, Math.min(selStart, val.length));
+    const e = Math.max(s, Math.min(selEnd, val.length));
+    el.value = val.slice(0, s) + text + val.slice(e);
+    el.focus();
+    try {
+      const pos = s + text.length;
+      el.setSelectionRange(pos, pos);
+    } catch (_) {}
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  document.addEventListener('contextmenu', (ev) => {
+    const target = ev.target;
+    const editable = isEditableInput(target);
+    const pageSel = (!editable && window.getSelection) ? window.getSelection().toString() : '';
+
+    if (!editable && !pageSel.trim()) {
+      hideMenu();
+      return;
+    }
+
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    const menu = ensureMenu();
+    if (editable) {
+      activeInput = target;
+      pageSelectedText = '';
+      try {
+        selStart = typeof target.selectionStart === 'number' ? target.selectionStart : (target.value || '').length;
+        selEnd = typeof target.selectionEnd === 'number' ? target.selectionEnd : selStart;
+      } catch (_) {
+        selStart = (target.value || '').length;
+        selEnd = selStart;
+      }
+      const hasVal = (target.value || '').length > 0;
+      const hasSel = selEnd > selStart;
+      menu.innerHTML = `
+        <button type="button" data-ctx="paste"><span>📋 Einfügen</span><kbd>Strg+V</kbd></button>
+        <button type="button" data-ctx="copy" ${hasVal ? '' : 'disabled'}><span>📄 ${hasSel ? 'Kopieren' : 'Feld kopieren'}</span><kbd>Strg+C</kbd></button>
+        <button type="button" data-ctx="cut" ${hasSel ? '' : 'disabled'}><span>✂️ Ausschneiden</span><kbd>Strg+X</kbd></button>
+        <div class="dsm-ctx-sep"></div>
+        <button type="button" data-ctx="selectall" ${hasVal ? '' : 'disabled'}><span>☑️ Alles markieren</span><kbd>Strg+A</kbd></button>
+        <button type="button" data-ctx="clear" ${hasVal ? '' : 'disabled'}><span>🗑️ Feld leeren</span><kbd></kbd></button>
+      `;
+    } else {
+      activeInput = null;
+      pageSelectedText = pageSel;
+      menu.innerHTML = `
+        <button type="button" data-ctx="copy-page"><span>📄 Markierten Text kopieren</span><kbd>Strg+C</kbd></button>
+      `;
+    }
+
+    menu.classList.remove('hidden');
+    const mw = menu.offsetWidth || 210;
+    const mh = menu.offsetHeight || 160;
+    const left = Math.min(ev.clientX, window.innerWidth - mw - 8);
+    const top = Math.min(ev.clientY, window.innerHeight - mh - 8);
+    menu.style.left = `${Math.max(6, left)}px`;
+    menu.style.top = `${Math.max(6, top)}px`;
+  });
+
+  document.addEventListener('click', async (ev) => {
+    if (!menuEl || menuEl.classList.contains('hidden')) return;
+    const btn = ev.target.closest('#dsm-input-context-menu button[data-ctx]');
+    if (!btn) {
+      hideMenu();
+      return;
+    }
+    const act = btn.dataset.ctx;
+    hideMenu();
+
+    if (act === 'copy-page') {
+      await writeClipboardReliable(pageSelectedText);
+      showToast('Text in Zwischenablage kopiert', 'info');
+      return;
+    }
+
+    if (!activeInput) return;
+    const el = activeInput;
+    const val = el.value || '';
+
+    if (act === 'paste') {
+      const clip = await readClipboardReliable();
+      if (clip) {
+        insertIntoInput(el, clip);
+      } else {
+        showToast('Zwischenablage ist leer', 'info');
+      }
+    } else if (act === 'copy') {
+      const txt = selEnd > selStart ? val.slice(selStart, selEnd) : val;
+      await writeClipboardReliable(txt);
+      showToast('In Zwischenablage kopiert', 'info');
+    } else if (act === 'cut') {
+      if (selEnd > selStart) {
+        await writeClipboardReliable(val.slice(selStart, selEnd));
+        insertIntoInput(el, '');
+      }
+    } else if (act === 'selectall') {
+      el.focus();
+      try { el.select(); } catch (_) {}
+    } else if (act === 'clear') {
+      el.value = '';
+      el.focus();
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') hideMenu(); });
+  window.addEventListener('blur', hideMenu);
+  window.addEventListener('scroll', hideMenu, true);
+})();
