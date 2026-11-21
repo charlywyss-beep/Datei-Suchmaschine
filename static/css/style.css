@@ -2025,9 +2025,15 @@ html.light #rule-form-trim button[onclick*="saveCurrentTrimPreset"] {
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;
 }
-html.light #rule-form-trim button[onclick*="saveCurrentTrimPreset"]:hover {
+html.light #rule-form-trim button[onclick*="saveCurrentTrimPreset"]:hover,
+html.light #rename-replace-suggestions button:hover {
   background-color: #dbeafe !important;
   border-color: #2563eb !important;
+}
+html.light #rename-replace-suggestions button {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
 }
 html.light #rename-selection-bar {
   background-color: #eff6ff !important;

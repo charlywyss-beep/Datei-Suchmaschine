@@ -2812,6 +2812,7 @@ function openBatchRenameWithSelected() {
   updateRenameStudioLabels();
   switchTab('rename');
   renderRenameTrimSuggestions();
+  renderRenameReplaceSuggestions();
   updateRenamePreview();
 }
 
@@ -2992,6 +2993,76 @@ function applyTrimSuggestion(token) {
   onRenameTrimModeChange();
 }
 
+function _computeCommonRenamePrefix() {
+  const files = state.renameFiles || [];
+  if (files.length === 0) return '';
+  const stems = files.map(f => {
+    const isDir = !!(f.is_dir || String(f.type || '').toUpperCase() === 'ORDNER');
+    const n = f.name || '';
+    return isDir ? n : n.replace(/\.[^.]+$/, '');
+  }).filter(Boolean);
+  if (stems.length === 0) return '';
+  if (stems.length === 1) return stems[0];
+  let pref = stems[0];
+  for (let i = 1; i < stems.length; i++) {
+    let j = 0;
+    const maxL = Math.min(pref.length, stems[i].length);
+    while (j < maxL && pref[j].toLowerCase() === stems[i][j].toLowerCase()) j++;
+    pref = pref.slice(0, j);
+    if (!pref) break;
+  }
+  // Falls der gemeinsame Anfang mitten in einer Episodennummer wie "s04e0" endet, davor abschneiden
+  pref = pref.replace(/s\d+e\d*$/i, '').replace(/\d+$/, '');
+  return pref.length >= 2 ? pref : '';
+}
+
+function renderRenameReplaceSuggestions() {
+  const box = document.getElementById('rename-replace-suggestions');
+  if (!box) return;
+  const pref = _computeCommonRenamePrefix();
+  if (!pref) {
+    box.classList.add('hidden');
+    return;
+  }
+  box.innerHTML = `<span class="text-[11px] font-semibold text-slate-400 mr-1">1-Klick übernehmen:</span>` +
+    `<button type="button" onclick="applyReplaceSuggestion('${escapeJs(pref)}')" ` +
+    `class="px-2.5 py-1 rounded-lg border border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-[11px] font-semibold transition" ` +
+    `title="Übernimmt „${escapeHtml(pref)}“ direkt ins Suchfeld">` +
+    `🔍 Gemeinsamer Anfang: „${escapeHtml(pref)}“</button>` +
+    `<span class="text-[11px] text-slate-400 ml-1">(oder einfach unten einen Namen anklicken / markieren)</span>`;
+  box.classList.remove('hidden');
+}
+
+function applyReplaceSuggestion(text) {
+  const inp = document.getElementById('rename-search');
+  if (inp) {
+    inp.value = text;
+    updateRenamePreview();
+  }
+  const repl = document.getElementById('rename-replace');
+  if (repl) repl.focus();
+}
+
+function onRenameRowFilenameClick(origName, isDir) {
+  // Nur wenn der Benutzer nicht gerade Text mit der Maus gezogen/markiert hat
+  const sel = (window.getSelection ? window.getSelection().toString() : '').trim();
+  if (sel.length >= 2) return;
+  const stem = isDir ? (origName || '') : (origName || '').replace(/\.[^.]+$/, '');
+  if (!stem) return;
+  if (state.currentRenameRule === 'replace') {
+    const pref = _computeCommonRenamePrefix();
+    const val = pref || stem;
+    const inp = document.getElementById('rename-search');
+    if (inp) {
+      inp.value = val;
+      updateRenamePreview();
+      showToast(`Ins Suchfeld übernommen: „${val}“`, 'info');
+    }
+    const repl = document.getElementById('rename-replace');
+    if (repl) repl.focus();
+  }
+}
+
 function onRenameTableMouseUp() {
   const sel = (window.getSelection ? window.getSelection().toString() : '').trim();
   const bar = document.getElementById('rename-selection-bar');
@@ -3004,9 +3075,31 @@ function onRenameTableMouseUp() {
     return;
   }
   _renameSelectedSnippet = cleaned;
+  // Im Tab "Suchen & Ersetzen" markierten Text SOFORT automatisch ins Suchfeld übernehmen!
+  if (state.currentRenameRule === 'replace') {
+    const inpSearch = document.getElementById('rename-search');
+    if (inpSearch) {
+      inpSearch.value = cleaned;
+      updateRenamePreview();
+    }
+  }
   const disp = cleaned.length > 40 ? `${cleaned.slice(0, 38)}…` : cleaned;
-  lbl.textContent = `Markiert: „${disp}“`;
+  lbl.textContent = state.currentRenameRule === 'replace'
+    ? `Ins Suchfeld übernommen: „${disp}“`
+    : `Markiert: „${disp}“`;
   bar.classList.remove('hidden');
+}
+
+function applySelectedTextToSearch() {
+  if (!_renameSelectedSnippet) return;
+  const repBtn = document.querySelector('#rename-rules-tabs button[onclick*="\'replace\'"]');
+  setRenameRule('replace', repBtn);
+  const inpSearch = document.getElementById('rename-search');
+  if (inpSearch) inpSearch.value = _renameSelectedSnippet;
+  document.getElementById('rename-selection-bar')?.classList.add('hidden');
+  updateRenamePreview();
+  const repl = document.getElementById('rename-replace');
+  if (repl) repl.focus();
 }
 
 function applySelectedTextCutFrom() {
@@ -3058,6 +3151,9 @@ function onRenameTrimModeChange() {
       inp.placeholder = 'z. B. 30';
     } else if (mode === 'folder_from_largest_file') {
       lbl.textContent = 'Optional ab Text abschneiden (leer = ganzer Dateiname):';
+      inp.placeholder = 'Leer lassen, oder z. B. .german';
+    } else if (mode === 'file_from_parent_folder') {
+      lbl.textContent = 'Optional ab Text abschneiden (leer = ganzer Ordnername):';
       inp.placeholder = 'Leer lassen, oder z. B. .german';
     }
   }
@@ -3120,10 +3216,11 @@ async function updateRenamePreview() {
           ? '<span class="inline-block whitespace-nowrap text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-bold">Ändert sich</span>'
           : '<span class="inline-block whitespace-nowrap text-[10px] text-slate-500">Unverändert</span>';
 
+      const origIsDir = !!(state.renameFiles || []).find(f => f.path === item.original_path && (f.is_dir || String(f.type || '').toUpperCase() === 'ORDNER'));
       tr.innerHTML = `
-        <td class="py-1.5 px-4 text-slate-400 truncate max-w-xs" title="${item.original_name}">${item.original_name}</td>
-        <td class="py-1.5 px-4 font-semibold ${item.changed ? 'text-indigo-300' : 'text-slate-300'} truncate max-w-xs" title="${item.new_name}">
-          ${item.new_name}
+        <td class="py-1.5 px-4 text-slate-400 truncate max-w-xs cursor-pointer hover:text-blue-400" title="${escapeHtml(item.original_name)} (Klick: ins Suchfeld übernehmen · Ziehen: Teil markieren)" onclick="onRenameRowFilenameClick('${escapeJs(item.original_name)}', ${origIsDir ? 'true' : 'false'})">${escapeHtml(item.original_name)}</td>
+        <td class="py-1.5 px-4 font-semibold ${item.changed ? 'text-indigo-300' : 'text-slate-300'} truncate max-w-xs" title="${escapeHtml(item.new_name)}">
+          ${escapeHtml(item.new_name)}
         </td>
         <td class="py-1.5 px-4 text-center whitespace-nowrap">${statusBadge}</td>
       `;

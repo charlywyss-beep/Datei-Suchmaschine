@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.55"
+APP_VERSION = "v1.7.56"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -1210,6 +1210,18 @@ def batch_rename_preview(files, rule_type, params):
                                 base_stem = base_stem[:pos].rstrip(" ._-")
                         if base_stem:
                             candidate = base_stem
+            elif trim_mode == "file_from_parent_folder" and not is_dir:
+                file_path = f.get("path", "")
+                parent_dir = os.path.dirname(file_path) if file_path else ""
+                parent_name = os.path.basename(parent_dir.rstrip("\\/")) if parent_dir else ""
+                if parent_name and not re.match(r"^[a-zA-Z]:$", parent_name):
+                    base_stem = parent_name.strip()
+                    if raw_val:
+                        pos = base_stem.lower().find(raw_val.lower())
+                        if pos > 0:
+                            base_stem = base_stem[:pos].rstrip(" ._-")
+                    if base_stem:
+                        candidate = base_stem
             if clean_sep:
                 candidate = re.sub(r"[._]+", " ", candidate)
                 candidate = re.sub(r"\s{2,}", " ", candidate).strip()

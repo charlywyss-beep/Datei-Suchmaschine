@@ -824,21 +824,24 @@
         <!-- Regel-Parameter Eingabefelder -->
         <div id="rule-form-container" class="bg-slate-950/60 p-4 rounded-xl border border-slate-800">
           <!-- Dynamisches Regel-Formular je nach Rule-Tab -->
-          <div id="rule-form-replace" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div>
-              <label class="block text-slate-400 font-medium mb-1">Diesen Text suchen:</label>
-              <input type="text" id="rename-search" placeholder="z. B. _kopie oder .720p.web" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+          <div id="rule-form-replace" class="space-y-2 text-xs">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-slate-400 font-medium mb-1">Diesen Text suchen:</label>
+                <input type="text" id="rename-search" placeholder="Unten anklicken/markieren oder tippen…" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+              </div>
+              <div>
+                <label class="block text-slate-400 font-medium mb-1">Ersetzen durch <span class="opacity-70">(leer lassen = entfernen)</span>:</label>
+                <input type="text" id="rename-replace" placeholder="Leer lassen zum Entfernen, oder z. B. Detektiv Grace " class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+              </div>
+              <div class="flex items-center pt-5">
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" id="rename-case-sensitive" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" onchange="updateRenamePreview()">
+                  <span class="text-slate-300">Groß-/Kleinschreibung beachten</span>
+                </label>
+              </div>
             </div>
-            <div>
-              <label class="block text-slate-400 font-medium mb-1">Ersetzen durch <span class="opacity-70">(leer lassen = entfernen)</span>:</label>
-              <input type="text" id="rename-replace" placeholder="Leer lassen zum Entfernen, oder z. B. _final" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
-            </div>
-            <div class="flex items-center pt-5">
-              <label class="inline-flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="rename-case-sensitive" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" onchange="updateRenamePreview()">
-                <span class="text-slate-300">Groß-/Kleinschreibung beachten</span>
-              </label>
-            </div>
+            <div id="rename-replace-suggestions" class="hidden flex flex-wrap items-center gap-1.5 pt-1"></div>
           </div>
 
           <div id="rule-form-trim" class="hidden space-y-3 text-xs">
@@ -852,6 +855,7 @@
                   <option value="trim_start">Erste X Zeichen abschneiden</option>
                   <option value="max_len">Auf max. X Zeichen kürzen</option>
                   <option value="folder_from_largest_file">Ordner nach größter Datei darin benennen (z. B. MKV)</option>
+                  <option value="file_from_parent_folder">Datei nach ihrem Ordner benennen</option>
                 </select>
               </div>
               <div>
@@ -944,6 +948,9 @@
           <div id="rename-selection-bar" class="hidden shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl border border-blue-500/40 bg-blue-500/10 text-xs">
             <span id="rename-selection-label" class="font-medium text-blue-300 truncate"></span>
             <div class="flex items-center gap-2 shrink-0">
+              <button type="button" onclick="applySelectedTextToSearch()" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition">
+                🔍 Ins Suchfeld übernehmen
+              </button>
               <button type="button" onclick="applySelectedTextCutFrom()" class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition">
                 ✂️ Ab hier abschneiden
               </button>
