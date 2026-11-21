@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.41"
+APP_VERSION = "v1.7.42"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -1098,7 +1098,6 @@ def batch_rename_preview(files, rule_type, params):
                 if case_sens:
                     new_stem = stem.replace(search_str, repl_str)
                 else:
-                    import re
                     new_stem = re.sub(re.escape(search_str), repl_str, stem, flags=re.IGNORECASE)
 
         elif rule_type == "prefix_suffix":
@@ -1128,6 +1127,46 @@ def batch_rename_preview(files, rule_type, params):
                 new_stem = f"{now_str}_{stem}"
             else:
                 new_stem = f"{stem}_{now_str}"
+
+        elif rule_type == "trim":
+            trim_mode = params.get("mode", "cut_from")
+            raw_val = str(params.get("value", "") or "")
+            clean_sep = bool(params.get("clean_sep", False))
+            candidate = stem
+            if trim_mode == "cut_from" and raw_val:
+                pos = stem.lower().find(raw_val.lower())
+                if pos > 0:
+                    candidate = stem[:pos].rstrip(" ._-")
+            elif trim_mode == "cut_before" and raw_val:
+                pos = stem.lower().find(raw_val.lower())
+                if pos > 0:
+                    candidate = stem[pos:].lstrip(" ._-")
+            elif trim_mode == "trim_end":
+                try:
+                    n = max(0, int(raw_val.strip()))
+                    if 0 < n < len(stem):
+                        candidate = stem[:-n].rstrip(" ._-")
+                except ValueError:
+                    pass
+            elif trim_mode == "trim_start":
+                try:
+                    n = max(0, int(raw_val.strip()))
+                    if 0 < n < len(stem):
+                        candidate = stem[n:].lstrip(" ._-")
+                except ValueError:
+                    pass
+            elif trim_mode == "max_len":
+                try:
+                    n = max(1, int(raw_val.strip()))
+                    if len(stem) > n:
+                        candidate = stem[:n].rstrip(" ._-")
+                except ValueError:
+                    pass
+            if clean_sep:
+                candidate = re.sub(r"[._]+", " ", candidate)
+                candidate = re.sub(r"\s{2,}", " ", candidate).strip()
+            if candidate.strip():
+                new_stem = candidate.strip()
 
         new_name = f"{new_stem}{ext}"
         dir_name = os.path.dirname(f["path"])

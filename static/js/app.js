@@ -2722,11 +2722,37 @@ function setRenameRule(rule, btn) {
 
   // Formulare umschalten
   document.getElementById('rule-form-replace').classList.toggle('hidden', rule !== 'replace');
+  document.getElementById('rule-form-trim')?.classList.toggle('hidden', rule !== 'trim');
   document.getElementById('rule-form-prefix-suffix').classList.toggle('hidden', rule !== 'prefix_suffix');
   document.getElementById('rule-form-numbering').classList.toggle('hidden', rule !== 'numbering');
   document.getElementById('rule-form-date').classList.toggle('hidden', rule !== 'date');
   document.getElementById('rule-form-case').classList.toggle('hidden', rule !== 'case');
 
+  updateRenamePreview();
+}
+
+function onRenameTrimModeChange() {
+  const mode = document.getElementById('rename-trim-mode')?.value || 'cut_from';
+  const lbl = document.getElementById('rename-trim-val-label');
+  const inp = document.getElementById('rename-trim-value');
+  if (lbl && inp) {
+    if (mode === 'cut_from') {
+      lbl.textContent = 'Text ab dem abgeschnitten wird:';
+      inp.placeholder = 'z. B. .720p oder _kopie';
+    } else if (mode === 'cut_before') {
+      lbl.textContent = 'Text ab dem behalten wird:';
+      inp.placeholder = 'z. B. s01e oder 2026';
+    } else if (mode === 'trim_end') {
+      lbl.textContent = 'Anzahl Zeichen am Ende abschneiden:';
+      inp.placeholder = 'z. B. 18';
+    } else if (mode === 'trim_start') {
+      lbl.textContent = 'Anzahl Zeichen am Anfang abschneiden:';
+      inp.placeholder = 'z. B. 5';
+    } else if (mode === 'max_len') {
+      lbl.textContent = 'Maximale Zeichenlänge (ohne Endung):';
+      inp.placeholder = 'z. B. 30';
+    }
+  }
   updateRenamePreview();
 }
 
@@ -2740,6 +2766,10 @@ async function updateRenamePreview() {
     params.search = document.getElementById('rename-search').value;
     params.replace = document.getElementById('rename-replace').value;
     params.case_sensitive = document.getElementById('rename-case-sensitive')?.checked ?? false;
+  } else if (rule === 'trim') {
+    params.mode = document.getElementById('rename-trim-mode')?.value || 'cut_from';
+    params.value = document.getElementById('rename-trim-value')?.value || '';
+    params.clean_sep = document.getElementById('rename-trim-clean-sep')?.checked ?? false;
   } else if (rule === 'prefix_suffix') {
     params.prefix = document.getElementById('rename-prefix').value;
     params.suffix = document.getElementById('rename-suffix').value;

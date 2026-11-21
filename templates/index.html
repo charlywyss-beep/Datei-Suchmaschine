@@ -799,6 +799,9 @@
           <button type="button" onclick="setRenameRule('replace', this)" class="rule-btn active px-4 py-2 rounded-xl text-xs font-semibold transition border border-indigo-500/30 bg-indigo-500/20 text-indigo-300">
             <i class="fa-solid fa-arrow-right-arrow-left mr-1.5"></i> Suchen &amp; Ersetzen
           </button>
+          <button type="button" onclick="setRenameRule('trim', this)" class="rule-btn px-4 py-2 rounded-xl text-xs font-semibold transition border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700">
+            <i class="fa-solid fa-scissors mr-1.5"></i> Einkürzen / Abschneiden
+          </button>
           <button type="button" onclick="setRenameRule('prefix_suffix', this)" class="rule-btn px-4 py-2 rounded-xl text-xs font-semibold transition border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700">
             <i class="fa-solid fa-plus-minus mr-1.5"></i> Vorne / Hinten anfügen
           </button>
@@ -819,16 +822,39 @@
           <div id="rule-form-replace" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             <div>
               <label class="block text-slate-400 font-medium mb-1">Diesen Text suchen:</label>
-              <input type="text" id="rename-search" placeholder="z.B. _kopie oder Rechnung" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+              <input type="text" id="rename-search" placeholder="z. B. _kopie oder .720p.web" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
             </div>
             <div>
-              <label class="block text-slate-400 font-medium mb-1">Ersetzen durch:</label>
-              <input type="text" id="rename-replace" placeholder="z.B. _final oder Invoice" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+              <label class="block text-slate-400 font-medium mb-1">Ersetzen durch <span class="opacity-70">(leer lassen = entfernen)</span>:</label>
+              <input type="text" id="rename-replace" placeholder="Leer lassen zum Entfernen, oder z. B. _final" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
             </div>
             <div class="flex items-center pt-5">
               <label class="inline-flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="rename-case-sensitive" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" onchange="updateRenamePreview()">
                 <span class="text-slate-300">Groß-/Kleinschreibung beachten</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="rule-form-trim" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Wie einkürzen:</label>
+              <select id="rename-trim-mode" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" onchange="onRenameTrimModeChange()">
+                <option value="cut_from">Ab Text abschneiden (z. B. ab .720p)</option>
+                <option value="cut_before">Vor Text abschneiden (behält ab Text)</option>
+                <option value="trim_end">Letzte X Zeichen abschneiden</option>
+                <option value="trim_start">Erste X Zeichen abschneiden</option>
+                <option value="max_len">Auf max. X Zeichen kürzen</option>
+              </select>
+            </div>
+            <div>
+              <label id="rename-trim-val-label" class="block text-slate-400 font-medium mb-1">Text ab dem abgeschnitten wird:</label>
+              <input type="text" id="rename-trim-value" placeholder="z. B. .720p oder _kopie" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-slate-100" oninput="updateRenamePreview()">
+            </div>
+            <div class="flex items-center pt-5">
+              <label class="inline-flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="rename-trim-clean-sep" class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500" onchange="updateRenamePreview()">
+                <span class="text-slate-300">Punkte (.) &amp; Unterstriche (_) → Leerzeichen</span>
               </label>
             </div>
           </div>
