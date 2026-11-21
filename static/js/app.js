@@ -2299,22 +2299,77 @@ async function previewFile(path) {
 // EINZEL-UMBENENNUNG
 // ==========================================
 function openSingleRename(path, name) {
+  const inp = document.getElementById('single-rename-input');
   document.getElementById('single-rename-oldpath').value = path;
-  document.getElementById('single-rename-input').value = name;
+  inp.value = name;
+  inp.dataset.origName = name || '';
   document.getElementById('modal-single-rename').classList.remove('hidden');
-  setTimeout(() => document.getElementById('single-rename-input').focus(), 100);
+  setTimeout(() => {
+    inp.focus();
+    // Wie im Windows Explorer (F2): nur den Namen vor der Dateiendung markieren
+    const dot = (name || '').lastIndexOf('.');
+    try {
+      if (dot > 0) inp.setSelectionRange(0, dot);
+      else inp.select();
+    } catch (_) {}
+  }, 100);
 }
 
 function closeSingleRenameModal() {
   document.getElementById('modal-single-rename').classList.add('hidden');
 }
 
+function _splitFileExt(fname) {
+  const s = (fname || '').trim();
+  const dot = s.lastIndexOf('.');
+  if (dot <= 0 || dot === s.length - 1) return { stem: s, ext: '' };
+  return { stem: s.slice(0, dot), ext: s.slice(dot) };
+}
+
 async function submitSingleRename() {
   const oldPath = document.getElementById('single-rename-oldpath').value;
-  const newName = document.getElementById('single-rename-input').value.trim();
+  const inp = document.getElementById('single-rename-input');
+  let newName = inp.value.trim();
   if (!newName) {
     showToast('Bitte einen neuen Namen eingeben', 'error');
     return;
+  }
+
+  const origName = inp.dataset.origName || oldPath.split('\\').pop().split('/').pop() || '';
+  const { ext: oldExt } = _splitFileExt(origName);
+  const { ext: newExt } = _splitFileExt(newName);
+
+  // Sicherheitsschutz für Dateiendungen (.mkv, .pdf, .docx, ...)
+  if (oldExt && newExt.toLowerCase() !== oldExt.toLowerCase()) {
+    if (!newExt) {
+      const keepExt = await showConfirmDialog({
+        title: `Dateiendung „${oldExt}“ fehlt`,
+        message: `Du hast die Dateiendung „${oldExt}“ entfernt. Ohne Endung kann Windows die Datei evtl. nicht mehr öffnen.`,
+        detail: `Soll die Datei sicher mit der ursprünglichen Endung als „${newName}${oldExt}“ gespeichert werden?`,
+        confirmText: `Mit ${oldExt} speichern`,
+        cancelText: 'Zurück zum Bearbeiten',
+        type: 'warning'
+      });
+      if (!keepExt) {
+        inp.focus();
+        return;
+      }
+      newName = `${newName}${oldExt}`;
+      inp.value = newName;
+    } else {
+      const proceed = await showConfirmDialog({
+        title: `Dateiendung ändern (${oldExt} → ${newExt})?`,
+        message: `Achtung: Die Dateiendung wird von „${oldExt}“ auf „${newExt}“ geändert.`,
+        detail: 'Durch das Ändern der Dateiendung kann die Datei unbrauchbar werden oder sich nicht mehr mit dem richtigen Programm öffnen lassen.',
+        confirmText: `Trotzdem auf ${newExt} ändern`,
+        cancelText: 'Abbrechen',
+        type: 'warning'
+      });
+      if (!proceed) {
+        inp.focus();
+        return;
+      }
+    }
   }
 
   try {
