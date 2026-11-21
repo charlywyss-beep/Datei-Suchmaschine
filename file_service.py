@@ -15,7 +15,7 @@ from datetime import datetime
 from send2trash import send2trash
 
 logger = logging.getLogger("file_service")
-APP_VERSION = "v1.7.49"
+APP_VERSION = "v1.7.50"
 
 def _get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -1087,7 +1087,11 @@ def batch_rename_preview(files, rule_type, params):
 
     for idx, f in enumerate(files):
         old_name = f["name"]
-        stem, ext = os.path.splitext(old_name)
+        is_dir = bool(f.get("is_dir")) or (bool(f.get("path")) and os.path.isdir(f["path"]))
+        if is_dir:
+            stem, ext = old_name, ""
+        else:
+            stem, ext = os.path.splitext(old_name)
         new_stem = stem
 
         if rule_type == "replace":

@@ -2300,14 +2300,23 @@ async function previewFile(path) {
 // ==========================================
 function openSingleRename(path, name) {
   const inp = document.getElementById('single-rename-input');
+  const rec = (state.currentFiles || []).find(f => f.path === path) || (state.allRawFiles || []).find(f => f.path === path);
+  const isDir = !!(rec && (rec.is_dir || String(rec.type || '').toUpperCase() === 'ORDNER'));
   document.getElementById('single-rename-oldpath').value = path;
   inp.value = name;
   inp.dataset.origName = name || '';
+  inp.dataset.isDir = isDir ? '1' : '0';
+
+  const titleEl = document.getElementById('single-rename-title');
+  const labelEl = document.getElementById('single-rename-label');
+  if (titleEl) titleEl.textContent = isDir ? 'Ordner umbenennen' : 'Datei umbenennen';
+  if (labelEl) labelEl.textContent = isDir ? 'Neuer Ordnername:' : 'Neuer Dateiname (inklusive Endung):';
+
   document.getElementById('modal-single-rename').classList.remove('hidden');
   setTimeout(() => {
     inp.focus();
-    // Wie im Windows Explorer (F2): nur den Namen vor der Dateiendung markieren
-    const dot = (name || '').lastIndexOf('.');
+    // Bei Dateien wie im Windows Explorer (F2) nur vor der Endung markieren; bei Ordnern den ganzen Namen
+    const dot = isDir ? -1 : (name || '').lastIndexOf('.');
     try {
       if (dot > 0) inp.setSelectionRange(0, dot);
       else inp.select();
@@ -2335,12 +2344,13 @@ async function submitSingleRename() {
     return;
   }
 
+  const isDir = inp.dataset.isDir === '1';
   const origName = inp.dataset.origName || oldPath.split('\\').pop().split('/').pop() || '';
   const { ext: oldExt } = _splitFileExt(origName);
   const { ext: newExt } = _splitFileExt(newName);
 
-  // Sicherheitsschutz für Dateiendungen (.mkv, .pdf, .docx, ...)
-  if (oldExt && newExt.toLowerCase() !== oldExt.toLowerCase()) {
+  // Sicherheitsschutz für Dateiendungen (.mkv, .pdf, .docx, ...) – gilt nur für Dateien, nicht für Ordner
+  if (!isDir && oldExt && newExt.toLowerCase() !== oldExt.toLowerCase()) {
     if (!newExt) {
       const keepExt = await showConfirmDialog({
         title: `Dateiendung „${oldExt}“ fehlt`,
@@ -2752,6 +2762,43 @@ async function deleteSelectedDuplicates() {
 // ==========================================
 // BATCH-UMBENENNUNG (MASSEN-UMBENENNUNG)
 // ==========================================
+function _getRenameItemKind() {
+  const list = state.renameFiles || [];
+  if (list.length === 0) return 'file';
+  const dirCnt = list.filter(f => f.is_dir || String(f.type || '').toUpperCase() === 'ORDNER').length;
+  if (dirCnt === list.length) return 'folder';
+  if (dirCnt === 0) return 'file';
+  return 'mixed';
+}
+
+function updateRenameStudioLabels() {
+  const kind = _getRenameItemKind();
+  const titleEl = document.getElementById('rename-studio-title');
+  const subEl = document.getElementById('rename-studio-subtitle');
+  const nounEl = document.getElementById('rename-selected-noun');
+  const thOrig = document.getElementById('rename-th-orig');
+  const thNew = document.getElementById('rename-th-new');
+  if (kind === 'folder') {
+    if (titleEl) titleEl.textContent = 'Massen- & Ordner-Umbenennung Studio';
+    if (subEl) subEl.textContent = 'Ordnernamen nach flexiblen Regeln strukturiert anpassen mit Live-Vorschau vor dem Speichern.';
+    if (nounEl) nounEl.textContent = 'Ordner';
+    if (thOrig) thOrig.textContent = 'Ursprünglicher Ordnername';
+    if (thNew) thNew.textContent = 'Neuer Ordnername';
+  } else if (kind === 'mixed') {
+    if (titleEl) titleEl.textContent = 'Massen-Umbenennung Studio';
+    if (subEl) subEl.textContent = 'Datei- & Ordnernamen nach flexiblen Regeln strukturiert anpassen mit Live-Vorschau vor dem Speichern.';
+    if (nounEl) nounEl.textContent = 'Einträge';
+    if (thOrig) thOrig.textContent = 'Ursprünglicher Name';
+    if (thNew) thNew.textContent = 'Neuer Name';
+  } else {
+    if (titleEl) titleEl.textContent = 'Massen- & Datei-Umbenennung Studio';
+    if (subEl) subEl.textContent = 'Dateinamen nach flexiblen Regeln strukturiert anpassen mit Live-Vorschau vor dem Speichern.';
+    if (nounEl) nounEl.textContent = 'Dateien';
+    if (thOrig) thOrig.textContent = 'Ursprünglicher Dateiname';
+    if (thNew) thNew.textContent = 'Neuer Dateiname';
+  }
+}
+
 function openBatchRenameWithSelected() {
   if (state.selectedFilePaths.size === 0) {
     // Alle aktuellen Dateien nehmen falls keine selektiert
@@ -2762,6 +2809,7 @@ function openBatchRenameWithSelected() {
 
   document.getElementById('rename-selected-count').textContent = state.renameFiles.length;
   document.getElementById('rename-selection-bar')?.classList.add('hidden');
+  updateRenameStudioLabels();
   switchTab('rename');
   renderRenameTrimSuggestions();
   updateRenamePreview();
@@ -3079,7 +3127,9 @@ async function updateRenamePreview() {
       tbody.appendChild(tr);
     });
 
-    document.getElementById('rename-change-count').textContent = `${changeCount} von ${state.renamePreview.length} Dateien werden umbenannt`;
+    const kind = _getRenameItemKind();
+    const nounPl = kind === 'folder' ? 'Ordner' : (kind === 'mixed' ? 'Einträge' : 'Dateien');
+    document.getElementById('rename-change-count').textContent = `${changeCount} von ${state.renamePreview.length} ${nounPl} werden umbenannt`;
     document.getElementById('btn-execute-rename').disabled = changeCount === 0;
   } catch (err) {
     console.error('Rename Preview Fehler:', err);
@@ -3094,10 +3144,13 @@ async function executeBatchRename() {
     showToast('Keine Änderungen vorzunehmen.', 'info');
     return;
   }
+  const kind = _getRenameItemKind();
+  const nounPl = kind === 'folder' ? 'Ordner' : (kind === 'mixed' ? 'Einträge' : 'Dateien');
+  const namesPl = kind === 'folder' ? 'Ordnernamen' : (kind === 'mixed' ? 'Namen' : 'Dateinamen');
   const confirmed = await showConfirmDialog({
     title: 'Massen-Umbenennung anwenden',
-    message: `Möchten Sie wirklich ${changedItems.length} Dateien umbenennen?`,
-    detail: 'Die neuen Dateinamen werden direkt auf der Festplatte angewendet.',
+    message: `Möchten Sie wirklich ${changedItems.length} ${nounPl} umbenennen?`,
+    detail: `Die neuen ${namesPl} werden direkt auf der Festplatte angewendet.`,
     confirmText: 'Jetzt umbenennen',
     cancelText: 'Abbrechen',
     type: 'warning'

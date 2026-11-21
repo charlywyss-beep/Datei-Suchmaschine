@@ -790,12 +790,12 @@
               <i class="fa-solid fa-pen-to-square text-lg"></i>
             </div>
             <div>
-              <h2 class="text-lg font-bold text-white">Massen- &amp; Datei-Umbenennung Studio</h2>
-              <p class="text-xs text-slate-400">Dateinamen nach flexiblen Regeln strukturiert anpassen mit Live-Vorschau vor dem Speichern.</p>
+              <h2 id="rename-studio-title" class="text-lg font-bold text-white">Massen- &amp; Datei-Umbenennung Studio</h2>
+              <p id="rename-studio-subtitle" class="text-xs text-slate-400">Dateinamen nach flexiblen Regeln strukturiert anpassen mit Live-Vorschau vor dem Speichern.</p>
             </div>
           </div>
           <div class="text-xs text-slate-400">
-            <span id="rename-selected-count" class="font-bold text-indigo-400">0</span> Dateien im Studio geladen
+            <span id="rename-selected-count" class="font-bold text-indigo-400">0</span> <span id="rename-selected-noun">Dateien</span> im Studio geladen
           </div>
         </div>
 
@@ -956,8 +956,8 @@
             <table class="w-full text-left border-collapse text-xs">
               <thead class="sticky top-0 bg-slate-900 text-slate-400 uppercase text-[11px] font-semibold border-b border-slate-800">
                 <tr>
-                  <th class="py-2.5 px-4 w-1/2">Ursprünglicher Dateiname</th>
-                  <th class="py-2.5 px-4 w-1/2">Neuer Dateiname</th>
+                  <th id="rename-th-orig" class="py-2.5 px-4 w-1/2">Ursprünglicher Dateiname</th>
+                  <th id="rename-th-new" class="py-2.5 px-4 w-1/2">Neuer Dateiname</th>
                   <th class="py-2.5 px-4 w-24 text-center">Status</th>
                 </tr>
               </thead>
@@ -1162,7 +1162,7 @@
       <div class="flex items-center justify-between">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <i class="fa-solid fa-pen text-indigo-400"></i>
-          <span>Datei umbenennen</span>
+          <span id="single-rename-title">Datei umbenennen</span>
         </h3>
         <button onclick="closeSingleRenameModal()" class="text-slate-400 hover:text-white transition">
           <i class="fa-solid fa-xmark"></i>
@@ -1170,7 +1170,7 @@
       </div>
 
       <div class="space-y-2">
-        <label class="text-xs text-slate-400 font-medium">Neuer Dateiname (inklusive Endung):</label>
+        <label id="single-rename-label" class="text-xs text-slate-400 font-medium">Neuer Dateiname (inklusive Endung):</label>
         <input type="text" id="single-rename-input" class="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-slate-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
         <input type="hidden" id="single-rename-oldpath">
       </div>
