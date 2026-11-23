@@ -379,10 +379,10 @@
 
     .table-card {
       background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      overflow: hidden; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+      overflow: hidden; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04); min-width: 0;
     }
-    .table-scroll { max-height: calc(100vh - 140px); min-height: 460px; overflow: auto; }
-    table { min-width: 100%; width: max-content; border-collapse: collapse; table-layout: fixed; }
+    .table-scroll { max-height: calc(100vh - 140px); min-height: 460px; overflow-y: auto; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     thead th {
       position: sticky; top: 0; z-index: 5; background: #f8fafc; color: var(--text);
       font-size: 12px; font-weight: 700; text-align: left; padding: 9px 10px;
@@ -591,7 +591,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.3 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.4 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -757,7 +757,7 @@
       </div>
 
       <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-        <button id="btn-reset-cols" type="button" class="btn btn-soft" onclick="resetColumnLayout()" title="Spaltenreihenfolge &amp; -breiten zurücksetzen">
+        <button id="btn-reset-cols" type="button" class="btn btn-soft" onclick="resetColumnLayout()" title="Spalten automatisch an die sichtbare Breite anpassen &amp; Reihenfolge zurücksetzen">
           <span>↺ Spalten</span>
         </button>
         <button id="btn-batch-rename" type="button" class="btn btn-soft" disabled onclick="openBatchRenameModal()" title="Markierte Dateien in einem Schritt umbenennen">
@@ -940,20 +940,28 @@
       xlsxActiveSheet: '',
       columnOrder: null,
       columnWidths: null,
+      columnAuto: true,
+      _natCache: null,
       isResizingColumn: false,
       justDraggedCol: false,
     };
 
-    const COLUMN_LAYOUT_STORAGE_KEY = 'pdf_suche_web_col_layout_v1';
+    const COLUMN_LAYOUT_STORAGE_KEY = 'pdf_suche_web_col_layout_v2';
+    const LEGACY_COLUMN_LAYOUT_KEY = 'pdf_suche_web_col_layout_v1';
+    const CHECK_COL_WIDTH = 36;
     const DEFAULT_COLUMN_ORDER = ['name', 'ext', 'dir', 'size', 'mtime', 'act'];
     const DEFAULT_COLUMN_WIDTHS = {
       name: 260,
-      ext: 68,
-      dir: 215,
-      size: 86,
-      mtime: 130,
-      act: 116
+      ext: 64,
+      dir: 200,
+      size: 78,
+      mtime: 124,
+      act: 118
     };
+    /* Harte Minimalbreite (per Ziehen noch erreichbar) & „Wohlfühl“-Minimum fuer die Auto-Anpassung */
+    const COLUMN_HARD_MIN = { name: 70, ext: 44, dir: 56, size: 50, mtime: 76, act: 60 };
+    const COLUMN_SOFT_MIN = { name: 150, dir: 100, ext: 54, size: 66, mtime: 104, act: 112 };
+    const COLUMN_FLEX = { name: true, dir: true };
     const COLUMN_META = {
       name: { label: 'Dateiname', sortKey: 'name', cls: 'col-name', title: 'Nach Dateiname sortieren' },
       ext: { label: 'Typ', sortKey: 'ext', cls: 'col-ext', title: 'Nach Dateityp sortieren' },
@@ -967,21 +975,27 @@
       if (!Array.isArray(state.columnOrder) || state.columnOrder.length !== DEFAULT_COLUMN_ORDER.length) {
         let loadedOrder = null;
         let loadedWidths = null;
+        let loadedAuto = true;
+        const validOrder = o => Array.isArray(o) && o.length === DEFAULT_COLUMN_ORDER.length && DEFAULT_COLUMN_ORDER.every(k => o.includes(k));
         try {
           const raw = localStorage.getItem(COLUMN_LAYOUT_STORAGE_KEY);
           if (raw) {
             const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed.order) && parsed.order.length === DEFAULT_COLUMN_ORDER.length &&
-                DEFAULT_COLUMN_ORDER.every(k => parsed.order.includes(k))) {
-              loadedOrder = parsed.order;
-            }
-            if (parsed.widths && typeof parsed.widths === 'object') {
-              loadedWidths = parsed.widths;
+            if (validOrder(parsed.order)) loadedOrder = parsed.order;
+            if (parsed.widths && typeof parsed.widths === 'object') loadedWidths = parsed.widths;
+            loadedAuto = parsed.auto !== false;
+          } else {
+            // Alte Spaltenreihenfolge (v1) uebernehmen, Breiten aber automatisch neu berechnen
+            const legacyRaw = localStorage.getItem(LEGACY_COLUMN_LAYOUT_KEY);
+            if (legacyRaw) {
+              const legacy = JSON.parse(legacyRaw);
+              if (validOrder(legacy.order)) loadedOrder = legacy.order;
             }
           }
         } catch (_) {}
         state.columnOrder = loadedOrder ? [...loadedOrder] : [...DEFAULT_COLUMN_ORDER];
         state.columnWidths = Object.assign({}, DEFAULT_COLUMN_WIDTHS, loadedWidths || {});
+        state.columnAuto = loadedAuto;
       }
       return { order: state.columnOrder, widths: state.columnWidths };
     }
@@ -990,7 +1004,8 @@
       try {
         localStorage.setItem(COLUMN_LAYOUT_STORAGE_KEY, JSON.stringify({
           order: state.columnOrder || DEFAULT_COLUMN_ORDER,
-          widths: state.columnWidths || DEFAULT_COLUMN_WIDTHS
+          widths: state.columnWidths || DEFAULT_COLUMN_WIDTHS,
+          auto: state.columnAuto !== false
         }));
       } catch (_) {}
     }
@@ -998,9 +1013,111 @@
     function resetColumnLayout() {
       state.columnOrder = [...DEFAULT_COLUMN_ORDER];
       state.columnWidths = Object.assign({}, DEFAULT_COLUMN_WIDTHS);
-      try { localStorage.removeItem(COLUMN_LAYOUT_STORAGE_KEY); } catch (_) {}
+      state.columnAuto = true;
+      state._natCache = null;
+      try {
+        localStorage.removeItem(COLUMN_LAYOUT_STORAGE_KEY);
+        localStorage.removeItem(LEGACY_COLUMN_LAYOUT_KEY);
+      } catch (_) {}
       renderTable();
-      toast('↺ Spaltenreihenfolge & -breiten zurückgesetzt.', 'info');
+      toast('↺ Spalten: Reihenfolge zurückgesetzt & Breiten automatisch angepasst.', 'info');
+    }
+
+    /* Automatische Spaltenbreiten: messen den echten Inhalt und passen alles exakt in die sichtbare Tabellenbreite */
+    let _measureCtx = null;
+    function _measureTextWidth(text, bold) {
+      if (!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+      const fam = getComputedStyle(document.body).fontFamily || 'Segoe UI, system-ui, sans-serif';
+      _measureCtx.font = `${bold ? '600 ' : ''}12.5px ${fam}`;
+      return _measureCtx.measureText(String(text || '')).width;
+    }
+
+    function _naturalColumnWidths() {
+      const ref = state.filteredFiles;
+      if (state._natCache && state._natCache.ref === ref && state._natCache.len === ref.length) {
+        return state._natCache.widths;
+      }
+      const items = ref.length ? ref : state.allFiles;
+      const step = items.length > 400 ? Math.ceil(items.length / 400) : 1;
+      let nameMax = 0;
+      let dirMax = 0;
+      let hasFiles = false;
+      for (let i = 0; i < items.length; i += step) {
+        const it = items[i];
+        if (!it.isFolder) hasFiles = true;
+        nameMax = Math.max(nameMax, _measureTextWidth(it.isFolder ? `📁 ${it.name}` : it.name, true));
+        const d = it.dir === '(Hauptordner)' ? it.dir : toGermanDisplayPath(it.dir || '');
+        dirMax = Math.max(dirMax, _measureTextWidth(d, false));
+      }
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const widths = {
+        name: Math.round(clamp(nameMax + 26, 150, 460)),
+        ext: 64,
+        dir: Math.round(clamp(dirMax + 26, 100, 300)),
+        size: 78,
+        mtime: 124,
+        act: hasFiles ? 118 : 84
+      };
+      state._natCache = { ref, len: ref.length, widths };
+      return widths;
+    }
+
+    function _getAvailableColumnsWidth() {
+      const scroll = document.querySelector('.table-scroll');
+      const w = scroll ? scroll.clientWidth : 800;
+      return Math.max(300, w - CHECK_COL_WIDTH);
+    }
+
+    function _fitColumnWidths(order, base, avail) {
+      const hard = order.map(k => COLUMN_HARD_MIN[k] || 48);
+      const soft = order.map((k, i) => Math.max(hard[i], COLUMN_SOFT_MIN[k] || 60));
+      const w = order.map((k, i) => Math.max(hard[i], Number(base[k]) || DEFAULT_COLUMN_WIDTHS[k] || 100));
+      const sum = arr => arr.reduce((a, b) => a + b, 0);
+      const auto = state.columnAuto !== false;
+      const allIdx = order.map((_, i) => i);
+      const flexIdx = allIdx.filter(i => COLUMN_FLEX[order[i]]);
+      const fixedIdx = allIdx.filter(i => !COLUMN_FLEX[order[i]]);
+      const total = sum(w);
+
+      if (total < avail) {
+        const extra = avail - total;
+        const grow = (auto && flexIdx.length) ? flexIdx : allIdx;
+        const growSum = sum(grow.map(i => w[i])) || 1;
+        grow.forEach(i => { w[i] += extra * w[i] / growSum; });
+      } else if (total > avail) {
+        let need = total - avail;
+        const shrinkToFloor = (idxs, floors) => {
+          if (need <= 0.5) return;
+          const slackArr = idxs.map(i => Math.max(0, w[i] - floors[i]));
+          const slack = sum(slackArr);
+          if (slack <= 0) return;
+          const take = Math.min(need, slack);
+          idxs.forEach((i, j) => { w[i] -= take * slackArr[j] / slack; });
+          need -= take;
+        };
+        if (auto) {
+          shrinkToFloor(flexIdx, soft);
+          shrinkToFloor(fixedIdx, soft);
+        }
+        shrinkToFloor(allIdx, hard);
+      }
+
+      const rounded = w.map(v => Math.floor(v));
+      const diff = Math.floor(avail) - sum(rounded);
+      if (diff > 0) rounded[rounded.length - 1] += diff;
+      return rounded;
+    }
+
+    function applyColumnWidths() {
+      const colgroup = document.getElementById('results-colgroup');
+      if (!colgroup) return;
+      const { order, widths } = _getColumnLayout();
+      const base = state.columnAuto !== false ? _naturalColumnWidths() : widths;
+      const fitted = _fitColumnWidths(order, base, _getAvailableColumnsWidth());
+      order.forEach((k, i) => {
+        const col = colgroup.querySelector(`col[data-col-key="${k}"]`);
+        if (col) col.style.width = `${fitted[i]}px`;
+      });
     }
 
     let _dragSourceColKey = null;
@@ -1059,22 +1176,35 @@
     function startColumnResize(e, key) {
       e.preventDefault();
       e.stopPropagation();
-      const colEl = document.querySelector(`#results-colgroup col[data-col-key="${key}"]`);
-      const thEl = e.currentTarget.closest('th');
+      const { order } = _getColumnLayout();
+      const idx = order.indexOf(key);
+      if (idx < 0) return;
+      const partnerIdx = idx < order.length - 1 ? idx + 1 : idx - 1;
+      if (partnerIdx < 0) return;
       const handle = e.currentTarget;
-      if (!colEl || !thEl) return;
+
+      const getCol = k => document.querySelector(`#results-colgroup col[data-col-key="${k}"]`);
+      const getTh = k => document.querySelector(`#results-thead th[data-col-key="${k}"]`);
+      const cols = order.map(getCol);
+      const ths = order.map(getTh);
+      if (cols.some(c => !c) || ths.some(t => !t)) return;
 
       state.isResizingColumn = true;
       state.justDraggedCol = true;
       handle.classList.add('resizing');
       const startX = e.clientX;
-      const startWidth = thEl.getBoundingClientRect().width;
+      const startWidths = ths.map(t => t.getBoundingClientRect().width);
+      const pair = startWidths[idx] + startWidths[partnerIdx];
+      const minA = COLUMN_HARD_MIN[order[idx]] || 48;
+      const minB = COLUMN_HARD_MIN[order[partnerIdx]] || 48;
 
+      // Wie im Windows Explorer: Gesamtbreite bleibt konstant, die Nachbarspalte gibt Platz ab bzw. nimmt ihn auf
       const onMove = moveEvt => {
-        const nextW = Math.max(54, Math.round(startWidth + (moveEvt.clientX - startX)));
-        colEl.style.width = `${nextW}px`;
-        const { widths } = _getColumnLayout();
-        widths[key] = nextW;
+        const delta = moveEvt.clientX - startX;
+        const newA = Math.round(Math.max(minA, Math.min(pair - minB, startWidths[idx] + delta)));
+        const newB = Math.round(pair - newA);
+        cols[idx].style.width = `${newA}px`;
+        cols[partnerIdx].style.width = `${newB}px`;
       };
 
       const onUp = () => {
@@ -1082,6 +1212,12 @@
         document.removeEventListener('mouseup', onUp);
         handle.classList.remove('resizing');
         state.isResizingColumn = false;
+        const { widths } = _getColumnLayout();
+        order.forEach((k, i) => {
+          const px = parseFloat(cols[i].style.width);
+          if (px > 0) widths[k] = px;
+        });
+        state.columnAuto = false;
         _saveColumnLayout();
         setTimeout(() => { state.justDraggedCol = false; }, 140);
       };
@@ -1095,12 +1231,11 @@
       const colgroup = document.getElementById('results-colgroup');
       if (!thead || !colgroup) return;
 
-      const { order, widths } = _getColumnLayout();
+      const { order } = _getColumnLayout();
       const allChecked = state.filteredFiles.length > 0 && state.filteredFiles.every(it => state.selectedIds.has(it.id));
 
-      colgroup.innerHTML = `<col style="width:36px;">` + order.map(k => {
-        const w = Math.max(54, Number(widths[k]) || DEFAULT_COLUMN_WIDTHS[k] || 120);
-        return `<col data-col-key="${k}" style="width:${w}px;">`;
+      colgroup.innerHTML = `<col style="width:${CHECK_COL_WIDTH}px;">` + order.map(k => {
+        return `<col data-col-key="${k}" style="width:100px;">`;
       }).join('');
 
       const thCells = order.map(key => {
@@ -1122,7 +1257,7 @@
             class="${meta.cls} th-draggable"
             title="${meta.title} (Ziehen zum Verschieben · Rand ziehen für Breite)"
           >
-            <span style="pointer-events:none;">${meta.label}${sortIcon}</span>
+            <span style="pointer-events:none; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:3px;">${meta.label}${sortIcon}</span>
             <span class="col-resize-handle" draggable="false" onmousedown="startColumnResize(event, '${key}')" onclick="event.stopPropagation()"></span>
           </th>
         `;
@@ -1136,6 +1271,7 @@
           ${thCells}
         </tr>
       `;
+      applyColumnWidths();
     }
 
     const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information', 'node_modules', '.git', '__pycache__']);
@@ -3362,6 +3498,20 @@
           schedulePdfRerender(120);
         }
       });
+      const tableScrollEl = document.querySelector('.table-scroll');
+      if (tableScrollEl && 'ResizeObserver' in window) {
+        let lastW = tableScrollEl.clientWidth;
+        let raf = 0;
+        new ResizeObserver(() => {
+          const w = tableScrollEl.clientWidth;
+          if (w === lastW || state.isResizingColumn) return;
+          lastW = w;
+          cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(() => applyColumnWidths());
+        }).observe(tableScrollEl);
+      } else {
+        window.addEventListener('resize', () => applyColumnWidths());
+      }
       document.addEventListener('click', e => {
         const pop = document.getElementById('explorer-folder-popup');
         if (pop && !pop.classList.contains('hidden')) {
