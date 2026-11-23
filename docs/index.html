@@ -433,6 +433,7 @@
     .type-ppt { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
     .type-image { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
     .type-text { background: #ecfeff; color: #0e7490; border-color: #a5f3fc; }
+    .type-folder { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 
     .icon-btn {
       width: 27px; height: 27px; border-radius: 6px; border: 1px solid var(--border);
@@ -590,7 +591,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.0 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.1 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -651,7 +652,7 @@
             id="search-input"
             type="text"
             class="main-input"
-            placeholder="Dateiname oder Stichwort suchen (z. B. Rechnung 2026)…"
+            placeholder="Datei- oder Ordnername suchen (z. B. Rechnung 2026)…"
             oninput="applyFilters()"
           >
           <button type="button" class="input-clear" title="Suchfeld leeren" onclick="clearSearchInput()">✕</button>
@@ -697,6 +698,7 @@
           <span class="filter-label">Dateityp:</span>
           <div class="cat-row" id="category-buttons">
             <button type="button" class="btn btn-active" data-cat="all" onclick="setCategory('all')">Alle <span class="cat-count" id="cnt-all">0</span></button>
+            <button type="button" class="btn" data-cat="folder" onclick="setCategory('folder')" title="Nur nach Ordnern suchen (inkl. leerer Ordner)">📁 Ordner <span class="cat-count" id="cnt-folder">0</span></button>
             <button type="button" class="btn" data-cat="pdf" onclick="setCategory('pdf')">PDF <span class="cat-count" id="cnt-pdf">0</span></button>
             <button type="button" class="btn" data-cat="word" onclick="setCategory('word')">Word <span class="cat-count" id="cnt-word">0</span></button>
             <button type="button" class="btn" data-cat="excel" onclick="setCategory('excel')">Excel <span class="cat-count" id="cnt-excel">0</span></button>
@@ -744,7 +746,7 @@
     <!-- BEREICH 3: Ergebnis-Leiste -->
     <div class="results-toolbar">
       <div class="status-readout" title="Ergebnis-Anzeige (nur Information)">
-        <span><strong id="stat-shown">0</strong> Dateien</span>
+        <span><strong id="stat-shown">0</strong> <span id="stat-unit">Dateien</span></span>
         <span class="status-sep">|</span>
         <span id="stat-size">0 KB</span>
         <span class="status-sep">|</span>
@@ -1742,9 +1744,103 @@
       return { curDir: normCur, totalInCur, directInCur, children };
     }
 
+    function _getScopedFolderItems() {
+      const curDir = _normItemDir(state.activeSubfolder);
+      const allLevels = !!state.includeSublevels;
+      const dirSet = new Set();
+
+      if (state.allDirs && typeof state.allDirs.forEach === 'function') {
+        state.allDirs.forEach(raw => {
+          const d = _normItemDir(raw);
+          if (d) dirSet.add(d);
+        });
+      }
+      state.allFiles.forEach(it => {
+        const d = _normItemDir(it.dir);
+        if (!d) return;
+        const parts = d.split('\\').filter(Boolean);
+        let acc = '';
+        parts.forEach(seg => {
+          acc = acc ? `${acc}\\${seg}` : seg;
+          dirSet.add(acc);
+        });
+      });
+
+      const allDirArr = Array.from(dirSet);
+      const scopedDirs = allDirArr.filter(d => {
+        if (!curDir) {
+          return allLevels ? true : !d.includes('\\');
+        }
+        if (!d.startsWith(curDir + '\\')) return false;
+        if (allLevels) return true;
+        const rel = d.slice(curDir.length + 1);
+        return !rel.includes('\\');
+      });
+
+      // Statistiken je Ordner (Dateien direkt, Dateien gesamt, Groesse, neuestes Datum, Unterordner)
+      const statsMap = new Map();
+      scopedDirs.forEach(d => {
+        statsMap.set(d, { directFiles: 0, totalFiles: 0, size: 0, mtime: null, nestedFolders: 0 });
+      });
+
+      allDirArr.forEach(d => {
+        scopedDirs.forEach(sd => {
+          if (d.startsWith(sd + '\\')) {
+            statsMap.get(sd).nestedFolders += 1;
+          }
+        });
+      });
+
+      state.allFiles.forEach(it => {
+        const fd = _normItemDir(it.dir);
+        if (!fd) return;
+        scopedDirs.forEach(sd => {
+          if (fd === sd || fd.startsWith(sd + '\\')) {
+            const st = statsMap.get(sd);
+            st.totalFiles += 1;
+            if (fd === sd) st.directFiles += 1;
+            if (it.size !== null && it.size !== undefined) st.size += (it.size || 0);
+            if (it.mtime !== null && it.mtime !== undefined) {
+              if (st.mtime === null || it.mtime > st.mtime) st.mtime = it.mtime;
+            }
+          }
+        });
+      });
+
+      return scopedDirs.map(fullPath => {
+        const st = statsMap.get(fullPath);
+        const parts = fullPath.split('\\');
+        const lastSeg = parts[parts.length - 1];
+        const parentDir = parts.length > 1 ? parts.slice(0, -1).join('\\') : '(Hauptordner)';
+        return {
+          id: `dir:${fullPath}`,
+          isFolder: true,
+          fullPath,
+          name: toGermanDisplayPath(lastSeg),
+          ext: 'ORDNER',
+          cat: 'folder',
+          dir: parentDir,
+          directFiles: st.directFiles,
+          totalFiles: st.totalFiles,
+          nestedFolders: st.nestedFolders,
+          size: st.size,
+          mtime: st.mtime,
+        };
+      });
+    }
+
+    function openFolderFromSearch(folderPath) {
+      state.category = 'all';
+      document.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('btn-active', b.dataset.cat === 'all'));
+      const searchEl = document.getElementById('search-input');
+      if (searchEl && searchEl.value.trim()) searchEl.value = '';
+      navigateToSubfolder(folderPath, false, true);
+    }
+
     function updateCategoryCounts() {
       const scoped = state.allFiles.filter(it => _matchesSubfolder(it.dir, state.activeSubfolder, state.includeSublevels));
-      const counts = { all: scoped.length, pdf: 0, word: 0, excel: 0, ppt: 0, image: 0, text: 0, other: 0 };
+      const folderCount = _getScopedFolderItems().length;
+      const counts = { all: scoped.length, folder: folderCount, pdf: 0, word: 0, excel: 0, ppt: 0, image: 0, text: 0, other: 0 };
       scoped.forEach(it => { counts[it.cat] = (counts[it.cat] || 0) + 1; });
       Object.keys(counts).forEach(k => {
         const el = document.getElementById(`cnt-${k}`);
@@ -2328,18 +2424,32 @@
       const toTs = dTo ? new Date(`${dTo}T23:59:59.999`).getTime() : null;
       const minBytes = parseSizeBytes(document.getElementById('min-size-input').value);
 
-      let list = state.allFiles.filter(item => {
-        if (state.category !== 'all' && item.cat !== state.category) return false;
-        if (!_matchesSubfolder(item.dir, state.activeSubfolder, state.includeSublevels)) return false;
-        if (terms.length > 0) {
-          const hay = `${item.name} ${item.dir} ${item.ext}`.toLowerCase();
-          if (!terms.every(t => hay.includes(t))) return false;
-        }
-        if (fromTs !== null && (item.mtime === null || item.mtime < fromTs)) return false;
-        if (toTs !== null && (item.mtime === null || item.mtime > toTs)) return false;
-        if (minBytes !== null && (item.size === null || item.size < minBytes)) return false;
-        return true;
-      });
+      let list;
+      if (state.category === 'folder') {
+        list = _getScopedFolderItems().filter(folder => {
+          if (terms.length > 0) {
+            const hay = `${folder.name} ${folder.fullPath} ${toGermanDisplayPath(folder.fullPath)}`.toLowerCase();
+            if (!terms.every(t => hay.includes(t))) return false;
+          }
+          if (fromTs !== null && (folder.mtime === null || folder.mtime < fromTs)) return false;
+          if (toTs !== null && (folder.mtime === null || folder.mtime > toTs)) return false;
+          if (minBytes !== null && (folder.size === null || folder.size < minBytes)) return false;
+          return true;
+        });
+      } else {
+        list = state.allFiles.filter(item => {
+          if (state.category !== 'all' && item.cat !== state.category) return false;
+          if (!_matchesSubfolder(item.dir, state.activeSubfolder, state.includeSublevels)) return false;
+          if (terms.length > 0) {
+            const hay = `${item.name} ${item.dir} ${item.ext}`.toLowerCase();
+            if (!terms.every(t => hay.includes(t))) return false;
+          }
+          if (fromTs !== null && (item.mtime === null || item.mtime < fromTs)) return false;
+          if (toTs !== null && (item.mtime === null || item.mtime > toTs)) return false;
+          if (minBytes !== null && (item.size === null || item.size < minBytes)) return false;
+          return true;
+        });
+      }
 
       const dir = state.sortAsc ? 1 : -1;
       list.sort((a, b) => {
@@ -2359,12 +2469,14 @@
       const knownSizes = state.filteredFiles.filter(it => it.size !== null && it.size !== undefined);
       const totalSize = knownSizes.reduce((s, it) => s + (it.size || 0), 0);
       document.getElementById('stat-shown').textContent = state.filteredFiles.length;
+      const unitEl = document.getElementById('stat-unit');
+      if (unitEl) unitEl.textContent = state.category === 'folder' ? 'Ordner' : 'Dateien';
       document.getElementById('stat-size').textContent = (state.cloudSafeMode && knownSizes.length === 0 && state.filteredFiles.length > 0)
         ? '☁️ Cloud-Schonmodus'
         : formatBytes(totalSize);
       updateSelectionUI();
 
-      if (state.allFiles.length === 0) {
+      if (state.allFiles.length === 0 && (!state.allDirs || state.allDirs.size === 0)) {
         tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>${state.rootName ? 'Keine Dateien gefunden' : 'Noch kein Ordner ausgewählt'}</h3><div>${state.rootName ? 'In diesem Ordner wurden keine Dateien gefunden.' : 'Klicke oben links auf <strong>„Ordner wählen…“</strong>, um deine Dateien einzulesen.'}</div></div></td></tr>`;
         return;
       }
@@ -2389,22 +2501,24 @@
         const tr = document.createElement('tr');
         tr.className = `${isSel ? 'selected' : ''} ${isAct ? 'active-row' : ''}`.trim();
         tr.onclick = e => handleRowClick(e, item);
-        tr.ondblclick = () => openFileInNewTab(item);
+        tr.ondblclick = () => item.isFolder ? openFolderFromSearch(item.fullPath) : openFileInNewTab(item);
 
         const tdCheck = document.createElement('td');
         tdCheck.className = 'col-check';
         tdCheck.onclick = e => e.stopPropagation();
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = isSel;
-        cb.title = 'Auswählen (Umschalt+Klick für Bereich)';
-        cb.onclick = e => { e.stopPropagation(); handleCheckboxClick(e, item, cb.checked); };
-        tdCheck.appendChild(cb);
+        if (!item.isFolder) {
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = isSel;
+          cb.title = 'Auswählen (Umschalt+Klick für Bereich)';
+          cb.onclick = e => { e.stopPropagation(); handleCheckboxClick(e, item, cb.checked); };
+          tdCheck.appendChild(cb);
+        }
 
         const tdName = document.createElement('td');
         tdName.className = 'col-name';
-        tdName.title = item.name;
-        tdName.textContent = item.name;
+        tdName.title = item.isFolder ? toGermanDisplayPath(item.fullPath) : item.name;
+        tdName.textContent = item.isFolder ? `📁 ${item.name}` : item.name;
 
         const tdExt = document.createElement('td');
         tdExt.className = 'col-ext';
@@ -2421,7 +2535,15 @@
 
         const tdSize = document.createElement('td');
         tdSize.className = 'col-size';
-        tdSize.textContent = formatBytes(item.size);
+        if (item.isFolder) {
+          tdSize.textContent = item.totalFiles === 0 ? 'leer (0)' : formatBytes(item.size);
+          tdSize.title = item.totalFiles === 0
+            ? 'Leerer Ordner (0 Dateien)'
+            : `${item.directFiles} Dateien direkt · ${item.totalFiles} gesamt (${formatBytes(item.size)})`;
+          if (item.totalFiles === 0) tdSize.style.color = '#94a3b8';
+        } else {
+          tdSize.textContent = formatBytes(item.size);
+        }
 
         const tdDate = document.createElement('td');
         tdDate.className = 'col-date';
@@ -2431,31 +2553,51 @@
         tdAct.className = 'col-act';
         tdAct.onclick = e => e.stopPropagation();
 
-        const btnCopy = document.createElement('button');
-        btnCopy.type = 'button';
-        btnCopy.className = 'icon-btn';
-        const fullDir = formatFullFolderPath(item.dir);
-        btnCopy.title = getCopyPathTooltip(item);
-        btnCopy.style.opacity = hasFullWindowsPath(fullDir) ? '' : '0.45';
-        btnCopy.textContent = '📋';
-        btnCopy.onclick = () => copyFilePath(item);
+        if (item.isFolder) {
+          const btnOpenDir = document.createElement('button');
+          btnOpenDir.type = 'button';
+          btnOpenDir.className = 'icon-btn';
+          btnOpenDir.title = `Ordner „${item.name}“ öffnen`;
+          btnOpenDir.textContent = '📂';
+          btnOpenDir.onclick = () => openFolderFromSearch(item.fullPath);
 
-        const btnOpen = document.createElement('button');
-        btnOpen.type = 'button';
-        btnOpen.className = 'icon-btn';
-        btnOpen.title = 'In neuem Tab öffnen';
-        btnOpen.textContent = '↗';
-        btnOpen.onclick = () => openFileInNewTab(item);
+          const btnCopy = document.createElement('button');
+          btnCopy.type = 'button';
+          btnCopy.className = 'icon-btn';
+          const fullDir = formatFullFolderPath(item.fullPath);
+          btnCopy.title = getCopyPathTooltip(item);
+          btnCopy.style.opacity = hasFullWindowsPath(fullDir) ? '' : '0.45';
+          btnCopy.textContent = '📋';
+          btnCopy.onclick = () => copyFilePath(item);
 
-        const btnRen = document.createElement('button');
-        btnRen.type = 'button';
-        btnRen.className = 'icon-btn';
-        btnRen.title = state.canWrite ? 'Datei umbenennen' : 'Umbenennen nur mit Schreibfreigabe';
-        btnRen.disabled = !state.canWrite;
-        btnRen.textContent = '✏️';
-        btnRen.onclick = () => openSingleRenameModal(item);
+          tdAct.append(btnOpenDir, btnCopy);
+        } else {
+          const btnCopy = document.createElement('button');
+          btnCopy.type = 'button';
+          btnCopy.className = 'icon-btn';
+          const fullDir = formatFullFolderPath(item.dir);
+          btnCopy.title = getCopyPathTooltip(item);
+          btnCopy.style.opacity = hasFullWindowsPath(fullDir) ? '' : '0.45';
+          btnCopy.textContent = '📋';
+          btnCopy.onclick = () => copyFilePath(item);
 
-        tdAct.append(btnCopy, btnOpen, btnRen);
+          const btnOpen = document.createElement('button');
+          btnOpen.type = 'button';
+          btnOpen.className = 'icon-btn';
+          btnOpen.title = 'In neuem Tab öffnen';
+          btnOpen.textContent = '↗';
+          btnOpen.onclick = () => openFileInNewTab(item);
+
+          const btnRen = document.createElement('button');
+          btnRen.type = 'button';
+          btnRen.className = 'icon-btn';
+          btnRen.title = state.canWrite ? 'Datei umbenennen' : 'Umbenennen nur mit Schreibfreigabe';
+          btnRen.disabled = !state.canWrite;
+          btnRen.textContent = '✏️';
+          btnRen.onclick = () => openSingleRenameModal(item);
+
+          tdAct.append(btnCopy, btnOpen, btnRen);
+        }
         const cellMap = {
           name: tdName,
           ext: tdExt,
@@ -2478,7 +2620,11 @@
       btnBatch.disabled = !(state.canWrite && cnt > 0);
       btnBatch.querySelector('span').textContent = cnt > 0 ? `✏️ Massen-Umbenennung (${cnt})` : '✏️ Massen-Umbenennung';
       const master = document.getElementById('select-all-cb');
-      master.checked = state.filteredFiles.length > 0 && state.filteredFiles.every(it => state.selectedIds.has(it.id));
+      const selectable = state.filteredFiles.filter(it => !it.isFolder);
+      if (master) {
+        master.disabled = selectable.length === 0;
+        master.checked = selectable.length > 0 && selectable.every(it => state.selectedIds.has(it.id));
+      }
     }
 
     function handleCheckboxClick(e, item, checked) {
@@ -2501,6 +2647,11 @@
     }
 
     function handleRowClick(e, item) {
+      if (item.isFolder) {
+        state.lastSelectedId = item.id;
+        showFolderPreview(item);
+        return;
+      }
       if (e.shiftKey) {
         e.preventDefault();
         try { window.getSelection()?.removeAllRanges(); } catch (_) {}
@@ -2508,7 +2659,9 @@
         const a = anchor ? state.filteredFiles.findIndex(x => x.id === anchor) : -1;
         const b = state.filteredFiles.findIndex(x => x.id === item.id);
         if (a >= 0 && b >= 0) {
-          for (let i = Math.min(a, b); i <= Math.max(a, b); i++) state.selectedIds.add(state.filteredFiles[i].id);
+          for (let i = Math.min(a, b); i <= Math.max(a, b); i++) {
+            if (!state.filteredFiles[i].isFolder) state.selectedIds.add(state.filteredFiles[i].id);
+          }
         } else {
           state.selectedIds.add(item.id);
         }
@@ -2528,9 +2681,100 @@
       showFilePreview(item);
     }
 
+    function showFolderPreview(folderItem) {
+      state.activeId = folderItem.id;
+      state.pdfLoadSeq += 1;
+      if (state.pdfDoc) { try { state.pdfDoc.destroy(); } catch (_) {} state.pdfDoc = null; }
+      state.xlsxWorkbook = null;
+      state.xlsxActiveSheet = '';
+      if (state.activeBlobUrl) { URL.revokeObjectURL(state.activeBlobUrl); state.activeBlobUrl = null; }
+
+      renderTable();
+      const fullPath = formatFullFolderPath(folderItem.fullPath);
+      document.getElementById('preview-title').textContent = `📁 ${folderItem.name}`;
+      document.getElementById('preview-subpath').textContent = fullPath;
+      document.getElementById('pdf-toolbar').classList.add('hidden');
+      document.getElementById('xlsx-toolbar').classList.add('hidden');
+      document.getElementById('btn-preview-copy').disabled = false;
+      updatePreviewCopyButton(folderItem);
+      document.getElementById('btn-preview-tab').disabled = true;
+      document.getElementById('btn-preview-dl').disabled = true;
+      document.getElementById('btn-preview-rename').disabled = true;
+
+      const lvl = _getSubfolderLevelData(folderItem.fullPath);
+      const body = document.getElementById('preview-body');
+      body.innerHTML = '';
+
+      const box = document.createElement('div');
+      box.style.cssText = 'width:100%; max-width:520px; background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:18px 20px; box-shadow:0 4px 12px rgba(15,23,42,0.06); display:flex; flex-direction:column; gap:12px;';
+
+      const heading = document.createElement('div');
+      heading.style.cssText = 'font-size:15px; font-weight:700; color:#0f172a;';
+      heading.textContent = `📁 ${folderItem.name}`;
+
+      const pathLine = document.createElement('div');
+      pathLine.style.cssText = 'font-size:12px; color:#2563eb; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; word-break:break-all; font-weight:600;';
+      pathLine.textContent = fullPath;
+
+      const stats = document.createElement('div');
+      stats.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;';
+      const makeStat = (label, val) => {
+        const card = document.createElement('div');
+        card.style.cssText = 'background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px;';
+        card.innerHTML = `<div style="font-size:11px; color:#64748b; font-weight:600;">${label}</div><div style="font-size:14px; color:#0f172a; font-weight:700; margin-top:2px;">${escapeHtml(String(val))}</div>`;
+        return card;
+      };
+      stats.append(
+        makeStat('Dateien direkt', folderItem.directFiles),
+        makeStat('Dateien gesamt', folderItem.totalFiles),
+        makeStat('Gesamtgröße', folderItem.totalFiles === 0 ? 'leer' : formatBytes(folderItem.size))
+      );
+
+      box.append(heading, pathLine, stats);
+
+      if (lvl.children.length > 0) {
+        const subWrap = document.createElement('div');
+        subWrap.style.cssText = 'display:flex; flex-direction:column; gap:6px;';
+        const subTitle = document.createElement('div');
+        subTitle.style.cssText = 'font-size:12px; font-weight:700; color:#334155;';
+        subTitle.textContent = `Unterordner (${lvl.children.length}):`;
+        const chipList = document.createElement('div');
+        chipList.style.cssText = 'display:flex; flex-wrap:wrap; gap:6px;';
+        lvl.children.forEach(c => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'folder-chip';
+          btn.textContent = `📁 ${toGermanDisplayPath(c.name)}`;
+          btn.onclick = () => openFolderFromSearch(c.fullPath);
+          chipList.appendChild(btn);
+        });
+        subWrap.append(subTitle, chipList);
+        box.appendChild(subWrap);
+      }
+
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;';
+      const btnOpen = document.createElement('button');
+      btnOpen.type = 'button';
+      btnOpen.className = 'btn btn-primary';
+      btnOpen.textContent = '📂 Ordner öffnen';
+      btnOpen.onclick = () => openFolderFromSearch(folderItem.fullPath);
+
+      const btnCopy = document.createElement('button');
+      btnCopy.type = 'button';
+      btnCopy.className = 'btn';
+      btnCopy.textContent = '📋 Pfad kopieren';
+      btnCopy.onclick = () => copyFilePath(folderItem);
+
+      actions.append(btnOpen, btnCopy);
+      box.appendChild(actions);
+      body.appendChild(box);
+    }
+
     function toggleSelectAll(master) {
-      if (master.checked) state.filteredFiles.forEach(it => state.selectedIds.add(it.id));
-      else state.filteredFiles.forEach(it => state.selectedIds.delete(it.id));
+      const selectable = state.filteredFiles.filter(it => !it.isFolder);
+      if (master.checked) selectable.forEach(it => state.selectedIds.add(it.id));
+      else selectable.forEach(it => state.selectedIds.delete(it.id));
       state.lastSelectedId = null;
       renderTable();
     }
@@ -2783,7 +3027,7 @@
 
     function getCopyPathTooltip(item) {
       if (!item) return 'Keine Datei ausgewählt';
-      const p = formatFullFolderPath(item.dir);
+      const p = formatFullFolderPath(item.isFolder ? item.fullPath : item.dir);
       if (hasFullWindowsPath(p)) {
         return `Kopiert für Windows Explorer:\n${p}`;
       }
@@ -2799,7 +3043,7 @@
         btn.title = 'Keine Datei ausgewählt';
         return;
       }
-      const p = formatFullFolderPath(item.dir);
+      const p = formatFullFolderPath(item.isFolder ? item.fullPath : item.dir);
       const hasFull = hasFullWindowsPath(p);
       btn.disabled = false;
       btn.style.opacity = hasFull ? '' : '0.55';
@@ -2807,7 +3051,7 @@
     }
 
     async function copyFilePath(item) {
-      const folderPart = formatFullFolderPath(item.dir);
+      const folderPart = formatFullFolderPath(item.isFolder ? item.fullPath : item.dir);
       if (!hasFullWindowsPath(folderPart)) {
         const bp = document.getElementById('base-path-prefix');
         if (bp) {
@@ -2830,7 +3074,10 @@
         toast(`Explorer-Pfad kopiert: ${folderPart}`, 'ok');
       }
     }
-    function copyActiveFilePath() { const item = state.allFiles.find(x => x.id === state.activeId); if (item) copyFilePath(item); }
+    function copyActiveFilePath() {
+      const item = state.filteredFiles.find(x => x.id === state.activeId) || state.allFiles.find(x => x.id === state.activeId);
+      if (item) copyFilePath(item);
+    }
 
     async function downloadActiveFile() {
       const item = state.allFiles.find(x => x.id === state.activeId);
