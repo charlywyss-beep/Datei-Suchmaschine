@@ -250,6 +250,33 @@
     }
     .subfolder-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16); }
 
+    .subfolder-chips-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      padding: 7px 12px; margin-bottom: 8px; border-radius: 9px;
+      background: #ffffff; border: 1px solid var(--divider);
+    }
+    .subfolder-chips-label {
+      font-size: 12px; font-weight: 700; color: var(--text-sec);
+      margin-right: 2px; user-select: none; cursor: default;
+    }
+    .folder-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      height: 29px; padding: 0 10px; border-radius: 8px;
+      border: 1px solid var(--border); background: #f8fafc; color: var(--text);
+      font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    }
+    .folder-chip:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-hover); }
+    .folder-chip.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+    .folder-chip.back-chip { background: #ffffff; border-color: var(--border-input); color: var(--text-sec); }
+    .folder-chip.back-chip:hover { background: #f1f5f9; border-color: var(--accent); color: var(--accent-hover); }
+    .folder-chip-cnt {
+      font-size: 11px; font-weight: 700; padding: 0 5px; border-radius: 999px;
+      background: rgba(15, 23, 42, 0.07); color: var(--text-sec);
+    }
+    .folder-chip.active .folder-chip-cnt { background: rgba(255, 255, 255, 0.22); color: #ffffff; }
+    .folder-chip-sub { font-size: 10px; opacity: 0.72; margin-left: 1px; }
+
     /* Ergebnis-Toolbar */
     .results-toolbar {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -485,7 +512,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v2.7 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v2.8 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -577,6 +604,7 @@
           </select>
         </div>
       </div>
+      <div id="subfolder-chips-bar" class="subfolder-chips-bar hidden"></div>
 
       <input id="fallback-folder-input" type="file" webkitdirectory directory multiple class="hidden" onchange="handleFallbackFiles(this.files)">
       <div id="mode-notice" class="info-banner hidden"></div>
@@ -813,6 +841,7 @@
       timeframe: '',
       sizePreset: '',
       activeSubfolder: '',
+      showAllSubfolderChips: false,
       basePathPrefix: '',
       scanning: false,
       cancelRequested: false,
@@ -1537,13 +1566,81 @@
       applyFilters();
     }
 
+    function _normItemDir(dir) {
+      if (!dir || dir === '(Hauptordner)') return '';
+      return String(dir).replace(/\//g, '\\').replace(/^\\+|\\+$/g, '');
+    }
+
+    function _splitSubfolderState(val) {
+      const s = String(val || '');
+      if (s.startsWith('__DIRECT__:')) {
+        return { dir: _normItemDir(s.slice(11)), directOnly: true };
+      }
+      return { dir: _normItemDir(s), directOnly: false };
+    }
+
+    function _matchesSubfolder(itemDir, activeVal) {
+      if (!activeVal) return true;
+      const d = _normItemDir(itemDir);
+      const { dir, directOnly } = _splitSubfolderState(activeVal);
+      if (directOnly) return d === dir;
+      if (!dir) return true;
+      return d === dir || d.startsWith(dir + '\\');
+    }
+
+    function _getSubfolderLevelData(curDir) {
+      const normCur = _normItemDir(curDir);
+      let totalInCur = 0;
+      let directInCur = 0;
+      const childMap = new Map();
+
+      state.allFiles.forEach(it => {
+        const d = _normItemDir(it.dir);
+        if (normCur) {
+          if (d !== normCur && !d.startsWith(normCur + '\\')) return;
+        }
+        totalInCur += 1;
+        if (d === normCur) {
+          directInCur += 1;
+          return;
+        }
+        const rel = normCur ? d.slice(normCur.length + 1) : d;
+        const parts = rel.split('\\').filter(Boolean);
+        if (!parts.length) {
+          directInCur += 1;
+          return;
+        }
+        const firstSeg = parts[0];
+        const childPath = normCur ? `${normCur}\\${firstSeg}` : firstSeg;
+        let entry = childMap.get(childPath);
+        if (!entry) {
+          entry = { name: firstSeg, fullPath: childPath, total: 0, direct: 0, nestedDirs: new Set() };
+          childMap.set(childPath, entry);
+        }
+        entry.total += 1;
+        if (parts.length === 1) {
+          entry.direct += 1;
+        } else {
+          entry.nestedDirs.add(parts.slice(1).join('\\'));
+        }
+      });
+
+      const children = Array.from(childMap.values())
+        .map(c => ({ ...c, nestedCount: c.nestedDirs.size }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
+
+      return { curDir: normCur, totalInCur, directInCur, children };
+    }
+
     function updateCategoryCounts() {
-      const counts = { all: state.allFiles.length, pdf: 0, word: 0, excel: 0, ppt: 0, image: 0, text: 0, other: 0 };
-      state.allFiles.forEach(it => { counts[it.cat] = (counts[it.cat] || 0) + 1; });
+      const scoped = state.allFiles.filter(it => _matchesSubfolder(it.dir, state.activeSubfolder));
+      const counts = { all: scoped.length, pdf: 0, word: 0, excel: 0, ppt: 0, image: 0, text: 0, other: 0 };
+      scoped.forEach(it => { counts[it.cat] = (counts[it.cat] || 0) + 1; });
       Object.keys(counts).forEach(k => {
         const el = document.getElementById(`cnt-${k}`);
         if (el) el.textContent = counts[k];
       });
+      return counts;
     }
 
     function setCategory(cat) {
@@ -1609,22 +1706,156 @@
       loadSavedBasePathPrefix(state.rootName);
       const bar = document.getElementById('path-bar');
       const sel = document.getElementById('subfolder-filter');
+      const chipsBar = document.getElementById('subfolder-chips-bar');
       if (!bar || !sel) return;
-      if (!state.rootName) { bar.classList.add('hidden'); return; }
+      if (!state.rootName) {
+        bar.classList.add('hidden');
+        if (chipsBar) chipsBar.classList.add('hidden');
+        return;
+      }
       bar.classList.remove('hidden');
-      const counts = new Map();
-      state.allFiles.forEach(it => {
-        const d = it.dir || '(Hauptordner)';
-        counts.set(d, (counts.get(d) || 0) + 1);
-      });
-      const dirs = Array.from(counts.keys()).sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' }));
-      sel.innerHTML = `<option value="">Alle Unterordner (${state.allFiles.length})</option>` +
-        dirs.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d === '(Hauptordner)' ? d : toGermanDisplayPath(d))} (${counts.get(d)})</option>`).join('');
+
+      const { dir: curDir, directOnly } = _splitSubfolderState(state.activeSubfolder);
+      const lvl = _getSubfolderLevelData(curDir);
+      const curName = curDir ? toGermanDisplayPath(curDir.split('\\').pop()) : toGermanDisplayPath(state.rootName);
+      const parentDir = curDir && curDir.includes('\\') ? curDir.slice(0, curDir.lastIndexOf('\\')) : '';
+      const parentName = parentDir ? toGermanDisplayPath(parentDir.split('\\').pop()) : toGermanDisplayPath(state.rootName);
+
+      // 1) Stufenweises Dropdown (zeigt nur die aktuelle Ebene, inkl. Gesamtanzahl)
+      const opts = [];
+      if (!curDir) {
+        opts.push(`<option value="">Alle Unterordner (${lvl.totalInCur})</option>`);
+        if (lvl.directInCur > 0 && lvl.children.length > 0) {
+          opts.push(`<option value="__DIRECT__:">📄 Nur im Hauptordner (${lvl.directInCur})</option>`);
+        }
+        lvl.children.forEach(c => {
+          const disp = toGermanDisplayPath(c.name);
+          const subHint = c.nestedCount > 0 ? ` · +${c.nestedCount} Unterordner` : '';
+          opts.push(`<option value="${escapeHtml(c.fullPath)}">📁 ${escapeHtml(disp)} (${c.total}${subHint})</option>`);
+        });
+      } else {
+        const inclLabel = lvl.children.length > 0 ? ` inkl. Unterordner` : '';
+        opts.push(`<option value="${escapeHtml(curDir)}">📂 Alle in „${escapeHtml(curName)}“${inclLabel} (${lvl.totalInCur})</option>`);
+        if (lvl.directInCur > 0 && lvl.children.length > 0) {
+          opts.push(`<option value="__DIRECT__:${escapeHtml(curDir)}">📄 Nur direkt in „${escapeHtml(curName)}“ (${lvl.directInCur})</option>`);
+        }
+        lvl.children.forEach(c => {
+          const disp = toGermanDisplayPath(c.name);
+          const subHint = c.nestedCount > 0 ? ` · +${c.nestedCount} Unterordner` : '';
+          opts.push(`<option value="${escapeHtml(c.fullPath)}">↳ 📁 ${escapeHtml(disp)} (${c.total}${subHint})</option>`);
+        });
+        opts.push(`<option value="${escapeHtml(parentDir)}">⬆ Zurück zu „${escapeHtml(parentName)}“</option>`);
+        if (parentDir) {
+          opts.push(`<option value="">⬆ Alle Unterordner (${state.allFiles.length})</option>`);
+        }
+      }
+      sel.innerHTML = opts.join('');
       sel.value = state.activeSubfolder || '';
+
+      // 2) Klickbare Ordner-Chips der aktuellen Ebene (wie im Windows Explorer)
+      if (!chipsBar) return;
+      if (!curDir && lvl.children.length === 0) {
+        chipsBar.classList.add('hidden');
+        chipsBar.innerHTML = '';
+        return;
+      }
+      chipsBar.classList.remove('hidden');
+      chipsBar.innerHTML = '';
+
+      const lbl = document.createElement('span');
+      lbl.className = 'subfolder-chips-label';
+      lbl.textContent = curDir ? `Ebene „${curName}“:` : 'Ordner:';
+      chipsBar.appendChild(lbl);
+
+      const makeChip = (icon, text, count, val, optsObj = {}) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `folder-chip${optsObj.active ? ' active' : ''}${optsObj.back ? ' back-chip' : ''}`;
+        if (optsObj.title) btn.title = optsObj.title;
+        let inner = `<span>${icon} ${escapeHtml(text)}</span>`;
+        if (count !== null && count !== undefined) {
+          inner += `<span class="folder-chip-cnt">${count}</span>`;
+        }
+        if (optsObj.hasSub) {
+          inner += `<span class="folder-chip-sub" title="Enthält weitere Unterordner">▸</span>`;
+        }
+        btn.innerHTML = inner;
+        btn.onclick = () => onSubfolderChanged(val);
+        return btn;
+      };
+
+      if (curDir) {
+        chipsBar.appendChild(makeChip('⬆', 'Zurück', null, parentDir, {
+          back: true,
+          title: `Eine Ebene höher zu „${parentName}“`
+        }));
+        chipsBar.appendChild(makeChip(
+          '📂',
+          lvl.children.length > 0 ? `Alle in „${curName}“` : curName,
+          lvl.totalInCur,
+          curDir,
+          {
+            active: !directOnly,
+            title: lvl.children.length > 0
+              ? `Alle ${lvl.totalInCur} Dateien in „${curName}“ inkl. Unterordner anzeigen`
+              : `Alle ${lvl.totalInCur} Dateien in „${curName}“ anzeigen`
+          }
+        ));
+        if (lvl.directInCur > 0 && lvl.children.length > 0) {
+          chipsBar.appendChild(makeChip('📄', 'Nur direkt', lvl.directInCur, `__DIRECT__:${curDir}`, {
+            active: directOnly,
+            title: `Nur die ${lvl.directInCur} Dateien direkt in „${curName}“ (ohne Unterordner)`
+          }));
+        }
+      } else {
+        chipsBar.appendChild(makeChip('📂', 'Alle', lvl.totalInCur, '', {
+          active: !directOnly,
+          title: `Alle ${lvl.totalInCur} Dateien inkl. aller Unterordner anzeigen`
+        }));
+        if (lvl.directInCur > 0 && lvl.children.length > 0) {
+          chipsBar.appendChild(makeChip('📄', 'Nur Hauptordner', lvl.directInCur, '__DIRECT__:', {
+            active: directOnly,
+            title: `Nur die ${lvl.directInCur} Dateien direkt im Hauptordner`
+          }));
+        }
+      }
+
+      const maxVisible = state.showAllSubfolderChips ? lvl.children.length : 18;
+      lvl.children.slice(0, maxVisible).forEach(c => {
+        const disp = toGermanDisplayPath(c.name);
+        const tip = c.nestedCount > 0
+          ? `Ordner „${disp}“ öffnen (${c.total} Dateien inkl. ${c.nestedCount} Unterordner)`
+          : `Ordner „${disp}“ öffnen (${c.total} Dateien)`;
+        chipsBar.appendChild(makeChip('📁', disp, c.total, c.fullPath, {
+          hasSub: c.nestedCount > 0,
+          title: tip
+        }));
+      });
+
+      if (lvl.children.length > 18) {
+        const moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'folder-chip back-chip';
+        moreBtn.textContent = state.showAllSubfolderChips
+          ? 'Weniger anzeigen'
+          : `+ ${lvl.children.length - 18} weitere Ordner`;
+        moreBtn.onclick = () => {
+          state.showAllSubfolderChips = !state.showAllSubfolderChips;
+          rebuildSubfolderDropdown();
+        };
+        chipsBar.appendChild(moreBtn);
+      }
     }
 
     function onSubfolderChanged(val) {
       state.activeSubfolder = val || '';
+      state.showAllSubfolderChips = false;
+      rebuildSubfolderDropdown();
+      const counts = updateCategoryCounts();
+      if (state.category !== 'all' && (counts[state.category] || 0) === 0 && counts.all > 0) {
+        state.category = 'all';
+        document.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('btn-active', b.dataset.cat === 'all'));
+      }
       updatePathBar();
       applyFilters();
     }
@@ -1634,18 +1865,80 @@
       if (!bc || !state.rootName) return;
       const actItem = state.allFiles.find(x => x.id === state.activeId);
       const rootDisp = formatRootDisplayPath();
-      let html = `<span>📂 Aktueller Pfad:</span>`;
-      if (state.activeSubfolder) {
-        html += `<button type="button" class="crumb-link" onclick="onSubfolderChanged('')" title="Zurück zu allen Unterordnern">${escapeHtml(rootDisp)}</button>`;
-        html += `<span style="color:#94a3b8;">\\</span><span class="crumb-current">${escapeHtml(toGermanDisplayPath(state.activeSubfolder))}</span>`;
+      const { dir: curDir, directOnly } = _splitSubfolderState(state.activeSubfolder);
+
+      bc.innerHTML = '';
+      const lbl = document.createElement('span');
+      lbl.textContent = '📂 Aktueller Pfad:';
+      bc.appendChild(lbl);
+
+      const addSep = () => {
+        const sep = document.createElement('span');
+        sep.style.color = '#94a3b8';
+        sep.textContent = '\\';
+        bc.appendChild(sep);
+      };
+
+      if (curDir || directOnly) {
+        const rootBtn = document.createElement('button');
+        rootBtn.type = 'button';
+        rootBtn.className = 'crumb-link';
+        rootBtn.title = 'Zurück zu allen Unterordnern';
+        rootBtn.textContent = rootDisp;
+        rootBtn.onclick = () => onSubfolderChanged('');
+        bc.appendChild(rootBtn);
+
+        if (curDir) {
+          const segs = curDir.split('\\').filter(Boolean);
+          let acc = '';
+          segs.forEach((seg, idx) => {
+            acc = acc ? `${acc}\\${seg}` : seg;
+            addSep();
+            const dispSeg = toGermanDisplayPath(seg);
+            if (idx < segs.length - 1 || directOnly) {
+              const segBtn = document.createElement('button');
+              segBtn.type = 'button';
+              segBtn.className = 'crumb-link';
+              segBtn.title = `Alle Dateien in „${dispSeg}“ inkl. Unterordner anzeigen`;
+              segBtn.textContent = dispSeg;
+              const targetPath = acc;
+              segBtn.onclick = () => onSubfolderChanged(targetPath);
+              bc.appendChild(segBtn);
+            } else {
+              const curSpan = document.createElement('span');
+              curSpan.className = 'crumb-current';
+              curSpan.textContent = dispSeg;
+              bc.appendChild(curSpan);
+            }
+          });
+        }
+        if (directOnly) {
+          const tag = document.createElement('span');
+          tag.style.cssText = 'font-size:11px; color:#2563eb; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:1px 6px; margin-left:4px;';
+          tag.textContent = 'nur direkt';
+          bc.appendChild(tag);
+        }
       } else {
-        html += `<span class="crumb-current">${escapeHtml(rootDisp)}</span>`;
+        const rootSpan = document.createElement('span');
+        rootSpan.className = 'crumb-current';
+        rootSpan.textContent = rootDisp;
+        bc.appendChild(rootSpan);
       }
+
       if (actItem) {
         const fullDir = formatFullFolderPath(actItem.dir);
-        html += `<span style="color:#cbd5e1; margin:0 4px;">|</span><span style="color:#475569;">Ausgewählt:</span> <span class="crumb-current" style="color:#1d4ed8;">${escapeHtml(fullDir)}\\${escapeHtml(actItem.name)}</span>`;
+        const sepBar = document.createElement('span');
+        sepBar.style.cssText = 'color:#cbd5e1; margin:0 4px;';
+        sepBar.textContent = '|';
+        const selLbl = document.createElement('span');
+        selLbl.style.color = '#475569';
+        selLbl.textContent = 'Ausgewählt:';
+        const selPath = document.createElement('span');
+        selPath.className = 'crumb-current';
+        selPath.style.color = '#1d4ed8';
+        selPath.textContent = `${fullDir}\\${actItem.name}`;
+        bc.append(sepBar, selLbl, selPath);
       }
-      bc.innerHTML = html;
     }
 
     function clearSearchInput() {
@@ -1698,8 +1991,9 @@
       state.timeframe = '';
       state.sizePreset = '';
       state.activeSubfolder = '';
-      const sf = document.getElementById('subfolder-filter');
-      if (sf) sf.value = '';
+      state.showAllSubfolderChips = false;
+      rebuildSubfolderDropdown();
+      updateCategoryCounts();
       document.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('btn-active', b.dataset.cat === 'all'));
       document.querySelectorAll('[data-tf],[data-sz]').forEach(b => b.classList.remove('btn-active'));
       document.getElementById('date-from').value = '';
@@ -1728,7 +2022,7 @@
 
       let list = state.allFiles.filter(item => {
         if (state.category !== 'all' && item.cat !== state.category) return false;
-        if (state.activeSubfolder && item.dir !== state.activeSubfolder) return false;
+        if (state.activeSubfolder && !_matchesSubfolder(item.dir, state.activeSubfolder)) return false;
         if (terms.length > 0) {
           const hay = `${item.name} ${item.dir} ${item.ext}`.toLowerCase();
           if (!terms.every(t => hay.includes(t))) return false;
