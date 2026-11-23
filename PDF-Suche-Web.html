@@ -255,15 +255,11 @@
       padding: 7px 12px; margin-bottom: 8px; border-radius: 9px;
       background: #ffffff; border: 1px solid var(--divider);
     }
-    .subfolder-chips-label {
-      font-size: 12px; font-weight: 700; color: var(--text-sec);
-      margin-right: 2px; user-select: none; cursor: default;
-    }
     .folder-chip {
       display: inline-flex; align-items: center; gap: 5px;
-      height: 29px; padding: 0 10px; border-radius: 8px;
+      height: 30px; padding: 0 11px; border-radius: 8px;
       border: 1px solid var(--border); background: #f8fafc; color: var(--text);
-      font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+      font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
       transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
     }
     .folder-chip:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-hover); }
@@ -271,14 +267,93 @@
     .folder-chip.back-chip { background: #ffffff; border-color: var(--border-input); color: var(--text-sec); }
     .folder-chip.back-chip:hover:not(:disabled) { background: #f1f5f9; border-color: var(--accent); color: var(--accent-hover); }
     .folder-chip.nav-btn { padding: 0 9px; font-weight: 700; }
-    .folder-chip:disabled { opacity: 0.38; cursor: not-allowed; }
+    .folder-chip:disabled { opacity: 0.36; cursor: not-allowed; }
     .folder-chip-sep { width: 1px; height: 20px; background: var(--divider); margin: 0 2px; flex-shrink: 0; }
-    .folder-chip-cnt {
-      font-size: 11px; font-weight: 700; padding: 0 5px; border-radius: 999px;
-      background: rgba(15, 23, 42, 0.07); color: var(--text-sec);
+
+    /* Explorer Split-Button (Ordnername + Pfeil-Button fuer Unterordner-Popup) */
+    .folder-split {
+      display: inline-flex; align-items: stretch; height: 30px;
+      border-radius: 8px; border: 1px solid var(--border); background: #f8fafc;
+      overflow: hidden; transition: border-color 0.12s ease;
     }
-    .folder-chip.active .folder-chip-cnt { background: rgba(255, 255, 255, 0.22); color: #ffffff; }
-    .folder-chip-sub { font-size: 10px; opacity: 0.72; margin-left: 1px; }
+    .folder-split:hover { border-color: var(--accent-border); }
+    .folder-split.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+    .folder-split-main, .folder-split-arrow {
+      border: none; background: transparent; color: inherit; font-family: inherit;
+      font-size: 12.5px; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+    .folder-split-main { padding: 0 10px; }
+    .folder-split-arrow {
+      padding: 0 7px; font-size: 11px; border-left: 1px solid var(--divider);
+      color: var(--text-sec);
+    }
+    .folder-split:not(.active) .folder-split-main:hover,
+    .folder-split:not(.active) .folder-split-arrow:hover {
+      background: var(--accent-soft); color: var(--accent-hover);
+    }
+    .folder-split.active .folder-split-arrow {
+      border-left-color: rgba(255, 255, 255, 0.28); color: #ffffff;
+    }
+    .folder-split.active .folder-split-main:hover,
+    .folder-split.active .folder-split-arrow:hover {
+      background: rgba(15, 23, 42, 0.14);
+    }
+    .folder-split.menu-open { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15); }
+
+    /* Explorer Breadcrumb-Pfeil */
+    .crumb-arrow {
+      border: 1px solid transparent; background: transparent; color: var(--text-muted);
+      font-family: inherit; font-size: 11px; line-height: 1; padding: 3px 5px;
+      border-radius: 5px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .crumb-arrow:hover, .crumb-arrow.menu-open {
+      background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-hover);
+    }
+
+    /* Explorer Unterordner-Popup-Fenster */
+    .explorer-popup {
+      position: fixed; z-index: 120; min-width: 230px; max-width: 340px; max-height: 360px;
+      overflow-y: auto; background: #ffffff; border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+      padding: 5px; display: flex; flex-direction: column; gap: 2px;
+    }
+    .explorer-popup.hidden { display: none; }
+    .explorer-popup-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      padding: 5px 8px 6px; border-bottom: 1px solid var(--divider); margin-bottom: 2px;
+      font-size: 11.5px; font-weight: 700; color: var(--text-sec);
+    }
+    .explorer-popup-back {
+      border: 1px solid var(--border); background: #f8fafc; color: var(--text);
+      font-family: inherit; font-size: 11px; font-weight: 700; padding: 2px 7px;
+      border-radius: 6px; cursor: pointer;
+    }
+    .explorer-popup-back:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-hover); }
+    .explorer-popup-row {
+      display: flex; align-items: stretch; border-radius: 7px; overflow: hidden;
+    }
+    .explorer-popup-row.active { background: #eff6ff; }
+    .explorer-popup-item {
+      flex: 1; min-width: 0; border: none; background: transparent; color: var(--text);
+      font-family: inherit; font-size: 12.5px; font-weight: 600; text-align: left;
+      padding: 6px 9px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .explorer-popup-item:hover { background: #eff6ff; color: var(--accent-hover); }
+    .explorer-popup-row.active .explorer-popup-item { color: var(--accent-hover); font-weight: 700; }
+    .explorer-popup-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .explorer-popup-cnt {
+      font-size: 11px; font-weight: 600; color: var(--text-muted); flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .explorer-popup-drill {
+      border: none; border-left: 1px solid var(--divider); background: transparent;
+      color: var(--text-sec); width: 28px; cursor: pointer; font-size: 11px;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .explorer-popup-drill:hover { background: #dbeafe; color: var(--accent-hover); }
+    .explorer-popup-div { height: 1px; background: var(--divider); margin: 3px 4px; }
 
     /* Ergebnis-Toolbar */
     .results-toolbar {
@@ -515,7 +590,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v2.9 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.0 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -601,13 +676,10 @@
             >
             <button type="button" class="basepath-clear" title="Gespeicherten Basis-Pfad löschen" onclick="clearBasePathPrefix()">✕</button>
           </div>
-          <label for="subfolder-filter" style="font-size:12px; font-weight:700; color:#475569; cursor:default;">Unterordner:</label>
-          <select id="subfolder-filter" class="subfolder-select" onchange="onSubfolderChanged(this.value)">
-            <option value="">Alle Unterordner</option>
-          </select>
         </div>
       </div>
       <div id="subfolder-chips-bar" class="subfolder-chips-bar hidden"></div>
+      <div id="explorer-folder-popup" class="explorer-popup hidden" role="menu"></div>
 
       <input id="fallback-folder-input" type="file" webkitdirectory directory multiple class="hidden" onchange="handleFallbackFiles(this.files)">
       <div id="mode-notice" class="info-banner hidden"></div>
@@ -832,6 +904,7 @@
       rootName: '',
       canWrite: false,
       allFiles: [],       // { id, name, ext, cat, dir, relPath, size, mtime, fileHandle, parentHandle, fileObj }
+      allDirs: new Set(), // alle gescannten Unterordner (inkl. leerer Ordner!)
       filteredFiles: [],
       selectedIds: new Set(),
       lastSelectedId: null,
@@ -1418,6 +1491,7 @@
       state.scanning = true;
       state.cancelRequested = false;
       state.allFiles = [];
+      state.allDirs = new Set();
       state.selectedIds.clear();
       state.lastSelectedId = null;
       clearActivePreview();
@@ -1450,7 +1524,9 @@
               if (entry.kind === 'directory') {
                 const low = name.toLowerCase();
                 if (low.startsWith('$') || SKIP_DIRS.has(low)) continue;
-                queue.push({ handle: entry, relDir: relDir ? `${relDir}\\${name}` : name });
+                const subRel = relDir ? `${relDir}\\${name}` : name;
+                state.allDirs.add(subRel);
+                queue.push({ handle: entry, relDir: subRel });
               } else if (entry.kind === 'file') {
                 if (name.startsWith('~$') || name.toLowerCase() === 'desktop.ini' || name.toLowerCase() === 'thumbs.db') continue;
                 try {
@@ -1529,6 +1605,7 @@
       state.rootHandle = null;
       state.canWrite = false;
       state.allFiles = [];
+      state.allDirs = new Set();
       state.selectedIds.clear();
       state.lastSelectedId = null;
       clearActivePreview();
@@ -1543,6 +1620,9 @@
         const parts = rawRel.split('\\');
         if (parts.length > 1) firstRoot = toGermanFolderLabel(parts[0]);
         const dirParts = parts.slice(1, -1);
+        for (let i = 1; i <= dirParts.length; i++) {
+          state.allDirs.add(dirParts.slice(0, i).join('\\'));
+        }
         const ext = getExt(file.name);
         state.allFiles.push({
           id: `f_${counter}`,
@@ -1601,6 +1681,35 @@
       let directInCur = 0;
       const childMap = new Map();
 
+      const ensureChild = (firstSeg) => {
+        const childPath = normCur ? `${normCur}\\${firstSeg}` : firstSeg;
+        let entry = childMap.get(childPath);
+        if (!entry) {
+          entry = { name: firstSeg, fullPath: childPath, total: 0, direct: 0, nestedDirs: new Set() };
+          childMap.set(childPath, entry);
+        }
+        return entry;
+      };
+
+      // 1) Alle bekannten Ordner (auch komplett leere Ordner wie Bleiben/Gutes/Rest!)
+      if (state.allDirs && typeof state.allDirs.forEach === 'function') {
+        state.allDirs.forEach(rawDir => {
+          const d = _normItemDir(rawDir);
+          if (!d) return;
+          if (normCur) {
+            if (!d.startsWith(normCur + '\\')) return;
+          }
+          const rel = normCur ? d.slice(normCur.length + 1) : d;
+          const parts = rel.split('\\').filter(Boolean);
+          if (!parts.length) return;
+          const entry = ensureChild(parts[0]);
+          if (parts.length > 1) {
+            entry.nestedDirs.add(parts.slice(1).join('\\'));
+          }
+        });
+      }
+
+      // 2) Alle Dateien fuer exakte Zaehlung (direkt & inkl. Unterordner)
       state.allFiles.forEach(it => {
         const d = _normItemDir(it.dir);
         if (normCur) {
@@ -1617,13 +1726,7 @@
           directInCur += 1;
           return;
         }
-        const firstSeg = parts[0];
-        const childPath = normCur ? `${normCur}\\${firstSeg}` : firstSeg;
-        let entry = childMap.get(childPath);
-        if (!entry) {
-          entry = { name: firstSeg, fullPath: childPath, total: 0, direct: 0, nestedDirs: new Set() };
-          childMap.set(childPath, entry);
-        }
+        const entry = ensureChild(parts[0]);
         entry.total += 1;
         if (parts.length === 1) {
           entry.direct += 1;
@@ -1709,23 +1812,164 @@
       return `${root}\\${dispSub}`;
     }
 
-    function _getFolderDepth(dir) {
-      const norm = _normItemDir(dir);
-      return norm ? norm.split('\\').filter(Boolean).length : 0;
+    let _popupAnchorEl = null;
+    let _popupCurrentDir = null;
+
+    function closeExplorerFolderPopup() {
+      const pop = document.getElementById('explorer-folder-popup');
+      if (pop) {
+        pop.classList.add('hidden');
+        pop.innerHTML = '';
+      }
+      if (_popupAnchorEl) {
+        _popupAnchorEl.classList.remove('menu-open');
+        const splitWrap = _popupAnchorEl.closest('.folder-split');
+        if (splitWrap) splitWrap.classList.remove('menu-open');
+      }
+      _popupAnchorEl = null;
+      _popupCurrentDir = null;
     }
 
-    function _formatChildCountBadge(c) {
-      if (c.nestedFiles > 0 && c.direct > 0) return `${c.direct} + ${c.nestedFiles}`;
-      return String(c.total);
+    function openExplorerFolderPopup(anchorEl, dirPath, baseDirPath = null) {
+      const pop = document.getElementById('explorer-folder-popup');
+      if (!pop || !anchorEl) return;
+
+      const normTarget = _normItemDir(dirPath);
+      const normBase = baseDirPath !== null ? _normItemDir(baseDirPath) : normTarget;
+
+      // Toggle schliessen, wenn derselbe Pfeil nochmal geklickt wird
+      if (_popupAnchorEl === anchorEl && !pop.classList.contains('hidden') && _popupCurrentDir === normTarget) {
+        closeExplorerFolderPopup();
+        return;
+      }
+
+      closeExplorerFolderPopup();
+      _popupAnchorEl = anchorEl;
+      _popupCurrentDir = normTarget;
+      anchorEl.classList.add('menu-open');
+      const splitWrap = anchorEl.closest('.folder-split');
+      if (splitWrap) splitWrap.classList.add('menu-open');
+
+      const lvl = _getSubfolderLevelData(normTarget);
+      const curSelectedDir = _normItemDir(state.activeSubfolder);
+      const dispTitle = normTarget
+        ? toGermanDisplayPath(normTarget.split('\\').pop())
+        : toGermanDisplayPath(state.rootName);
+
+      // Kopfzeile, wenn im Popup tiefer navigiert wurde (Zurueck innerhalb des Popups)
+      if (normTarget !== normBase) {
+        const head = document.createElement('div');
+        head.className = 'explorer-popup-head';
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'explorer-popup-back';
+        backBtn.textContent = '← Zurück';
+        const upDir = normTarget.includes('\\') ? normTarget.slice(0, normTarget.lastIndexOf('\\')) : '';
+        backBtn.onclick = e => {
+          e.stopPropagation();
+          openExplorerFolderPopup(anchorEl, upDir, normBase);
+        };
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = dispTitle;
+        titleSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+        head.append(backBtn, titleSpan);
+        pop.appendChild(head);
+      }
+
+      // Obere Option: Alle Dateien in diesem Ordner inkl. Unterordner
+      const allRow = document.createElement('div');
+      allRow.className = 'explorer-popup-row' + ((curSelectedDir === normTarget && state.includeSublevels) ? ' active' : '');
+      const allBtn = document.createElement('button');
+      allBtn.type = 'button';
+      allBtn.className = 'explorer-popup-item';
+      allBtn.innerHTML = `<span class="explorer-popup-name">📚 ${normTarget ? escapeHtml(dispTitle) + ' (alle Unterordner)' : 'Alle Ebenen'}</span><span class="explorer-popup-cnt">${lvl.totalInCur}</span>`;
+      allBtn.onclick = () => {
+        closeExplorerFolderPopup();
+        navigateToSubfolder(normTarget, true, true);
+      };
+      allRow.appendChild(allBtn);
+      pop.appendChild(allRow);
+
+      // Wenn es direkte Dateien im Ordner selbst gibt, auch den Ordner selbst anbieten
+      if (normTarget && lvl.directInCur > 0) {
+        const selfRow = document.createElement('div');
+        selfRow.className = 'explorer-popup-row' + ((curSelectedDir === normTarget && !state.includeSublevels) ? ' active' : '');
+        const selfBtn = document.createElement('button');
+        selfBtn.type = 'button';
+        selfBtn.className = 'explorer-popup-item';
+        selfBtn.innerHTML = `<span class="explorer-popup-name">📂 ${escapeHtml(dispTitle)}</span><span class="explorer-popup-cnt">${lvl.directInCur}</span>`;
+        selfBtn.onclick = () => {
+          closeExplorerFolderPopup();
+          navigateToSubfolder(normTarget, false, true);
+        };
+        selfRow.appendChild(selfBtn);
+        pop.appendChild(selfRow);
+      }
+
+      if (lvl.children.length > 0) {
+        const div = document.createElement('div');
+        div.className = 'explorer-popup-div';
+        pop.appendChild(div);
+
+        lvl.children.forEach(c => {
+          const disp = toGermanDisplayPath(c.name);
+          const isCur = curSelectedDir === c.fullPath || curSelectedDir.startsWith(c.fullPath + '\\');
+          const row = document.createElement('div');
+          row.className = 'explorer-popup-row' + (isCur ? ' active' : '');
+
+          const itemBtn = document.createElement('button');
+          itemBtn.type = 'button';
+          itemBtn.className = 'explorer-popup-item';
+          itemBtn.title = c.nestedCount > 0
+            ? `Ordner „${disp}“ öffnen (${c.direct} direkt, ${c.total} inkl. Unterordner)`
+            : `Ordner „${disp}“ öffnen (${c.total} Dateien)`;
+          itemBtn.innerHTML = `<span class="explorer-popup-name">📁 ${escapeHtml(disp)}</span><span class="explorer-popup-cnt">${c.total}</span>`;
+          itemBtn.onclick = () => {
+            closeExplorerFolderPopup();
+            navigateToSubfolder(c.fullPath, false, true);
+          };
+          row.appendChild(itemBtn);
+
+          if (c.nestedCount > 0) {
+            const drillBtn = document.createElement('button');
+            drillBtn.type = 'button';
+            drillBtn.className = 'explorer-popup-drill';
+            drillBtn.title = `Unterordner von „${disp}“ anzeigen`;
+            drillBtn.textContent = '▸';
+            drillBtn.onclick = e => {
+              e.stopPropagation();
+              openExplorerFolderPopup(anchorEl, c.fullPath, normBase);
+            };
+            row.appendChild(drillBtn);
+          }
+
+          pop.appendChild(row);
+        });
+      }
+
+      // Positionieren unterhalb des angeklickten Pfeils (Viewport-sicher)
+      pop.classList.remove('hidden');
+      const rect = anchorEl.getBoundingClientRect();
+      const popW = pop.offsetWidth || 240;
+      const popH = pop.offsetHeight || 200;
+      let left = rect.left;
+      if (left + popW > window.innerWidth - 12) {
+        left = Math.max(10, window.innerWidth - popW - 12);
+      }
+      let top = rect.bottom + 4;
+      if (top + popH > window.innerHeight - 12 && rect.top - popH - 4 > 10) {
+        top = rect.top - popH - 4;
+      }
+      pop.style.left = `${Math.round(left)}px`;
+      pop.style.top = `${Math.round(top)}px`;
     }
 
     function navigateToSubfolder(dir, allLevels = null, recordHistory = true) {
+      closeExplorerFolderPopup();
       const normDir = _normItemDir(dir);
-      const lvl = _getSubfolderLevelData(normDir);
       let nextAll;
       if (allLevels === null || allLevels === undefined) {
-        if (!normDir) nextAll = true;
-        else nextAll = (lvl.directInCur === 0 && lvl.children.length > 0);
+        nextAll = !normDir;
       } else {
         nextAll = !!allLevels;
       }
@@ -1741,7 +1985,6 @@
 
       state.activeSubfolder = normDir;
       state.includeSublevels = nextAll;
-      state.showAllSubfolderChips = false;
       rebuildSubfolderDropdown();
       const counts = updateCategoryCounts();
       if (state.category !== 'all' && (counts[state.category] || 0) === 0 && counts.all > 0) {
@@ -1753,6 +1996,7 @@
     }
 
     function navBack() {
+      closeExplorerFolderPopup();
       if (state.navIndex > 0) {
         state.navIndex -= 1;
         const entry = state.navHistory[state.navIndex];
@@ -1763,11 +2007,12 @@
         const parentDir = state.activeSubfolder.includes('\\')
           ? state.activeSubfolder.slice(0, state.activeSubfolder.lastIndexOf('\\'))
           : '';
-        navigateToSubfolder(parentDir, null, true);
+        navigateToSubfolder(parentDir, !parentDir, true);
       }
     }
 
     function navForward() {
+      closeExplorerFolderPopup();
       if (state.navIndex < state.navHistory.length - 1) {
         state.navIndex += 1;
         const entry = state.navHistory[state.navIndex];
@@ -1775,84 +2020,29 @@
       }
     }
 
-    function onSubfolderChanged(val) {
-      const s = String(val || '');
-      if (s === '__ALL_ROOT__') {
-        navigateToSubfolder('', true, true);
-      } else if (s.startsWith('__ALL__:')) {
-        navigateToSubfolder(s.slice(8), true, true);
-      } else if (s.startsWith('__LVL__:')) {
-        navigateToSubfolder(s.slice(8), false, true);
-      } else {
-        navigateToSubfolder(s, null, true);
-      }
-    }
-
     function rebuildSubfolderDropdown() {
       loadSavedBasePathPrefix(state.rootName);
       const bar = document.getElementById('path-bar');
-      const sel = document.getElementById('subfolder-filter');
       const chipsBar = document.getElementById('subfolder-chips-bar');
-      if (!bar || !sel) return;
+      if (!bar) return;
       if (!state.rootName) {
         bar.classList.add('hidden');
         if (chipsBar) chipsBar.classList.add('hidden');
         return;
       }
       bar.classList.remove('hidden');
+      if (!chipsBar) return;
 
+      const rootLvl = _getSubfolderLevelData('');
       const curDir = _normItemDir(state.activeSubfolder);
       const allLevels = !!state.includeSublevels;
-      const depth = _getFolderDepth(curDir);
-      const lvl = _getSubfolderLevelData(curDir);
-      const curName = curDir ? toGermanDisplayPath(curDir.split('\\').pop()) : toGermanDisplayPath(state.rootName);
-      const parentDir = curDir && curDir.includes('\\') ? curDir.slice(0, curDir.lastIndexOf('\\')) : '';
-      const parentName = parentDir ? toGermanDisplayPath(parentDir.split('\\').pop()) : toGermanDisplayPath(state.rootName);
 
-      // 1) Stufenweises Dropdown (synchron mit der Ebenen-Logik)
-      const opts = [];
-      let selectedOptVal = '__ALL_ROOT__';
-      if (!curDir) {
-        opts.push(`<option value="__ALL_ROOT__">📚 Alle Ebenen (${lvl.totalInCur})</option>`);
-        if (lvl.directInCur > 0 && lvl.children.length > 0) {
-          opts.push(`<option value="__LVL__:">📂 Hauptebene (${lvl.directInCur})</option>`);
-        }
-        selectedOptVal = allLevels ? '__ALL_ROOT__' : '__LVL__:';
-        lvl.children.forEach(c => {
-          const disp = toGermanDisplayPath(c.name);
-          const cntTxt = c.nestedFiles > 0 && c.direct > 0
-            ? `${c.direct} + ${c.nestedFiles} in Unterordner`
-            : `${c.total}`;
-          opts.push(`<option value="${escapeHtml(c.fullPath)}">📁 ${escapeHtml(disp)} (${cntTxt})</option>`);
-        });
-      } else {
-        if (lvl.directInCur > 0 || lvl.children.length === 0) {
-          opts.push(`<option value="__LVL__:${escapeHtml(curDir)}">📂 Ebene ${depth}: ${escapeHtml(curName)} (${lvl.directInCur})</option>`);
-        }
-        if (lvl.children.length > 0) {
-          opts.push(`<option value="__ALL__:${escapeHtml(curDir)}">📚 Alle Ebenen in „${escapeHtml(curName)}“ (${lvl.totalInCur})</option>`);
-        }
-        selectedOptVal = (allLevels && lvl.children.length > 0) ? `__ALL__:${curDir}` : `__LVL__:${curDir}`;
-        lvl.children.forEach(c => {
-          const disp = toGermanDisplayPath(c.name);
-          const cntTxt = c.nestedFiles > 0 && c.direct > 0
-            ? `${c.direct} + ${c.nestedFiles} in Unterordner`
-            : `${c.total}`;
-          opts.push(`<option value="${escapeHtml(c.fullPath)}">↳ 📁 Ebene ${depth + 1}: ${escapeHtml(disp)} (${cntTxt})</option>`);
-        });
-        opts.push(`<option value="${escapeHtml(parentDir)}">⬆ Eine Ebene hoch (${escapeHtml(parentName)})</option>`);
-        opts.push(`<option value="__ALL_ROOT__">📚 Alle Ebenen (${state.allFiles.length})</option>`);
-      }
-      sel.innerHTML = opts.join('');
-      sel.value = selectedOptVal;
-
-      // 2) Klickbare Ebenen-Leiste mit ← / → (beide Richtungen!), aktueller Ebene, „Alle Ebenen“ & Unterordnern
-      if (!chipsBar) return;
-      if (!curDir && lvl.children.length === 0) {
+      if (rootLvl.children.length === 0) {
         chipsBar.classList.add('hidden');
         chipsBar.innerHTML = '';
         return;
       }
+
       chipsBar.classList.remove('hidden');
       chipsBar.innerHTML = '';
 
@@ -1862,17 +2052,18 @@
       const fwdTarget = canFwd ? state.navHistory[state.navIndex + 1] : null;
       const labelForEntry = ent => {
         if (!ent) return '';
-        if (!ent.dir) return ent.allLevels ? 'Alle Ebenen' : toGermanDisplayPath(state.rootName);
+        if (!ent.dir) return 'Alle Ebenen';
         const nm = toGermanDisplayPath(ent.dir.split('\\').pop());
-        return ent.allLevels ? `Alle Ebenen in „${nm}“` : `Ebene ${_getFolderDepth(ent.dir)}: ${nm}`;
+        return ent.allLevels ? `${nm} (alle Unterordner)` : nm;
       };
 
+      // ← Zurück / → Vorwärts
       const btnBack = document.createElement('button');
       btnBack.type = 'button';
       btnBack.className = 'folder-chip back-chip nav-btn';
       btnBack.disabled = !canBack;
       btnBack.textContent = '←';
-      btnBack.title = backTarget ? `Zurück zu ${labelForEntry(backTarget)}` : (curDir ? `Zurück zu ${parentName}` : 'Zurück');
+      btnBack.title = backTarget ? `Zurück zu „${labelForEntry(backTarget)}“` : 'Zurück';
       btnBack.onclick = () => navBack();
 
       const btnFwd = document.createElement('button');
@@ -1880,7 +2071,7 @@
       btnFwd.className = 'folder-chip back-chip nav-btn';
       btnFwd.disabled = !canFwd;
       btnFwd.textContent = '→';
-      btnFwd.title = fwdTarget ? `Vorwärts zu ${labelForEntry(fwdTarget)}` : 'Vorwärts';
+      btnFwd.title = fwdTarget ? `Vorwärts zu „${labelForEntry(fwdTarget)}“` : 'Vorwärts';
       btnFwd.onclick = () => navForward();
 
       chipsBar.append(btnBack, btnFwd);
@@ -1890,121 +2081,72 @@
         sp.className = 'folder-chip-sep';
         chipsBar.appendChild(sp);
       };
+      addSep();
 
-      const makeChip = (icon, text, countText, onClickFn, optsObj = {}) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `folder-chip${optsObj.active ? ' active' : ''}${optsObj.back ? ' back-chip' : ''}`;
-        if (optsObj.title) btn.title = optsObj.title;
-        let inner = `<span>${icon} ${escapeHtml(text)}</span>`;
-        if (countText !== null && countText !== undefined && countText !== '') {
-          inner += `<span class="folder-chip-cnt">${escapeHtml(String(countText))}</span>`;
-        }
-        if (optsObj.hasSub) {
-          inner += `<span class="folder-chip-sub" title="Enthält weitere Unterordner">▸</span>`;
-        }
-        btn.innerHTML = inner;
-        btn.onclick = onClickFn;
-        return btn;
-      };
+      // Button: Alle Ebenen (gesamter Hauptordner inkl. aller Unterordner)
+      const btnAll = document.createElement('button');
+      btnAll.type = 'button';
+      btnAll.className = 'folder-chip' + ((!curDir && allLevels) ? ' active' : '');
+      btnAll.textContent = 'Alle Ebenen';
+      btnAll.title = `Alle ${rootLvl.totalInCur} Dateien über alle Ordner & Ebenen anzeigen`;
+      btnAll.onclick = () => navigateToSubfolder('', true, true);
+      chipsBar.appendChild(btnAll);
 
       addSep();
 
-      if (!curDir) {
-        // Hauptebene (z. B. D:\01\Documents)
-        if (lvl.directInCur > 0) {
-          chipsBar.appendChild(makeChip(
-            '📂',
-            toGermanDisplayPath(state.rootName),
-            lvl.directInCur,
-            () => navigateToSubfolder('', false, true),
-            { active: !allLevels, title: `Nur die ${lvl.directInCur} Dateien direkt in „${toGermanDisplayPath(state.rootName)}“` }
-          ));
-        }
-        chipsBar.appendChild(makeChip(
-          '📚',
-          'Alle Ebenen',
-          lvl.totalInCur,
-          () => navigateToSubfolder('', true, true),
-          { active: allLevels, title: `Alle ${lvl.totalInCur} Dateien über alle Ebenen anzeigen` }
-        ));
-      } else {
-        // Unterordner-Ebene (z. B. Ebene 1: Bücher -> 7 Dateien | Ebene 2: Teufelsleib -> 4 Dateien)
-        if (lvl.directInCur > 0 || lvl.children.length === 0) {
-          chipsBar.appendChild(makeChip(
-            '📂',
-            `Ebene ${depth}: ${curName}`,
-            lvl.directInCur,
-            () => navigateToSubfolder(curDir, false, true),
-            {
-              active: !allLevels || lvl.children.length === 0,
-              title: `${lvl.directInCur} Dateien auf Ebene ${depth} („${curName}“)`
-            }
-          ));
-        }
+      // Die direkten Haupt-Unterordner (z. B. Bücher, Excel, Labelausdruck, PDF, Versicherungen, Word)
+      // Nur der Ordnername – mit Explorer-Pfeil (▾) als Split-Button, wenn Unterordner vorhanden sind!
+      const maxVisible = state.showAllSubfolderChips ? rootLvl.children.length : 18;
+      rootLvl.children.slice(0, maxVisible).forEach(c => {
+        const disp = toGermanDisplayPath(c.name);
+        const isActive = curDir === c.fullPath || curDir.startsWith(c.fullPath + '\\');
 
-        if (lvl.children.length > 0) {
-          chipsBar.appendChild(makeChip(
-            '📚',
-            'Alle Ebenen',
-            lvl.totalInCur,
-            () => navigateToSubfolder(curDir, !allLevels || lvl.directInCur === 0, true),
-            {
-              active: allLevels,
-              title: `Alle ${lvl.totalInCur} Dateien in „${curName}“ inkl. aller Unterordner anzeigen`
-            }
-          ));
-        } else {
-          chipsBar.appendChild(makeChip(
-            '📚',
-            'Alle Ebenen',
-            state.allFiles.length,
-            () => navigateToSubfolder('', true, true),
-            {
-              active: false,
-              back: true,
-              title: `Alle ${state.allFiles.length} Dateien über alle Ebenen anzeigen (mit ← kommst du zurück)`
-            }
-          ));
-        }
-      }
+        if (c.nestedCount > 0) {
+          const split = document.createElement('div');
+          split.className = 'folder-split' + (isActive ? ' active' : '');
 
-      if (lvl.children.length > 0) {
-        addSep();
-        const subLbl = document.createElement('span');
-        subLbl.className = 'subfolder-chips-label';
-        subLbl.textContent = curDir ? `Ebene ${depth + 1}:` : 'Ebene 1:';
-        chipsBar.appendChild(subLbl);
+          const mainBtn = document.createElement('button');
+          mainBtn.type = 'button';
+          mainBtn.className = 'folder-split-main';
+          mainBtn.textContent = `📁 ${disp}`;
+          mainBtn.title = `Ordner „${disp}“ öffnen (${c.direct} Dateien direkt, ${c.total} inkl. Unterordner)`;
+          mainBtn.onclick = () => navigateToSubfolder(c.fullPath, false, true);
 
-        const maxVisible = state.showAllSubfolderChips ? lvl.children.length : 18;
-        lvl.children.slice(0, maxVisible).forEach(c => {
-          const disp = toGermanDisplayPath(c.name);
-          const badge = _formatChildCountBadge(c);
-          const tip = c.nestedFiles > 0
-            ? `Zu Ebene ${depth + 1} „${disp}“ wechseln (${c.direct} Dateien direkt + ${c.nestedFiles} in ${c.nestedCount} Unterordner${c.nestedCount === 1 ? '' : 'n'}, gesamt ${c.total})`
-            : `Zu Ebene ${depth + 1} „${disp}“ wechseln (${c.total} Dateien)`;
-          chipsBar.appendChild(makeChip(
-            '📁',
-            disp,
-            badge,
-            () => navigateToSubfolder(c.fullPath, null, true),
-            { hasSub: c.nestedCount > 0, title: tip }
-          ));
-        });
-
-        if (lvl.children.length > 18) {
-          const moreBtn = document.createElement('button');
-          moreBtn.type = 'button';
-          moreBtn.className = 'folder-chip back-chip';
-          moreBtn.textContent = state.showAllSubfolderChips
-            ? 'Weniger anzeigen'
-            : `+ ${lvl.children.length - 18} weitere Ordner`;
-          moreBtn.onclick = () => {
-            state.showAllSubfolderChips = !state.showAllSubfolderChips;
-            rebuildSubfolderDropdown();
+          const arrowBtn = document.createElement('button');
+          arrowBtn.type = 'button';
+          arrowBtn.className = 'folder-split-arrow';
+          arrowBtn.textContent = '▾';
+          arrowBtn.title = `Unterordner von „${disp}“ anzeigen`;
+          arrowBtn.onclick = e => {
+            e.stopPropagation();
+            openExplorerFolderPopup(arrowBtn, c.fullPath, c.fullPath);
           };
-          chipsBar.appendChild(moreBtn);
+
+          split.append(mainBtn, arrowBtn);
+          chipsBar.appendChild(split);
+        } else {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'folder-chip' + (isActive ? ' active' : '');
+          btn.textContent = `📁 ${disp}`;
+          btn.title = `Ordner „${disp}“ öffnen (${c.total} Dateien)`;
+          btn.onclick = () => navigateToSubfolder(c.fullPath, false, true);
+          chipsBar.appendChild(btn);
         }
+      });
+
+      if (rootLvl.children.length > 18) {
+        const moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'folder-chip back-chip';
+        moreBtn.textContent = state.showAllSubfolderChips
+          ? 'Weniger anzeigen'
+          : `+ ${rootLvl.children.length - 18} weitere`;
+        moreBtn.onclick = () => {
+          state.showAllSubfolderChips = !state.showAllSubfolderChips;
+          rebuildSubfolderDropdown();
+        };
+        chipsBar.appendChild(moreBtn);
       }
     }
 
@@ -2015,42 +2157,63 @@
       const rootDisp = formatRootDisplayPath();
       const curDir = _normItemDir(state.activeSubfolder);
       const allLevels = !!state.includeSublevels;
+      const rootLvl = _getSubfolderLevelData('');
 
       bc.innerHTML = '';
       const lbl = document.createElement('span');
-      lbl.textContent = '📂 Aktueller Pfad:';
+      lbl.textContent = '📂 Pfad:';
       bc.appendChild(lbl);
 
-      const addSep = () => {
-        const sep = document.createElement('span');
-        sep.style.color = '#94a3b8';
-        sep.textContent = '\\';
-        bc.appendChild(sep);
+      const addArrow = (targetDir, titleTxt) => {
+        const arr = document.createElement('button');
+        arr.type = 'button';
+        arr.className = 'crumb-arrow';
+        arr.textContent = '▸';
+        arr.title = titleTxt;
+        arr.onclick = e => {
+          e.stopPropagation();
+          openExplorerFolderPopup(arr, targetDir, targetDir);
+        };
+        bc.appendChild(arr);
       };
 
+      // Root-Segment
       if (curDir) {
         const rootBtn = document.createElement('button');
         rootBtn.type = 'button';
         rootBtn.className = 'crumb-link';
-        rootBtn.title = 'Zurück zu allen Ebenen';
+        rootBtn.title = 'Alle Ebenen anzeigen';
         rootBtn.textContent = rootDisp;
         rootBtn.onclick = () => navigateToSubfolder('', true, true);
         bc.appendChild(rootBtn);
+      } else {
+        const rootSpan = document.createElement('span');
+        rootSpan.className = 'crumb-current';
+        rootSpan.textContent = rootDisp;
+        bc.appendChild(rootSpan);
+      }
 
+      if (rootLvl.children.length > 0) {
+        addArrow('', `Unterordner von „${rootDisp}“ öffnen`);
+      }
+
+      if (curDir) {
         const segs = curDir.split('\\').filter(Boolean);
         let acc = '';
         segs.forEach((seg, idx) => {
           acc = acc ? `${acc}\\${seg}` : seg;
-          addSep();
           const dispSeg = toGermanDisplayPath(seg);
-          if (idx < segs.length - 1) {
+          const targetPath = acc;
+          const isLast = idx === segs.length - 1;
+          const segLvl = _getSubfolderLevelData(targetPath);
+
+          if (!isLast || allLevels) {
             const segBtn = document.createElement('button');
             segBtn.type = 'button';
             segBtn.className = 'crumb-link';
-            segBtn.title = `Zu Ebene ${idx + 1} „${dispSeg}“ wechseln`;
+            segBtn.title = `Ordner „${dispSeg}“ direkt anzeigen`;
             segBtn.textContent = dispSeg;
-            const targetPath = acc;
-            segBtn.onclick = () => navigateToSubfolder(targetPath, null, true);
+            segBtn.onclick = () => navigateToSubfolder(targetPath, false, true);
             bc.appendChild(segBtn);
           } else {
             const curSpan = document.createElement('span');
@@ -2058,18 +2221,17 @@
             curSpan.textContent = dispSeg;
             bc.appendChild(curSpan);
           }
+
+          if (segLvl.children.length > 0) {
+            addArrow(targetPath, `Unterordner von „${dispSeg}“ öffnen`);
+          }
         });
         if (allLevels) {
           const tag = document.createElement('span');
-          tag.style.cssText = 'font-size:11px; color:#2563eb; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:1px 6px; margin-left:4px;';
-          tag.textContent = 'alle Ebenen';
+          tag.style.cssText = 'font-size:11px; color:#2563eb; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:1px 6px; margin-left:2px;';
+          tag.textContent = 'alle Unterordner';
           bc.appendChild(tag);
         }
-      } else {
-        const rootSpan = document.createElement('span');
-        rootSpan.className = 'crumb-current';
-        rootSpan.textContent = rootDisp;
-        bc.appendChild(rootSpan);
       }
 
       if (actItem) {
@@ -2211,6 +2373,9 @@
         const looksLikePath = /^[a-zA-Z]:[\\/]|^\\\\/.test(rawQ);
         if (looksLikePath) {
           tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Ordnerpfad im Suchfeld erkannt</h3><div style="margin-bottom:10px;">Das obere Suchfeld filtert nach <strong>Dateinamen</strong> – nicht nach dem Windows-Ordnerpfad.<br>Die <strong>${state.allFiles.length} Dateien</strong> aus „${escapeHtml(state.rootName)}“ sind bereits geladen.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn btn-primary" onclick="adoptSearchAsBasePath()">Als Basis-Pfad übernehmen &amp; alle anzeigen</button><button type="button" class="btn" onclick="clearSearchInput()">Suchfeld leeren</button></div></div></td></tr>`;
+        } else if (state.activeSubfolder && !rawQ && state.category === 'all' && !state.timeframe && !state.sizePreset) {
+          const dispFolder = toGermanDisplayPath(state.activeSubfolder);
+          tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Dieser Ordner ist leer</h3><div style="margin-bottom:10px;">In <strong>„${escapeHtml(dispFolder)}“</strong> befinden sich aktuell keine Dateien.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn" onclick="navBack()">← Zurück</button><button type="button" class="btn btn-primary" onclick="navigateToSubfolder('', true, true)">Alle Ebenen anzeigen</button></div></div></td></tr>`;
         } else {
           tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Keine Treffer für den aktuellen Filter</h3><div>Passe den Suchbegriff an oder klicke auf <strong>„Filter leeren“</strong>.</div></div></td></tr>`;
         }
@@ -2891,8 +3056,23 @@
           window.__pdfResizeT = setTimeout(() => renderCurrentPdfPage(), 120);
         }
       });
+      document.addEventListener('click', e => {
+        const pop = document.getElementById('explorer-folder-popup');
+        if (pop && !pop.classList.contains('hidden')) {
+          if (!pop.contains(e.target) && (!_popupAnchorEl || !_popupAnchorEl.contains(e.target))) {
+            closeExplorerFolderPopup();
+          }
+        }
+      });
+      window.addEventListener('scroll', e => {
+        const pop = document.getElementById('explorer-folder-popup');
+        if (pop && !pop.classList.contains('hidden') && !pop.contains(e.target)) {
+          closeExplorerFolderPopup();
+        }
+      }, true);
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
+          closeExplorerFolderPopup();
           const card = document.getElementById('preview-card');
           if (card && card.classList.contains('maximized')) togglePreviewMaximize(true);
         } else if (state.pdfDoc && document.activeElement?.tagName !== 'INPUT') {
