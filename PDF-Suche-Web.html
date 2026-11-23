@@ -374,8 +374,27 @@
 
     /* Hauptbereich: Tabelle + Vorschau */
     .workspace-split { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
-    .workspace-split.with-preview { grid-template-columns: minmax(440px, 1.12fr) minmax(380px, 0.88fr); }
-    @media (max-width: 1080px) { .workspace-split.with-preview { grid-template-columns: 1fr; } }
+    .workspace-split.with-preview { gap: 0; grid-template-columns: minmax(320px, 1fr) 14px minmax(320px, var(--preview-w, 44%)); }
+    .split-handle { display: none; }
+    .workspace-split.with-preview .split-handle {
+      display: flex; align-items: center; justify-content: center;
+      align-self: stretch; cursor: col-resize; user-select: none; touch-action: none;
+      position: sticky; top: 66px; height: calc(100vh - 82px); min-height: 520px;
+    }
+    .split-handle::before {
+      content: ''; width: 4px; height: 56px; border-radius: 4px;
+      background: #cbd5e1; transition: background 0.12s ease, height 0.12s ease;
+    }
+    .split-handle:hover::before, .workspace-split.resizing-split .split-handle::before {
+      background: var(--accent); height: 84px;
+    }
+    .workspace-split.resizing-split { cursor: col-resize; user-select: none; }
+    .workspace-split.resizing-split .preview-card,
+    .workspace-split.resizing-split .table-card { pointer-events: none; }
+    @media (max-width: 1080px) {
+      .workspace-split.with-preview { grid-template-columns: 1fr; gap: 12px; }
+      .workspace-split.with-preview .split-handle { display: none; }
+    }
 
     .table-card {
       background: var(--card); border: 1px solid var(--border); border-radius: 12px;
@@ -591,7 +610,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.4 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.5 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -789,6 +808,9 @@
           </table>
         </div>
       </div>
+
+      <div id="split-handle" class="split-handle" role="separator" aria-orientation="vertical"
+           title="Mit der Maus ziehen: Vorschau breiter/schmaler (Doppelklick = Standardbreite)"></div>
 
       <aside id="preview-card" class="preview-card">
         <div class="preview-head">
@@ -3323,6 +3345,79 @@
       schedulePdfRerender(90);
     }
 
+    /* Vorschau-Breite per Maus ziehen (Griff zwischen Tabelle & Vorschau) */
+    const PREVIEW_WIDTH_STORAGE_KEY = 'pdf_suche_web_preview_w_v1';
+    const SPLIT_MIN_TABLE = 320;
+    const SPLIT_MIN_PREVIEW = 320;
+    const SPLIT_HANDLE_W = 14;
+
+    function _clampPreviewWidth(px, containerW) {
+      const maxW = Math.max(SPLIT_MIN_PREVIEW, containerW - SPLIT_MIN_TABLE - SPLIT_HANDLE_W);
+      return Math.round(Math.max(SPLIT_MIN_PREVIEW, Math.min(maxW, px)));
+    }
+
+    function applyPreviewWidth(px, persist) {
+      const split = document.getElementById('workspace-split');
+      if (!split) return;
+      if (!px) {
+        split.style.removeProperty('--preview-w');
+        if (persist) { try { localStorage.removeItem(PREVIEW_WIDTH_STORAGE_KEY); } catch (_) {} }
+        return;
+      }
+      const w = _clampPreviewWidth(px, split.getBoundingClientRect().width);
+      split.style.setProperty('--preview-w', `${w}px`);
+      if (persist) { try { localStorage.setItem(PREVIEW_WIDTH_STORAGE_KEY, String(w)); } catch (_) {} }
+    }
+
+    function initPreviewSplitter() {
+      const split = document.getElementById('workspace-split');
+      const handle = document.getElementById('split-handle');
+      if (!split || !handle) return;
+
+      try {
+        const saved = Number(localStorage.getItem(PREVIEW_WIDTH_STORAGE_KEY));
+        if (saved > 0) applyPreviewWidth(saved, false);
+      } catch (_) {}
+
+      handle.addEventListener('pointerdown', e => {
+        if (e.button !== undefined && e.button !== 0) return;
+        e.preventDefault();
+        try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+        split.classList.add('resizing-split');
+        const rect = split.getBoundingClientRect();
+
+        const onMove = ev => {
+          const w = rect.right - ev.clientX - SPLIT_HANDLE_W / 2;
+          split.style.setProperty('--preview-w', `${_clampPreviewWidth(w, rect.width)}px`);
+          schedulePdfRerender(160);
+        };
+        const onUp = ev => {
+          handle.removeEventListener('pointermove', onMove);
+          handle.removeEventListener('pointerup', onUp);
+          handle.removeEventListener('pointercancel', onUp);
+          try { handle.releasePointerCapture(ev.pointerId); } catch (_) {}
+          split.classList.remove('resizing-split');
+          const cur = parseFloat(split.style.getPropertyValue('--preview-w'));
+          if (cur > 0) applyPreviewWidth(cur, true);
+          schedulePdfRerender(80);
+        };
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', onUp);
+        handle.addEventListener('pointercancel', onUp);
+      });
+
+      handle.addEventListener('dblclick', () => {
+        applyPreviewWidth(0, true);
+        schedulePdfRerender(80);
+        toast('Vorschau-Breite auf Standard zurückgesetzt.', 'info');
+      });
+
+      window.addEventListener('resize', () => {
+        const cur = parseFloat(split.style.getPropertyValue('--preview-w'));
+        if (cur > 0) applyPreviewWidth(cur, false);
+      });
+    }
+
     function togglePreviewPane() {
       state.previewVisible = !state.previewVisible;
       const card = document.getElementById('preview-card');
@@ -3487,6 +3582,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderTableHeader();
+      initPreviewSplitter();
       initLastDirectoryOnStartup();
       document.addEventListener('fullscreenchange', () => {
         const card = document.getElementById('preview-card');
