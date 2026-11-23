@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8">
@@ -184,12 +184,19 @@
     }
     .btn-active .cat-count { background: rgba(255, 255, 255, 0.22); opacity: 1; }
 
-    /* Filter-Zeilen */
-    .filter-grid { display: flex; flex-direction: column; gap: 8px; }
-    .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .filter-label { width: 112px; flex-shrink: 0; font-weight: 700; color: var(--text-sec); font-size: 12.5px; cursor: default; }
+    /* Filter-Zeilen: kompaktes 2-Spalten-Raster (Dateityp | Dateigröße  /  Zeitraum | Änderungsdatum) */
+    .filter-grid {
+      display: grid; grid-template-columns: max-content max-content; justify-content: start;
+      column-gap: 36px; row-gap: 8px; align-items: center;
+    }
+    .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; min-width: 0; }
+    .filter-label { width: 106px; flex-shrink: 0; font-weight: 700; color: var(--text-sec); font-size: 12.5px; cursor: default; }
+    @media (max-width: 1600px) {
+      .filter-grid { grid-template-columns: minmax(0, 1fr); }
+      .filter-row-size { order: 4; }
+    }
     .date-box {
-      display: inline-flex; align-items: center; height: 34px; width: 184px;
+      display: inline-flex; align-items: center; height: 34px; width: 172px;
       border-radius: var(--radius-sm); border: 1.5px solid var(--border-input); background: #ffffff;
       box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06); padding: 0 8px 0 10px; gap: 6px;
     }
@@ -610,7 +617,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.5 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.6 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -728,6 +735,17 @@
           </div>
         </div>
 
+        <div class="filter-row filter-row-size">
+          <span class="filter-label">Dateigröße:</span>
+          <div class="date-box">
+            <span class="inline-prefix">Ab</span>
+            <input id="min-size-input" type="text" placeholder="z. B. 500 KB" oninput="onMinSizeTyped()">
+          </div>
+          <button type="button" class="btn" data-sz="100 KB" onclick="toggleSizePreset('100 KB')">&gt; 100 KB</button>
+          <button type="button" class="btn" data-sz="500 KB" onclick="toggleSizePreset('500 KB')">&gt; 500 KB</button>
+          <button type="button" class="btn" data-sz="1 MB" onclick="toggleSizePreset('1 MB')">&gt; 1 MB</button>
+        </div>
+
         <div class="filter-row">
           <span class="filter-label">Zeitraum:</span>
           <button type="button" class="btn" data-tf="today" onclick="toggleTimeframe('today')">Heute</button>
@@ -747,17 +765,6 @@
             <input id="date-to" type="date" onchange="onManualDateChange()">
           </div>
           <button type="button" class="btn" onclick="clearAllFilters()">Filter leeren</button>
-        </div>
-
-        <div class="filter-row">
-          <span class="filter-label">Dateigröße:</span>
-          <div class="date-box">
-            <span class="inline-prefix">Ab</span>
-            <input id="min-size-input" type="text" placeholder="z. B. 500 KB" oninput="onMinSizeTyped()">
-          </div>
-          <button type="button" class="btn" data-sz="100 KB" onclick="toggleSizePreset('100 KB')">&gt; 100 KB</button>
-          <button type="button" class="btn" data-sz="500 KB" onclick="toggleSizePreset('500 KB')">&gt; 500 KB</button>
-          <button type="button" class="btn" data-sz="1 MB" onclick="toggleSizePreset('1 MB')">&gt; 1 MB</button>
         </div>
       </div>
     </section>
