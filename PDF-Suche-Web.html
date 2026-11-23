@@ -591,7 +591,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.2 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.3 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -933,6 +933,9 @@
       pdfScale: 1.0,
       pdfRotation: 0,
       pdfLoadSeq: 0,
+      pdfRenderSeq: 0,
+      pdfRenderTask: null,
+      activePdfFile: null,
       xlsxWorkbook: null,
       xlsxActiveSheet: '',
       columnOrder: null,
@@ -2684,7 +2687,9 @@
     function showFolderPreview(folderItem) {
       state.activeId = folderItem.id;
       state.pdfLoadSeq += 1;
+      _cancelPendingPdfRender();
       if (state.pdfDoc) { try { state.pdfDoc.destroy(); } catch (_) {} state.pdfDoc = null; }
+      state.activePdfFile = null;
       state.xlsxWorkbook = null;
       state.xlsxActiveSheet = '';
       if (state.activeBlobUrl) { URL.revokeObjectURL(state.activeBlobUrl); state.activeBlobUrl = null; }
@@ -2784,11 +2789,29 @@
       return item.fileObj;
     }
 
+    function _cancelPendingPdfRender() {
+      state.pdfRenderSeq += 1;
+      if (state.pdfRenderTask) {
+        try { state.pdfRenderTask.cancel(); } catch (_) {}
+        state.pdfRenderTask = null;
+      }
+    }
+
+    function schedulePdfRerender(delayMs = 100) {
+      if (!state.pdfDoc) return;
+      clearTimeout(window.__pdfResizeT);
+      window.__pdfResizeT = setTimeout(() => {
+        if (state.pdfDoc) renderCurrentPdfPage();
+      }, delayMs);
+    }
+
     /* Multi-Format Vorschau (PDF.js, Word Mammoth, Excel SheetJS, Bilder, Text) */
     function clearActivePreview() {
       state.activeId = null;
       state.pdfLoadSeq += 1;
+      _cancelPendingPdfRender();
       if (state.pdfDoc) { try { state.pdfDoc.destroy(); } catch (_) {} state.pdfDoc = null; }
+      state.activePdfFile = null;
       state.xlsxWorkbook = null;
       state.xlsxActiveSheet = '';
       if (state.activeBlobUrl) { URL.revokeObjectURL(state.activeBlobUrl); state.activeBlobUrl = null; }
@@ -2809,15 +2832,19 @@
     async function renderCurrentPdfPage() {
       if (!state.pdfDoc) return;
       const body = document.getElementById('preview-body');
-      let canvas = document.getElementById('pdf-render-canvas');
-      if (!canvas) {
-        body.innerHTML = '<canvas id="pdf-render-canvas"></canvas>';
-        canvas = document.getElementById('pdf-render-canvas');
-      }
       const seq = state.pdfLoadSeq;
+      const prevTask = state.pdfRenderTask;
+      const renderSeq = ++state.pdfRenderSeq;
+      state.pdfRenderTask = null;
+      if (prevTask) {
+        try { prevTask.cancel(); } catch (_) {}
+        try { await prevTask.promise; } catch (_) {}
+      }
+      if (seq !== state.pdfLoadSeq || renderSeq !== state.pdfRenderSeq || !state.pdfDoc) return;
+
       try {
         const page = await state.pdfDoc.getPage(state.pdfPageNum);
-        if (seq !== state.pdfLoadSeq) return;
+        if (seq !== state.pdfLoadSeq || renderSeq !== state.pdfRenderSeq || !state.pdfDoc) return;
         const baseVp = page.getViewport({ scale: 1, rotation: state.pdfRotation });
         const availW = Math.max(220, body.clientWidth - 24);
         const availH = Math.max(220, body.clientHeight - 24);
@@ -2829,12 +2856,23 @@
 
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const vp = page.getViewport({ scale: scale * dpr, rotation: state.pdfRotation });
-        canvas.width = Math.floor(vp.width);
-        canvas.height = Math.floor(vp.height);
-        canvas.style.width = `${Math.floor(vp.width / dpr)}px`;
-        canvas.style.height = `${Math.floor(vp.height / dpr)}px`;
 
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        // Frisches Off-Screen-Canvas verhindert gleichzeitige Render-Kollisionen & Flackern zu 100 %
+        const offCanvas = document.createElement('canvas');
+        offCanvas.id = 'pdf-render-canvas';
+        offCanvas.width = Math.max(1, Math.floor(vp.width));
+        offCanvas.height = Math.max(1, Math.floor(vp.height));
+        offCanvas.style.width = `${Math.max(1, Math.floor(vp.width / dpr))}px`;
+        offCanvas.style.height = `${Math.max(1, Math.floor(vp.height / dpr))}px`;
+
+        const renderTask = page.render({ canvasContext: offCanvas.getContext('2d'), viewport: vp });
+        state.pdfRenderTask = renderTask;
+        await renderTask.promise;
+        if (state.pdfRenderTask === renderTask) state.pdfRenderTask = null;
+        if (seq !== state.pdfLoadSeq || renderSeq !== state.pdfRenderSeq || !state.pdfDoc) return;
+
+        body.innerHTML = '';
+        body.appendChild(offCanvas);
         document.getElementById('pdf-page-info').textContent = `Seite ${state.pdfPageNum} / ${state.pdfDoc.numPages}`;
         document.getElementById('pdf-zoom-info').textContent = `${Math.round(scale * 100)}%`;
         document.getElementById('btn-pdf-prev').disabled = state.pdfPageNum <= 1;
@@ -2842,6 +2880,20 @@
         document.getElementById('btn-pdf-fit').classList.toggle('btn-active', state.pdfFitMode === 'fit');
         document.getElementById('btn-pdf-fitw').classList.toggle('btn-active', state.pdfFitMode === 'width');
       } catch (err) {
+        if (err && (err.name === 'RenderingCancelledException' || String(err.message || '').includes('Rendering cancelled'))) {
+          return;
+        }
+        if (seq !== state.pdfLoadSeq || renderSeq !== state.pdfRenderSeq) return;
+        // Fallback auf nativen Browser-PDF-Viewer, falls PDF.js bei einer exotischen Datei streikt
+        if (state.activePdfFile) {
+          try {
+            if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
+            state.activeBlobUrl = URL.createObjectURL(state.activePdfFile);
+            document.getElementById('pdf-toolbar').classList.add('hidden');
+            body.innerHTML = `<iframe src="${state.activeBlobUrl}#navpanes=0&view=Fit"></iframe>`;
+            return;
+          } catch (_) {}
+        }
         toast(`PDF-Seite konnte nicht gerendert werden: ${err.message}`, 'err');
       }
     }
@@ -2895,7 +2947,9 @@
     async function showFilePreview(item) {
       state.activeId = item.id;
       const mySeq = ++state.pdfLoadSeq;
+      _cancelPendingPdfRender();
       if (state.pdfDoc) { try { state.pdfDoc.destroy(); } catch (_) {} state.pdfDoc = null; }
+      state.activePdfFile = null;
       state.xlsxWorkbook = null;
       document.getElementById('pdf-toolbar').classList.add('hidden');
       document.getElementById('xlsx-toolbar').classList.add('hidden');
@@ -2922,26 +2976,32 @@
           renderTable();
         }
 
-        // 1. PDF (PDF.js)
+        // 1. PDF (PDF.js mit automatischem nativen Browser-Fallback)
         if (ext === 'pdf') {
+          state.activePdfFile = file;
           if (window.pdfjsLib) {
             pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.js';
             body.innerHTML = '<div class="empty-box"><div>Lade PDF…</div></div>';
-            const buf = await file.arrayBuffer();
-            if (mySeq !== state.pdfLoadSeq) return;
-            const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
-            if (mySeq !== state.pdfLoadSeq) { try { doc.destroy(); } catch (_) {} return; }
-            state.pdfDoc = doc;
-            state.pdfPageNum = 1;
-            state.pdfRotation = 0;
-            state.pdfFitMode = 'fit';
-            document.getElementById('pdf-toolbar').classList.remove('hidden');
-            await renderCurrentPdfPage();
-          } else {
-            if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
-            state.activeBlobUrl = URL.createObjectURL(file);
-            body.innerHTML = `<iframe src="${state.activeBlobUrl}#navpanes=0&view=Fit"></iframe>`;
+            try {
+              const buf = await file.arrayBuffer();
+              if (mySeq !== state.pdfLoadSeq) return;
+              const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+              if (mySeq !== state.pdfLoadSeq) { try { doc.destroy(); } catch (_) {} return; }
+              state.pdfDoc = doc;
+              state.pdfPageNum = 1;
+              state.pdfRotation = 0;
+              state.pdfFitMode = 'fit';
+              document.getElementById('pdf-toolbar').classList.remove('hidden');
+              await renderCurrentPdfPage();
+              return;
+            } catch (_) {
+              if (mySeq !== state.pdfLoadSeq) return;
+            }
           }
+          if (state.activeBlobUrl) URL.revokeObjectURL(state.activeBlobUrl);
+          state.activeBlobUrl = URL.createObjectURL(file);
+          document.getElementById('pdf-toolbar').classList.add('hidden');
+          body.innerHTML = `<iframe src="${state.activeBlobUrl}#navpanes=0&view=Fit"></iframe>`;
           return;
         }
 
@@ -3124,7 +3184,7 @@
       } else if (document.fullscreenElement === card && document.exitFullscreen) {
         try { await document.exitFullscreen(); } catch (_) {}
       }
-      setTimeout(() => { if (state.pdfDoc) renderCurrentPdfPage(); }, 90);
+      schedulePdfRerender(90);
     }
 
     function togglePreviewPane() {
@@ -3295,12 +3355,11 @@
       document.addEventListener('fullscreenchange', () => {
         const card = document.getElementById('preview-card');
         if (!document.fullscreenElement && card && card.classList.contains('maximized')) togglePreviewMaximize(true);
-        else if (state.pdfDoc) setTimeout(() => renderCurrentPdfPage(), 90);
+        else if (state.pdfDoc) schedulePdfRerender(90);
       });
       window.addEventListener('resize', () => {
         if (state.pdfDoc && state.pdfFitMode !== 'manual') {
-          clearTimeout(window.__pdfResizeT);
-          window.__pdfResizeT = setTimeout(() => renderCurrentPdfPage(), 120);
+          schedulePdfRerender(120);
         }
       });
       document.addEventListener('click', e => {
