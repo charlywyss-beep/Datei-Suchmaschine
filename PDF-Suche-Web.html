@@ -187,13 +187,25 @@
     /* Filter-Zeilen: kompaktes 2-Spalten-Raster (Dateityp | Dateigröße  /  Zeitraum | Änderungsdatum) */
     .filter-grid {
       display: grid; grid-template-columns: max-content max-content; justify-content: start;
-      column-gap: 36px; row-gap: 8px; align-items: center;
+      column-gap: 36px; row-gap: 8px; align-items: start;
     }
-    .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; min-width: 0; }
-    .filter-label { width: 106px; flex-shrink: 0; font-weight: 700; color: var(--text-sec); font-size: 12.5px; cursor: default; }
+    .filter-row { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px; min-width: 0; }
+    .filter-label {
+      width: 106px; min-width: 106px; max-width: 106px; flex-shrink: 0;
+      height: 34px; display: inline-flex; align-items: center;
+      font-weight: 700; color: var(--text-sec); font-size: 12.5px; cursor: default;
+    }
+    .filter-controls, .cat-row {
+      flex: 1; min-width: 0;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+    }
     @media (max-width: 1600px) {
       .filter-grid { grid-template-columns: minmax(0, 1fr); }
       .filter-row-size { order: 4; }
+    }
+    @media (max-width: 520px) {
+      .filter-row { flex-wrap: wrap; }
+      .filter-label { width: 100%; height: auto; margin-bottom: 2px; }
     }
     .date-box {
       display: inline-flex; align-items: center; height: 34px; width: 172px;
@@ -617,7 +629,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.6 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.7 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -722,7 +734,7 @@
       <div class="filter-grid">
         <div class="filter-row">
           <span class="filter-label">Dateityp:</span>
-          <div class="cat-row" id="category-buttons">
+          <div class="cat-row filter-controls" id="category-buttons">
             <button type="button" class="btn btn-active" data-cat="all" onclick="setCategory('all')">Alle <span class="cat-count" id="cnt-all">0</span></button>
             <button type="button" class="btn" data-cat="folder" onclick="setCategory('folder')" title="Nur nach Ordnern suchen (inkl. leerer Ordner)">📁 Ordner <span class="cat-count" id="cnt-folder">0</span></button>
             <button type="button" class="btn" data-cat="pdf" onclick="setCategory('pdf')">PDF <span class="cat-count" id="cnt-pdf">0</span></button>
@@ -737,34 +749,40 @@
 
         <div class="filter-row filter-row-size">
           <span class="filter-label">Dateigröße:</span>
-          <div class="date-box">
-            <span class="inline-prefix">Ab</span>
-            <input id="min-size-input" type="text" placeholder="z. B. 500 KB" oninput="onMinSizeTyped()">
+          <div class="filter-controls">
+            <div class="date-box">
+              <span class="inline-prefix">Ab</span>
+              <input id="min-size-input" type="text" placeholder="z. B. 500 KB" oninput="onMinSizeTyped()">
+            </div>
+            <button type="button" class="btn" data-sz="100 KB" onclick="toggleSizePreset('100 KB')">&gt; 100 KB</button>
+            <button type="button" class="btn" data-sz="500 KB" onclick="toggleSizePreset('500 KB')">&gt; 500 KB</button>
+            <button type="button" class="btn" data-sz="1 MB" onclick="toggleSizePreset('1 MB')">&gt; 1 MB</button>
           </div>
-          <button type="button" class="btn" data-sz="100 KB" onclick="toggleSizePreset('100 KB')">&gt; 100 KB</button>
-          <button type="button" class="btn" data-sz="500 KB" onclick="toggleSizePreset('500 KB')">&gt; 500 KB</button>
-          <button type="button" class="btn" data-sz="1 MB" onclick="toggleSizePreset('1 MB')">&gt; 1 MB</button>
         </div>
 
         <div class="filter-row">
           <span class="filter-label">Zeitraum:</span>
-          <button type="button" class="btn" data-tf="today" onclick="toggleTimeframe('today')">Heute</button>
-          <button type="button" class="btn" data-tf="week" onclick="toggleTimeframe('week')">Diese Woche</button>
-          <button type="button" class="btn" data-tf="month" onclick="toggleTimeframe('month')">Dieser Monat</button>
-          <button type="button" class="btn" data-tf="year" onclick="toggleTimeframe('year')">Dieses Jahr</button>
+          <div class="filter-controls">
+            <button type="button" class="btn" data-tf="today" onclick="toggleTimeframe('today')">Heute</button>
+            <button type="button" class="btn" data-tf="week" onclick="toggleTimeframe('week')">Diese Woche</button>
+            <button type="button" class="btn" data-tf="month" onclick="toggleTimeframe('month')">Dieser Monat</button>
+            <button type="button" class="btn" data-tf="year" onclick="toggleTimeframe('year')">Dieses Jahr</button>
+          </div>
         </div>
 
         <div class="filter-row">
           <span class="filter-label">Änderungsdatum:</span>
-          <div class="date-box">
-            <span class="inline-prefix">Von</span>
-            <input id="date-from" type="date" onchange="onManualDateChange()">
+          <div class="filter-controls">
+            <div class="date-box">
+              <span class="inline-prefix">Von</span>
+              <input id="date-from" type="date" onchange="onManualDateChange()">
+            </div>
+            <div class="date-box">
+              <span class="inline-prefix">Bis</span>
+              <input id="date-to" type="date" onchange="onManualDateChange()">
+            </div>
+            <button type="button" class="btn" onclick="clearAllFilters()">Filter leeren</button>
           </div>
-          <div class="date-box">
-            <span class="inline-prefix">Bis</span>
-            <input id="date-to" type="date" onchange="onManualDateChange()">
-          </div>
-          <button type="button" class="btn" onclick="clearAllFilters()">Filter leeren</button>
         </div>
       </div>
     </section>
