@@ -271,15 +271,30 @@
       overflow: hidden; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
     }
     .table-scroll { max-height: calc(100vh - 140px); min-height: 460px; overflow: auto; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table { min-width: 100%; width: max-content; border-collapse: collapse; table-layout: fixed; }
     thead th {
       position: sticky; top: 0; z-index: 5; background: #f8fafc; color: var(--text);
       font-size: 12px; font-weight: 700; text-align: left; padding: 9px 10px;
       border-bottom: 1px solid var(--border); border-right: 1px solid var(--divider);
-      cursor: pointer; user-select: none; white-space: nowrap;
+      cursor: pointer; user-select: none; white-space: nowrap; overflow: visible;
     }
-    thead th:last-child { border-right: none; cursor: default; }
-    thead th:hover:not(:first-child):not(:last-child) { background: #eff6ff; color: var(--accent-hover); }
+    thead th:last-child { border-right: none; }
+    thead th.th-draggable { cursor: grab; }
+    thead th.th-draggable:active { cursor: grabbing; }
+    thead th.th-draggable:hover { background: #eff6ff; color: var(--accent-hover); }
+    thead th.th-dragging { opacity: 0.45; }
+    thead th.th-drag-over {
+      box-shadow: inset 3px 0 0 #2563eb;
+      background: #dbeafe !important;
+      color: var(--accent-hover) !important;
+    }
+    .col-resize-handle {
+      position: absolute; top: 0; right: -3px; width: 7px; height: 100%;
+      cursor: col-resize; z-index: 15; user-select: none;
+    }
+    .col-resize-handle:hover, .col-resize-handle.resizing {
+      background: rgba(37, 99, 235, 0.4);
+    }
     tbody tr { border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background-color 0.1s ease; }
     tbody tr:hover { background: #f8fafc; }
     tbody tr.selected { background: #dbeafe; }
@@ -288,13 +303,13 @@
       padding: 8px 10px; font-size: 12.5px; color: var(--text);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .col-check { width: 36px; text-align: center; }
-    .col-name { width: 34%; font-weight: 600; }
-    .col-ext { width: 64px; text-align: center; }
-    .col-dir { width: 28%; color: var(--text-muted); }
-    .col-size { width: 84px; text-align: right; font-variant-numeric: tabular-nums; }
-    .col-date { width: 126px; text-align: center; font-variant-numeric: tabular-nums; color: var(--text-sec); }
-    .col-act { width: 112px; text-align: right; }
+    .col-check { text-align: center; cursor: default; }
+    .col-name { font-weight: 600; text-align: left; }
+    .col-ext { text-align: center; }
+    .col-dir { color: var(--text-muted); text-align: left; }
+    .col-size { text-align: right; font-variant-numeric: tabular-nums; }
+    .col-date { text-align: center; font-variant-numeric: tabular-nums; color: var(--text-sec); }
+    .col-act { text-align: right; }
 
     .type-badge {
       display: inline-block; padding: 1px 6px; border-radius: 5px;
@@ -464,7 +479,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.5</span></h1>
+        <h1>Dokumenten-Suche Pro <span class="brand-badge">Web v2.6</span></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -631,6 +646,9 @@
       </div>
 
       <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+        <button id="btn-reset-cols" type="button" class="btn btn-soft" onclick="resetColumnLayout()" title="Spaltenreihenfolge &amp; -breiten zurücksetzen">
+          <span>↺ Spalten</span>
+        </button>
         <button id="btn-batch-rename" type="button" class="btn btn-soft" disabled onclick="openBatchRenameModal()" title="Markierte Dateien in einem Schritt umbenennen">
           <span>✏️ Massen-Umbenennung</span>
         </button>
@@ -645,19 +663,8 @@
       <div class="table-card">
         <div class="table-scroll">
           <table>
-            <thead>
-              <tr>
-                <th class="col-check">
-                  <input id="select-all-cb" type="checkbox" onchange="toggleSelectAll(this)" title="Alle sichtbaren Dateien auswählen (Tipp: Umschalt+Klick für Bereich)">
-                </th>
-                <th class="col-name" onclick="setSort('name')">Dateiname <span id="sort-name">▲</span></th>
-                <th class="col-ext" onclick="setSort('ext')">Typ <span id="sort-ext"></span></th>
-                <th class="col-dir" onclick="setSort('dir')">Unterordner <span id="sort-dir"></span></th>
-                <th class="col-size" onclick="setSort('size')">Größe <span id="sort-size"></span></th>
-                <th class="col-date" onclick="setSort('mtime')">Geändert <span id="sort-mtime"></span></th>
-                <th class="col-act">Aktionen</th>
-              </tr>
-            </thead>
+            <colgroup id="results-colgroup"></colgroup>
+            <thead id="results-thead"></thead>
             <tbody id="file-tbody">
               <tr>
                 <td colspan="7">
@@ -812,7 +819,205 @@
       pdfLoadSeq: 0,
       xlsxWorkbook: null,
       xlsxActiveSheet: '',
+      columnOrder: null,
+      columnWidths: null,
+      isResizingColumn: false,
+      justDraggedCol: false,
     };
+
+    const COLUMN_LAYOUT_STORAGE_KEY = 'pdf_suche_web_col_layout_v1';
+    const DEFAULT_COLUMN_ORDER = ['name', 'ext', 'dir', 'size', 'mtime', 'act'];
+    const DEFAULT_COLUMN_WIDTHS = {
+      name: 260,
+      ext: 68,
+      dir: 215,
+      size: 86,
+      mtime: 130,
+      act: 116
+    };
+    const COLUMN_META = {
+      name: { label: 'Dateiname', sortKey: 'name', cls: 'col-name', title: 'Nach Dateiname sortieren' },
+      ext: { label: 'Typ', sortKey: 'ext', cls: 'col-ext', title: 'Nach Dateityp sortieren' },
+      dir: { label: 'Unterordner', sortKey: 'dir', cls: 'col-dir', title: 'Nach Unterordner sortieren' },
+      size: { label: 'Größe', sortKey: 'size', cls: 'col-size', title: 'Nach Größe sortieren' },
+      mtime: { label: 'Geändert', sortKey: 'mtime', cls: 'col-date', title: 'Nach Änderungsdatum sortieren' },
+      act: { label: 'Aktionen', sortKey: null, cls: 'col-act', title: 'Spalte per Ziehen verschieben' }
+    };
+
+    function _getColumnLayout() {
+      if (!Array.isArray(state.columnOrder) || state.columnOrder.length !== DEFAULT_COLUMN_ORDER.length) {
+        let loadedOrder = null;
+        let loadedWidths = null;
+        try {
+          const raw = localStorage.getItem(COLUMN_LAYOUT_STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed.order) && parsed.order.length === DEFAULT_COLUMN_ORDER.length &&
+                DEFAULT_COLUMN_ORDER.every(k => parsed.order.includes(k))) {
+              loadedOrder = parsed.order;
+            }
+            if (parsed.widths && typeof parsed.widths === 'object') {
+              loadedWidths = parsed.widths;
+            }
+          }
+        } catch (_) {}
+        state.columnOrder = loadedOrder ? [...loadedOrder] : [...DEFAULT_COLUMN_ORDER];
+        state.columnWidths = Object.assign({}, DEFAULT_COLUMN_WIDTHS, loadedWidths || {});
+      }
+      return { order: state.columnOrder, widths: state.columnWidths };
+    }
+
+    function _saveColumnLayout() {
+      try {
+        localStorage.setItem(COLUMN_LAYOUT_STORAGE_KEY, JSON.stringify({
+          order: state.columnOrder || DEFAULT_COLUMN_ORDER,
+          widths: state.columnWidths || DEFAULT_COLUMN_WIDTHS
+        }));
+      } catch (_) {}
+    }
+
+    function resetColumnLayout() {
+      state.columnOrder = [...DEFAULT_COLUMN_ORDER];
+      state.columnWidths = Object.assign({}, DEFAULT_COLUMN_WIDTHS);
+      try { localStorage.removeItem(COLUMN_LAYOUT_STORAGE_KEY); } catch (_) {}
+      renderTable();
+      toast('↺ Spaltenreihenfolge & -breiten zurückgesetzt.', 'info');
+    }
+
+    let _dragSourceColKey = null;
+    function onColDragStart(e, key) {
+      if (state.isResizingColumn) {
+        e.preventDefault();
+        return;
+      }
+      _dragSourceColKey = key;
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', key);
+      }
+      e.currentTarget.classList.add('th-dragging');
+    }
+
+    function onColDragOver(e, targetKey) {
+      if (!_dragSourceColKey || _dragSourceColKey === targetKey) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      e.currentTarget.classList.add('th-drag-over');
+    }
+
+    function onColDragLeave(e) {
+      e.currentTarget.classList.remove('th-drag-over');
+    }
+
+    function onColDrop(e, targetKey) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('th-drag-over');
+      if (!_dragSourceColKey || _dragSourceColKey === targetKey) return;
+
+      const { order } = _getColumnLayout();
+      const fromIdx = order.indexOf(_dragSourceColKey);
+      const toIdx = order.indexOf(targetKey);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+
+      order.splice(fromIdx, 1);
+      order.splice(toIdx, 0, _dragSourceColKey);
+      _saveColumnLayout();
+
+      state.justDraggedCol = true;
+      setTimeout(() => { state.justDraggedCol = false; }, 140);
+      const movedLabel = COLUMN_META[_dragSourceColKey]?.label || _dragSourceColKey;
+      renderTable();
+      toast(`Spalte „${movedLabel}“ verschoben.`, 'info');
+    }
+
+    function onColDragEnd() {
+      _dragSourceColKey = null;
+      document.querySelectorAll('#results-thead th').forEach(th => {
+        th.classList.remove('th-dragging', 'th-drag-over');
+      });
+    }
+
+    function startColumnResize(e, key) {
+      e.preventDefault();
+      e.stopPropagation();
+      const colEl = document.querySelector(`#results-colgroup col[data-col-key="${key}"]`);
+      const thEl = e.currentTarget.closest('th');
+      const handle = e.currentTarget;
+      if (!colEl || !thEl) return;
+
+      state.isResizingColumn = true;
+      state.justDraggedCol = true;
+      handle.classList.add('resizing');
+      const startX = e.clientX;
+      const startWidth = thEl.getBoundingClientRect().width;
+
+      const onMove = moveEvt => {
+        const nextW = Math.max(54, Math.round(startWidth + (moveEvt.clientX - startX)));
+        colEl.style.width = `${nextW}px`;
+        const { widths } = _getColumnLayout();
+        widths[key] = nextW;
+      };
+
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        handle.classList.remove('resizing');
+        state.isResizingColumn = false;
+        _saveColumnLayout();
+        setTimeout(() => { state.justDraggedCol = false; }, 140);
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    function renderTableHeader() {
+      const thead = document.getElementById('results-thead');
+      const colgroup = document.getElementById('results-colgroup');
+      if (!thead || !colgroup) return;
+
+      const { order, widths } = _getColumnLayout();
+      const allChecked = state.filteredFiles.length > 0 && state.filteredFiles.every(it => state.selectedIds.has(it.id));
+
+      colgroup.innerHTML = `<col style="width:36px;">` + order.map(k => {
+        const w = Math.max(54, Number(widths[k]) || DEFAULT_COLUMN_WIDTHS[k] || 120);
+        return `<col data-col-key="${k}" style="width:${w}px;">`;
+      }).join('');
+
+      const thCells = order.map(key => {
+        const meta = COLUMN_META[key] || { label: key, sortKey: null, cls: '', title: '' };
+        const clickAttr = meta.sortKey ? `onclick="setSort('${meta.sortKey}')"` : '';
+        const sortIcon = meta.sortKey
+          ? ` <span id="sort-${meta.sortKey}">${state.sortCol === meta.sortKey ? (state.sortAsc ? '▲' : '▼') : ''}</span>`
+          : '';
+        return `
+          <th
+            data-col-key="${key}"
+            draggable="true"
+            ondragstart="onColDragStart(event, '${key}')"
+            ondragover="onColDragOver(event, '${key}')"
+            ondragleave="onColDragLeave(event)"
+            ondrop="onColDrop(event, '${key}')"
+            ondragend="onColDragEnd(event)"
+            ${clickAttr}
+            class="${meta.cls} th-draggable"
+            title="${meta.title} (Ziehen zum Verschieben · Rand ziehen für Breite)"
+          >
+            <span style="pointer-events:none;">${meta.label}${sortIcon}</span>
+            <span class="col-resize-handle" draggable="false" onmousedown="startColumnResize(event, '${key}')" onclick="event.stopPropagation()"></span>
+          </th>
+        `;
+      }).join('');
+
+      thead.innerHTML = `
+        <tr>
+          <th class="col-check">
+            <input id="select-all-cb" type="checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this)" title="Alle sichtbaren Dateien auswählen (Tipp: Umschalt+Klick für Bereich)">
+          </th>
+          ${thCells}
+        </tr>
+      `;
+    }
 
     const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information', 'node_modules', '.git', '__pycache__']);
     const IDB_NAME = 'pdf_suche_pro_web_v1';
@@ -1500,12 +1705,9 @@
     }
 
     function setSort(col) {
+      if (state.justDraggedCol) return;
       if (state.sortCol === col) state.sortAsc = !state.sortAsc;
       else { state.sortCol = col; state.sortAsc = true; }
-      ['name', 'ext', 'dir', 'size', 'mtime'].forEach(c => {
-        const sp = document.getElementById(`sort-${c}`);
-        if (sp) sp.textContent = (c === state.sortCol) ? (state.sortAsc ? '▲' : '▼') : '';
-      });
       applyFilters();
     }
 
@@ -1543,7 +1745,9 @@
     }
 
     function renderTable() {
+      renderTableHeader();
       const tbody = document.getElementById('file-tbody');
+      const { order } = _getColumnLayout();
       const knownSizes = state.filteredFiles.filter(it => it.size !== null && it.size !== undefined);
       const totalSize = knownSizes.reduce((s, it) => s + (it.size || 0), 0);
       document.getElementById('stat-shown').textContent = state.filteredFiles.length;
@@ -1641,7 +1845,15 @@
         btnRen.onclick = () => openSingleRenameModal(item);
 
         tdAct.append(btnCopy, btnOpen, btnRen);
-        tr.append(tdCheck, tdName, tdExt, tdDir, tdSize, tdDate, tdAct);
+        const cellMap = {
+          name: tdName,
+          ext: tdExt,
+          dir: tdDir,
+          size: tdSize,
+          mtime: tdDate,
+          act: tdAct,
+        };
+        tr.append(tdCheck, ...order.map(k => cellMap[k]).filter(Boolean));
         frag.appendChild(tr);
       });
       tbody.innerHTML = '';
@@ -2201,6 +2413,7 @@
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
     document.addEventListener('DOMContentLoaded', () => {
+      renderTableHeader();
       initLastDirectoryOnStartup();
       document.addEventListener('fullscreenchange', () => {
         const card = document.getElementById('preview-card');
