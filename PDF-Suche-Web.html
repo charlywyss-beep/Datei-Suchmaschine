@@ -477,6 +477,19 @@
 
     .table-scroll { max-height: calc(100vh - 140px); min-height: 460px; overflow-y: auto; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .col-spacer {
+      width: auto !important;
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+      pointer-events: none !important;
+    }
+    thead th.col-spacer {
+      border-bottom: 1px solid var(--border) !important;
+      background: #f8fafc !important;
+      cursor: default !important;
+      pointer-events: none !important;
+    }
     thead th {
       position: sticky; top: 0; z-index: 5; background: #f8fafc; color: var(--text);
       font-size: 12px; font-weight: 700; text-align: left; padding: 9px 10px;
@@ -685,7 +698,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.9 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.10 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -902,7 +915,7 @@
             <thead id="results-thead"></thead>
             <tbody id="file-tbody">
               <tr>
-                <td colspan="7">
+                <td colspan="8">
                   <div class="empty-box">
                     <h3>Noch kein Ordner ausgewählt</h3>
                     <div>Klicke oben links auf <strong>„Ordner wählen…“</strong>, um PDFs, Word-, Excel-, PowerPoint-, Bild- &amp; Textdateien einzulesen.</div>
@@ -1073,7 +1086,7 @@
       justDraggedCol: false,
     };
 
-    const COLUMN_LAYOUT_STORAGE_KEY = 'pdf_suche_web_col_layout_v2';
+    const COLUMN_LAYOUT_STORAGE_KEY = 'pdf_suche_web_col_layout_v3';
     const LEGACY_COLUMN_LAYOUT_KEY = 'pdf_suche_web_col_layout_v1';
     const CHECK_COL_WIDTH = 36;
     const DEFAULT_COLUMN_ORDER = ['name', 'ext', 'dir', 'size', 'mtime', 'act'];
@@ -1144,11 +1157,13 @@
       state._natCache = null;
       try {
         localStorage.removeItem(COLUMN_LAYOUT_STORAGE_KEY);
+        localStorage.removeItem('pdf_suche_web_col_layout_v2');
         localStorage.removeItem(LEGACY_COLUMN_LAYOUT_KEY);
       } catch (_) {}
+      renderTableHeader();
       renderTable();
       applyColumnWidths();
-      toast('↺ Spalten: Reihenfolge zurückgesetzt & Breiten optimal an Inhalt angepasst.', 'ok');
+      toast('↺ Spalten: Optimal an Inhalt angepasst & Reihenfolge zurückgesetzt.', 'ok');
     }
 
     /* Automatische Spaltenbreiten: messen den echten Inhalt und passen alles exakt in die sichtbare Tabellenbreite */
@@ -1193,9 +1208,9 @@
 
       const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
       const widths = {
-        name: Math.round(clamp(Math.max(hName, nameMax + 28), 160, 680)),
+        name: Math.round(clamp(Math.max(hName, nameMax + 28), 160, 560)),
         ext: Math.max(hExt, 72),
-        dir: Math.round(clamp(Math.max(hDir, dirMax + 28), 118, 480)),
+        dir: Math.round(clamp(Math.max(hDir, dirMax + 28), 118, 420)),
         size: Math.round(clamp(Math.max(hSize, sizeMax + 24), 84, 130)),
         mtime: Math.max(hMtime, 132),
         act: hasFiles ? Math.max(hAct, 118) : Math.max(hAct, 88)
@@ -1221,13 +1236,11 @@
       const fixedIdx = allIdx.filter(i => !COLUMN_FLEX[order[i]]);
       const total = sum(w);
 
-      if (total < avail) {
-        const extra = avail - total;
-        // Verteile extra Platz proportional auf flexible Spalten
-        const grow = (auto && flexIdx.length) ? flexIdx : allIdx;
-        const growSum = sum(grow.map(i => w[i])) || 1;
-        grow.forEach(i => { w[i] += extra * (w[i] / growSum); });
-      } else if (total > avail) {
+      // Wie im Windows Explorer: Spalten bleiben kompakt am Inhalt ausgerichtet.
+      // Ueberschuessiger horizontaler Platz (z. B. auf breiten Monitoren oder ohne Vorschau)
+      // wird NICHT kuenstlich in die Spalte "Name" geblasen, sondern bleibt als sauberer
+      // Freiraum rechts (.col-spacer).
+      if (total > avail && auto) {
         let need = total - avail;
         const shrinkToFloor = (idxs, floors) => {
           if (need <= 0.5) return;
@@ -1238,17 +1251,12 @@
           idxs.forEach((i, j) => { w[i] -= take * slackArr[j] / slack; });
           need -= take;
         };
-        if (auto) {
-          shrinkToFloor(flexIdx, soft);
-          shrinkToFloor(fixedIdx, soft);
-        }
+        shrinkToFloor(flexIdx, soft);
+        shrinkToFloor(fixedIdx, soft);
         shrinkToFloor(allIdx, hard);
       }
 
-      const rounded = w.map(v => Math.floor(v));
-      const diff = Math.floor(avail) - sum(rounded);
-      if (diff > 0) rounded[0] += diff;
-      return rounded;
+      return w.map((v, i) => Math.max(hard[i], Math.round(v)));
     }
 
     function applyColumnWidths() {
@@ -1263,18 +1271,34 @@
         const th = document.querySelector(`#results-thead th[data-col-key="${k}"]`);
         if (th) th.style.width = `${fitted[i]}px`;
       });
+      if (!colgroup.querySelector('col.col-spacer')) {
+        const sc = document.createElement('col');
+        sc.className = 'col-spacer';
+        colgroup.appendChild(sc);
+      }
+      if (!document.querySelector('#results-thead th.col-spacer')) {
+        const tr = document.querySelector('#results-thead tr');
+        if (tr) {
+          const sth = document.createElement('th');
+          sth.className = 'col-spacer';
+          tr.appendChild(sth);
+        }
+      }
     }
 
     function autoFitSingleColumn(e, key) {
       e.preventDefault();
       e.stopPropagation();
-      const { order, widths } = _getColumnLayout();
+      const { widths } = _getColumnLayout();
       const nats = _naturalColumnWidths();
       const targetW = nats[key] || DEFAULT_COLUMN_WIDTHS[key] || 100;
       widths[key] = targetW;
       state.columnAuto = false;
       _saveColumnLayout();
-      applyColumnWidths();
+      const col = document.querySelector(`#results-colgroup col[data-col-key="${key}"]`);
+      if (col) col.style.width = `${targetW}px`;
+      const th = document.querySelector(`#results-thead th[data-col-key="${key}"]`);
+      if (th) th.style.width = `${targetW}px`;
       toast(`Spalte „${COLUMN_META[key]?.label || key}“ an Inhalt angepasst (${targetW} px).`, 'ok');
     }
 
@@ -1334,37 +1358,25 @@
     function startColumnResize(e, key) {
       e.preventDefault();
       e.stopPropagation();
-      const { order } = _getColumnLayout();
-      const idx = order.indexOf(key);
-      if (idx < 0) return;
-      const partnerIdx = idx < order.length - 1 ? idx + 1 : idx - 1;
-      if (partnerIdx < 0) return;
+      const { widths } = _getColumnLayout();
       const handle = e.currentTarget;
 
-      const getCol = k => document.querySelector(`#results-colgroup col[data-col-key="${k}"]`);
-      const getTh = k => document.querySelector(`#results-thead th[data-col-key="${k}"]`);
-      const cols = order.map(getCol);
-      const ths = order.map(getTh);
-      if (cols.some(c => !c) || ths.some(t => !t)) return;
+      const col = document.querySelector(`#results-colgroup col[data-col-key="${key}"]`);
+      const th = document.querySelector(`#results-thead th[data-col-key="${key}"]`);
+      if (!col || !th) return;
 
       state.isResizingColumn = true;
       state.justDraggedCol = true;
       handle.classList.add('resizing');
       const startX = e.clientX;
-      const startWidths = ths.map(t => t.getBoundingClientRect().width);
-      const pair = startWidths[idx] + startWidths[partnerIdx];
-      const minA = COLUMN_HARD_MIN[order[idx]] || 48;
-      const minB = COLUMN_HARD_MIN[order[partnerIdx]] || 48;
+      const startW = th.getBoundingClientRect().width;
+      const minW = COLUMN_HARD_MIN[key] || 48;
 
-      // Wie im Windows Explorer: Gesamtbreite bleibt konstant, die Nachbarspalte gibt Platz ab bzw. nimmt ihn auf
       const onMove = moveEvt => {
         const delta = moveEvt.clientX - startX;
-        const newA = Math.round(Math.max(minA, Math.min(pair - minB, startWidths[idx] + delta)));
-        const newB = Math.round(pair - newA);
-        cols[idx].style.width = `${newA}px`;
-        cols[partnerIdx].style.width = `${newB}px`;
-        ths[idx].style.width = `${newA}px`;
-        ths[partnerIdx].style.width = `${newB}px`;
+        const newW = Math.max(minW, Math.round(startW + delta));
+        col.style.width = `${newW}px`;
+        th.style.width = `${newW}px`;
       };
 
       const onUp = () => {
@@ -1372,11 +1384,8 @@
         document.removeEventListener('mouseup', onUp);
         handle.classList.remove('resizing');
         state.isResizingColumn = false;
-        const { widths } = _getColumnLayout();
-        order.forEach((k, i) => {
-          const px = parseFloat(cols[i].style.width);
-          if (px > 0) widths[k] = px;
-        });
+        const px = parseFloat(col.style.width);
+        if (px > 0) widths[key] = px;
         state.columnAuto = false;
         _saveColumnLayout();
         setTimeout(() => { state.justDraggedCol = false; }, 140);
@@ -1398,7 +1407,7 @@
 
       colgroup.innerHTML = `<col style="width:${CHECK_COL_WIDTH}px;">` + order.map((k, i) => {
         return `<col data-col-key="${k}" style="width:${fitted[i]}px;">`;
-      }).join('');
+      }).join('') + '<col class="col-spacer">';
 
       const thCells = order.map((key, i) => {
         const meta = COLUMN_META[key] || { label: key, sortKey: null, cls: '', title: '' };
@@ -1432,6 +1441,7 @@
             <input id="select-all-cb" type="checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this)" title="Alle sichtbaren Dateien auswählen (Tipp: Umschalt+Klick für Bereich)">
           </th>
           ${thCells}
+          <th class="col-spacer"></th>
         </tr>
       `;
     }
@@ -2958,19 +2968,19 @@
       updateSelectionUI();
 
       if (state.allFiles.length === 0 && (!state.allDirs || state.allDirs.size === 0)) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>${state.rootName ? 'Keine Dateien gefunden' : 'Noch kein Ordner ausgewählt'}</h3><div>${state.rootName ? 'In diesem Ordner wurden keine Dateien gefunden.' : 'Klicke oben links auf <strong>„Ordner wählen…“</strong>, um deine Dateien einzulesen.'}</div></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-box"><h3>${state.rootName ? 'Keine Dateien gefunden' : 'Noch kein Ordner ausgewählt'}</h3><div>${state.rootName ? 'In diesem Ordner wurden keine Dateien gefunden.' : 'Klicke oben links auf <strong>„Ordner wählen…“</strong>, um deine Dateien einzulesen.'}</div></div></td></tr>`;
         return;
       }
       if (state.filteredFiles.length === 0) {
         const rawQ = (document.getElementById('search-input').value || '').trim();
         const looksLikePath = /^[a-zA-Z]:[\\/]|^\\\\/.test(rawQ);
         if (looksLikePath) {
-          tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Ordnerpfad im Suchfeld erkannt</h3><div style="margin-bottom:10px;">Das obere Suchfeld filtert nach <strong>Dateinamen</strong> – nicht nach dem Windows-Ordnerpfad.<br>Die <strong>${state.allFiles.length} Dateien</strong> aus „${escapeHtml(state.rootName)}“ sind bereits geladen.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn btn-primary" onclick="adoptSearchAsBasePath()">Als Basis-Pfad übernehmen &amp; alle anzeigen</button><button type="button" class="btn" onclick="clearSearchInput()">Suchfeld leeren</button></div></div></td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8"><div class="empty-box"><h3>Ordnerpfad im Suchfeld erkannt</h3><div style="margin-bottom:10px;">Das obere Suchfeld filtert nach <strong>Dateinamen</strong> – nicht nach dem Windows-Ordnerpfad.<br>Die <strong>${state.allFiles.length} Dateien</strong> aus „${escapeHtml(state.rootName)}“ sind bereits geladen.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn btn-primary" onclick="adoptSearchAsBasePath()">Als Basis-Pfad übernehmen &amp; alle anzeigen</button><button type="button" class="btn" onclick="clearSearchInput()">Suchfeld leeren</button></div></div></td></tr>`;
         } else if (state.activeSubfolder && !rawQ && state.category === 'all' && !state.timeframe && !state.sizePreset) {
           const dispFolder = toGermanDisplayPath(state.activeSubfolder);
-          tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Dieser Ordner ist leer</h3><div style="margin-bottom:10px;">In <strong>„${escapeHtml(dispFolder)}“</strong> befinden sich aktuell keine Dateien.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn" onclick="navBack()">← Zurück</button><button type="button" class="btn btn-primary" onclick="navigateToSubfolder('', true, true)">Alle Ebenen anzeigen</button></div></div></td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8"><div class="empty-box"><h3>Dieser Ordner ist leer</h3><div style="margin-bottom:10px;">In <strong>„${escapeHtml(dispFolder)}“</strong> befinden sich aktuell keine Dateien.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn" onclick="navBack()">← Zurück</button><button type="button" class="btn btn-primary" onclick="navigateToSubfolder('', true, true)">Alle Ebenen anzeigen</button></div></div></td></tr>`;
         } else {
-          tbody.innerHTML = `<tr><td colspan="7"><div class="empty-box"><h3>Keine Treffer für den aktuellen Filter</h3><div>Passe den Suchbegriff an oder klicke auf <strong>„Filter leeren“</strong>.</div></div></td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8"><div class="empty-box"><h3>Keine Treffer für den aktuellen Filter</h3><div>Passe den Suchbegriff an oder klicke auf <strong>„Filter leeren“</strong>.</div></div></td></tr>`;
         }
         return;
       }
@@ -3087,7 +3097,9 @@
           mtime: tdDate,
           act: tdAct,
         };
-        tr.append(tdCheck, ...order.map(k => cellMap[k]).filter(Boolean));
+        const tdSpacer = document.createElement('td');
+        tdSpacer.className = 'col-spacer';
+        tr.append(tdCheck, ...order.map(k => cellMap[k]).filter(Boolean), tdSpacer);
         frag.appendChild(tr);
       });
       tbody.innerHTML = '';
@@ -3749,6 +3761,7 @@
         const item = state.allFiles.find(x => x.id === state.activeId);
         if (item) showFilePreview(item);
       }
+      requestAnimationFrame(() => applyColumnWidths());
     }
 
     /* Umbenennen-Engine (behält jeweilige Dateiendung sicher bei) */
