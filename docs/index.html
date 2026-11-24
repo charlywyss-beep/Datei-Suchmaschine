@@ -241,7 +241,7 @@
       gap: 10px; padding: 8px 12px; border-radius: 9px;
       background: #f8fafc; border: 1px solid var(--divider); font-size: 12.5px;
     }
-    .path-breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--text-sec); font-weight: 600; min-width: 0; }
+    .path-breadcrumbs { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; color: var(--text-sec); font-weight: 600; min-width: 0; }
     .crumb-link {
       border: none; background: transparent; color: var(--accent-hover); font-family: inherit;
       font-size: 12.5px; font-weight: 700; padding: 2px 6px; border-radius: 6px; cursor: pointer;
@@ -698,7 +698,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.10 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.11 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -2563,104 +2563,168 @@
       }
     }
 
-    function updatePathBar() {
-      const bc = document.getElementById('path-breadcrumbs');
-      if (!bc || !state.rootName) return;
-      const actItem = state.allFiles.find(x => x.id === state.activeId);
-      const rootDisp = formatRootDisplayPath();
-      const curDir = _normItemDir(state.activeSubfolder);
+    function _renderExplorerBreadcrumbs(containerEl, opts = {}) {
+      if (!containerEl) return;
+      if (!state.rootName) {
+        containerEl.innerHTML = '<span style="color:var(--text-muted);font-style:italic;">Kein Ordner gewählt (klicke oben auf „Ordner wählen…“)</span>';
+        return;
+      }
+
+      const curSub = _normItemDir(state.activeSubfolder);
       const allLevels = !!state.includeSublevels;
-      const rootLvl = _getSubfolderLevelData('');
+      const fullDisplay = formatFullFolderPath(curSub);
+      const hasFullWin = hasFullWindowsPath(fullDisplay);
 
-      bc.innerHTML = '';
-      const lbl = document.createElement('span');
-      lbl.textContent = '📂 Pfad:';
-      bc.appendChild(lbl);
+      containerEl.innerHTML = '';
 
-      const addArrow = (targetDir, titleTxt) => {
-        const arr = document.createElement('button');
-        arr.type = 'button';
-        arr.className = 'crumb-arrow';
-        arr.textContent = '▸';
-        arr.title = titleTxt;
-        arr.onclick = e => {
-          e.stopPropagation();
-          openExplorerFolderPopup(arr, targetDir, targetDir);
-        };
-        bc.appendChild(arr);
+      if (opts.showFolderIcon) {
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'addr-folder-icon';
+        iconSpan.style.cssText = 'font-size:13px; margin-right:4px; user-select:none;';
+        iconSpan.textContent = '📁';
+        containerEl.appendChild(iconSpan);
+      }
+
+      const addSep = (targetDir) => {
+        const sep = document.createElement('span');
+        sep.className = 'addr-crumb-sep';
+        sep.textContent = '›';
+        if (targetDir !== undefined) {
+          const lvl = _getSubfolderLevelData(targetDir);
+          if (lvl && lvl.children && lvl.children.length > 0) {
+            sep.style.cursor = 'pointer';
+            sep.title = 'Unterordner anzeigen';
+            sep.onclick = e => {
+              e.stopPropagation();
+              openExplorerFolderPopup(sep, targetDir, targetDir);
+            };
+          }
+        }
+        containerEl.appendChild(sep);
       };
 
-      // Root-Segment
-      if (curDir) {
-        const rootBtn = document.createElement('button');
-        rootBtn.type = 'button';
-        rootBtn.className = 'crumb-link';
-        rootBtn.title = 'Alle Ebenen anzeigen';
-        rootBtn.textContent = rootDisp;
-        rootBtn.onclick = () => navigateToSubfolder('', true, true);
-        bc.appendChild(rootBtn);
+      if (hasFullWin) {
+        const driveMatch = fullDisplay.match(/^([a-zA-Z]:)\\(.*)$/);
+        if (driveMatch) {
+          const driveLetter = driveMatch[1];
+          const pcSpan = document.createElement('span');
+          pcSpan.className = 'addr-crumb-btn active';
+          pcSpan.textContent = 'Dieser PC';
+          pcSpan.title = 'Dieser PC (Windows Explorer)';
+          containerEl.appendChild(pcSpan);
+          addSep();
+
+          const driveSpan = document.createElement('span');
+          driveSpan.className = 'addr-crumb-btn active';
+          driveSpan.textContent = driveLetter;
+          driveSpan.title = `Laufwerk ${driveLetter}`;
+          containerEl.appendChild(driveSpan);
+          addSep();
+
+          // Intermediates between drive and rootName if any
+          const pref = (state.basePathPrefix || '').replace(/[\\/]+$/, '');
+          const prefMatch = pref.match(/^[a-zA-Z]:\\(.*)$/);
+          if (prefMatch && prefMatch[1]) {
+            const prefSegs = prefMatch[1].split('\\').filter(Boolean);
+            const rootNameLower = (state.rootName || '').toLowerCase();
+            const rootIdx = prefSegs.map(s => s.toLowerCase()).lastIndexOf(rootNameLower);
+            const interSegs = (rootIdx > 0) ? prefSegs.slice(0, rootIdx) : [];
+            interSegs.forEach(seg => {
+              const span = document.createElement('span');
+              span.className = 'addr-crumb-btn active';
+              span.textContent = toGermanDisplayPath(seg);
+              containerEl.appendChild(span);
+              addSep();
+            });
+          }
+        }
       } else {
-        const rootSpan = document.createElement('span');
-        rootSpan.className = 'crumb-current';
-        rootSpan.textContent = rootDisp;
-        bc.appendChild(rootSpan);
+        const pcSpan = document.createElement('span');
+        pcSpan.className = 'addr-crumb-btn active';
+        pcSpan.textContent = 'Dieser PC';
+        containerEl.appendChild(pcSpan);
+        addSep();
       }
 
-      if (rootLvl.children.length > 0) {
-        addArrow('', `Unterordner von „${rootDisp}“ öffnen`);
-      }
+      // Hauptordner-Button
+      const rootBtn = document.createElement('button');
+      rootBtn.type = 'button';
+      rootBtn.className = 'addr-crumb-btn' + (!curSub ? ' active' : '');
+      rootBtn.textContent = toGermanDisplayPath(toGermanFolderLabel(state.rootName));
+      rootBtn.title = `Hauptordner „${escapeHtml(state.rootName)}“ (Klicken für Alle Ebenen)`;
+      rootBtn.onclick = () => navigateToSubfolder('', true, true);
+      containerEl.appendChild(rootBtn);
 
-      if (curDir) {
-        const segs = curDir.split('\\').filter(Boolean);
+      // Subfolder-Segmente
+      if (curSub) {
+        const segs = curSub.split('\\').filter(Boolean);
         let acc = '';
         segs.forEach((seg, idx) => {
           acc = acc ? `${acc}\\${seg}` : seg;
-          const dispSeg = toGermanDisplayPath(seg);
-          const targetPath = acc;
+          const targetDir = acc;
           const isLast = idx === segs.length - 1;
-          const segLvl = _getSubfolderLevelData(targetPath);
 
-          if (!isLast || allLevels) {
-            const segBtn = document.createElement('button');
-            segBtn.type = 'button';
-            segBtn.className = 'crumb-link';
-            segBtn.title = `Ordner „${dispSeg}“ direkt anzeigen`;
-            segBtn.textContent = dispSeg;
-            segBtn.onclick = () => navigateToSubfolder(targetPath, false, true);
-            bc.appendChild(segBtn);
-          } else {
-            const curSpan = document.createElement('span');
-            curSpan.className = 'crumb-current';
-            curSpan.textContent = dispSeg;
-            bc.appendChild(curSpan);
-          }
+          // Der Pfeil vor diesem Segment öffnet die Unterordner der vorherigen Ebene
+          const parentDir = idx === 0 ? '' : segs.slice(0, idx).join('\\');
+          addSep(parentDir);
 
-          if (segLvl.children.length > 0) {
-            addArrow(targetPath, `Unterordner von „${dispSeg}“ öffnen`);
+          const segBtn = document.createElement('button');
+          segBtn.type = 'button';
+          segBtn.className = 'addr-crumb-btn' + (isLast ? ' active' : '');
+          segBtn.textContent = toGermanDisplayPath(seg);
+          segBtn.title = `Ordner „${escapeHtml(seg)}“`;
+          if (!isLast) {
+            segBtn.onclick = () => navigateToSubfolder(targetDir, false, true);
           }
+          containerEl.appendChild(segBtn);
         });
-        if (allLevels) {
-          const tag = document.createElement('span');
-          tag.style.cssText = 'font-size:11px; color:#2563eb; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:1px 6px; margin-left:2px;';
-          tag.textContent = 'alle Unterordner';
-          bc.appendChild(tag);
+      } else {
+        const rootLvl = _getSubfolderLevelData('');
+        if (rootLvl && rootLvl.children && rootLvl.children.length > 0) {
+          addSep('');
         }
       }
 
-      if (actItem) {
-        const fullDir = formatFullFolderPath(actItem.dir);
-        const sepBar = document.createElement('span');
-        sepBar.style.cssText = 'color:#cbd5e1; margin:0 4px;';
-        sepBar.textContent = '|';
-        const selLbl = document.createElement('span');
-        selLbl.style.color = '#475569';
-        selLbl.textContent = 'Ausgewählt:';
-        const selPath = document.createElement('span');
-        selPath.className = 'crumb-current';
-        selPath.style.color = '#1d4ed8';
-        selPath.textContent = `${fullDir}\\${actItem.name}`;
-        bc.append(sepBar, selLbl, selPath);
+      // Badges
+      const rawQ = (document.getElementById('search-input')?.value || '').trim();
+      if (rawQ) {
+        const qBadge = document.createElement('span');
+        qBadge.className = 'addr-badge addr-badge-query';
+        qBadge.textContent = `Suche: „${rawQ}“ (${state.filteredFiles.length} Treffer)`;
+        containerEl.appendChild(qBadge);
+      } else if (allLevels) {
+        const allBadge = document.createElement('span');
+        allBadge.className = 'addr-badge addr-badge-all';
+        allBadge.textContent = 'Alle Ebenen';
+        containerEl.appendChild(allBadge);
+      } else {
+        const dirBadge = document.createElement('span');
+        dirBadge.className = 'addr-badge addr-badge-direct';
+        dirBadge.textContent = 'Direkter Inhalt';
+        containerEl.appendChild(dirBadge);
       }
+
+      if (opts.showSelection) {
+        const actItem = state.allFiles.find(x => x.id === state.activeId);
+        if (actItem) {
+          const sepBar = document.createElement('span');
+          sepBar.style.cssText = 'color:#cbd5e1; margin:0 4px;';
+          sepBar.textContent = '|';
+          const selLbl = document.createElement('span');
+          selLbl.style.cssText = 'color:#475569; font-size:11.5px;';
+          selLbl.textContent = 'Ausgewählt:';
+          const selPath = document.createElement('span');
+          selPath.className = 'crumb-current';
+          selPath.style.cssText = 'color:#1d4ed8; font-size:11.5px; font-weight:700;';
+          selPath.textContent = actItem.name;
+          containerEl.append(sepBar, selLbl, selPath);
+        }
+      }
+    }
+
+    function updatePathBar() {
+      const bc = document.getElementById('path-breadcrumbs');
+      _renderExplorerBreadcrumbs(bc, { showFolderIcon: true, showSelection: true });
       renderTableAddressBar();
     }
 
@@ -2690,102 +2754,8 @@
     function renderTableAddressBar() {
       const crumbsEl = document.getElementById('table-address-crumbs');
       const btnUp = document.getElementById('table-btn-up');
-      if (!crumbsEl) return;
-
-      if (!state.rootName) {
-        crumbsEl.innerHTML = '<span style="color:var(--text-muted);font-style:italic;">Kein Ordner gewählt (klicke oben auf „Ordner wählen…“)</span>';
-        if (btnUp) btnUp.disabled = true;
-        return;
-      }
-
-      const curSub = _normItemDir(state.activeSubfolder);
-      const allLevels = !!state.includeSublevels;
-
-      crumbsEl.innerHTML = '';
-      if (btnUp) btnUp.disabled = !curSub;
-
-      const fullDisplay = formatFullFolderPath(curSub);
-      const hasFullWin = hasFullWindowsPath(fullDisplay);
-
-      if (hasFullWin) {
-        const driveMatch = fullDisplay.match(/^([a-zA-Z]:)\\(.*)$/);
-        if (driveMatch) {
-          const driveLetter = driveMatch[1];
-          const pcSpan = document.createElement('span');
-          pcSpan.className = 'addr-crumb-btn active';
-          pcSpan.textContent = 'Dieser PC';
-          crumbsEl.appendChild(pcSpan);
-
-          const sep0 = document.createElement('span');
-          sep0.className = 'addr-crumb-sep';
-          sep0.textContent = '›';
-          crumbsEl.appendChild(sep0);
-
-          const driveSpan = document.createElement('span');
-          driveSpan.className = 'addr-crumb-btn active';
-          driveSpan.textContent = `${driveLetter}`;
-          crumbsEl.appendChild(driveSpan);
-
-          const sep1 = document.createElement('span');
-          sep1.className = 'addr-crumb-sep';
-          sep1.textContent = '›';
-          crumbsEl.appendChild(sep1);
-        }
-      }
-
-      // Hauptordner-Button
-      const rootBtn = document.createElement('button');
-      rootBtn.type = 'button';
-      rootBtn.className = 'addr-crumb-btn' + (!curSub ? ' active' : '');
-      rootBtn.textContent = toGermanDisplayPath(toGermanFolderLabel(state.rootName));
-      rootBtn.title = `Hauptordner „${escapeHtml(state.rootName)}“ (Klicken für Alle Ebenen)`;
-      rootBtn.onclick = () => navigateToSubfolder('', true, true);
-      crumbsEl.appendChild(rootBtn);
-
-      // Subfolder-Segmente
-      if (curSub) {
-        const segs = curSub.split('\\').filter(Boolean);
-        let acc = '';
-        segs.forEach((seg, idx) => {
-          acc = acc ? `${acc}\\${seg}` : seg;
-          const targetDir = acc;
-          const isLast = idx === segs.length - 1;
-
-          const sep = document.createElement('span');
-          sep.className = 'addr-crumb-sep';
-          sep.textContent = '›';
-          crumbsEl.appendChild(sep);
-
-          const segBtn = document.createElement('button');
-          segBtn.type = 'button';
-          segBtn.className = 'addr-crumb-btn' + (isLast ? ' active' : '');
-          segBtn.textContent = toGermanDisplayPath(seg);
-          segBtn.title = `Ordner „${escapeHtml(seg)}“`;
-          if (!isLast) {
-            segBtn.onclick = () => navigateToSubfolder(targetDir, false, true);
-          }
-          crumbsEl.appendChild(segBtn);
-        });
-      }
-
-      // Badges
-      const rawQ = (document.getElementById('search-input')?.value || '').trim();
-      if (rawQ) {
-        const qBadge = document.createElement('span');
-        qBadge.className = 'addr-badge addr-badge-query';
-        qBadge.textContent = `Suche: „${rawQ}“ (${state.filteredFiles.length} Treffer)`;
-        crumbsEl.appendChild(qBadge);
-      } else if (allLevels) {
-        const allBadge = document.createElement('span');
-        allBadge.className = 'addr-badge addr-badge-all';
-        allBadge.textContent = 'Alle Ebenen';
-        crumbsEl.appendChild(allBadge);
-      } else {
-        const dirBadge = document.createElement('span');
-        dirBadge.className = 'addr-badge addr-badge-direct';
-        dirBadge.textContent = 'Direkter Inhalt';
-        crumbsEl.appendChild(dirBadge);
-      }
+      if (btnUp) btnUp.disabled = !_normItemDir(state.activeSubfolder);
+      _renderExplorerBreadcrumbs(crumbsEl, { showFolderIcon: false, showSelection: false });
     }
 
     function clearSearchInput() {
