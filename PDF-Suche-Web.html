@@ -685,7 +685,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.8 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.9 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1147,7 +1147,8 @@
         localStorage.removeItem(LEGACY_COLUMN_LAYOUT_KEY);
       } catch (_) {}
       renderTable();
-      toast('↺ Spalten: Reihenfolge zurückgesetzt & Breiten automatisch angepasst.', 'info');
+      applyColumnWidths();
+      toast('↺ Spalten: Reihenfolge zurückgesetzt & Breiten optimal an Inhalt angepasst.', 'ok');
     }
 
     /* Automatische Spaltenbreiten: messen den echten Inhalt und passen alles exakt in die sichtbare Tabellenbreite */
@@ -1168,22 +1169,36 @@
       const step = items.length > 400 ? Math.ceil(items.length / 400) : 1;
       let nameMax = 0;
       let dirMax = 0;
+      let sizeMax = 0;
       let hasFiles = false;
+
       for (let i = 0; i < items.length; i += step) {
         const it = items[i];
         if (!it.isFolder) hasFiles = true;
-        nameMax = Math.max(nameMax, _measureTextWidth(it.isFolder ? `📁 ${it.name}` : it.name, true));
+        const nameStr = (it.isFolder ? '📁 ' : '') + (it.name || '');
+        nameMax = Math.max(nameMax, _measureTextWidth(nameStr, true));
         const d = it.dir === '(Hauptordner)' ? it.dir : toGermanDisplayPath(it.dir || '');
         dirMax = Math.max(dirMax, _measureTextWidth(d, false));
+        const s = it.isFolder ? (it.totalFiles === 0 ? 'leer (0)' : formatBytes(it.size)) : formatBytes(it.size);
+        sizeMax = Math.max(sizeMax, _measureTextWidth(s, false));
       }
+
+      // Mindestbreiten aus Header-Beschriftungen messen, damit kein Spaltenkopf abgeschnitten wird
+      const hName = Math.ceil(_measureTextWidth(COLUMN_META.name?.label || 'Name', true) + 36);
+      const hExt = Math.ceil(_measureTextWidth(COLUMN_META.ext?.label || 'Typ', true) + 32);
+      const hDir = Math.ceil(_measureTextWidth(COLUMN_META.dir?.label || 'Unterordner', true) + 36);
+      const hSize = Math.ceil(_measureTextWidth(COLUMN_META.size?.label || 'Größe', true) + 36);
+      const hMtime = Math.ceil(_measureTextWidth(COLUMN_META.mtime?.label || 'Geändert', true) + 36);
+      const hAct = Math.ceil(_measureTextWidth(COLUMN_META.act?.label || 'Aktionen', true) + 28);
+
       const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
       const widths = {
-        name: Math.round(clamp(nameMax + 26, 150, 460)),
-        ext: 64,
-        dir: Math.round(clamp(dirMax + 26, 100, 300)),
-        size: 78,
-        mtime: 124,
-        act: hasFiles ? 118 : 84
+        name: Math.round(clamp(Math.max(hName, nameMax + 28), 160, 680)),
+        ext: Math.max(hExt, 72),
+        dir: Math.round(clamp(Math.max(hDir, dirMax + 28), 118, 480)),
+        size: Math.round(clamp(Math.max(hSize, sizeMax + 24), 84, 130)),
+        mtime: Math.max(hMtime, 132),
+        act: hasFiles ? Math.max(hAct, 118) : Math.max(hAct, 88)
       };
       state._natCache = { ref, len: ref.length, widths };
       return widths;
@@ -1208,9 +1223,10 @@
 
       if (total < avail) {
         const extra = avail - total;
+        // Verteile extra Platz proportional auf flexible Spalten
         const grow = (auto && flexIdx.length) ? flexIdx : allIdx;
         const growSum = sum(grow.map(i => w[i])) || 1;
-        grow.forEach(i => { w[i] += extra * w[i] / growSum; });
+        grow.forEach(i => { w[i] += extra * (w[i] / growSum); });
       } else if (total > avail) {
         let need = total - avail;
         const shrinkToFloor = (idxs, floors) => {
@@ -1231,7 +1247,7 @@
 
       const rounded = w.map(v => Math.floor(v));
       const diff = Math.floor(avail) - sum(rounded);
-      if (diff > 0) rounded[rounded.length - 1] += diff;
+      if (diff > 0) rounded[0] += diff;
       return rounded;
     }
 
@@ -1244,7 +1260,22 @@
       order.forEach((k, i) => {
         const col = colgroup.querySelector(`col[data-col-key="${k}"]`);
         if (col) col.style.width = `${fitted[i]}px`;
+        const th = document.querySelector(`#results-thead th[data-col-key="${k}"]`);
+        if (th) th.style.width = `${fitted[i]}px`;
       });
+    }
+
+    function autoFitSingleColumn(e, key) {
+      e.preventDefault();
+      e.stopPropagation();
+      const { order, widths } = _getColumnLayout();
+      const nats = _naturalColumnWidths();
+      const targetW = nats[key] || DEFAULT_COLUMN_WIDTHS[key] || 100;
+      widths[key] = targetW;
+      state.columnAuto = false;
+      _saveColumnLayout();
+      applyColumnWidths();
+      toast(`Spalte „${COLUMN_META[key]?.label || key}“ an Inhalt angepasst (${targetW} px).`, 'ok');
     }
 
     let _dragSourceColKey = null;
@@ -1332,6 +1363,8 @@
         const newB = Math.round(pair - newA);
         cols[idx].style.width = `${newA}px`;
         cols[partnerIdx].style.width = `${newB}px`;
+        ths[idx].style.width = `${newA}px`;
+        ths[partnerIdx].style.width = `${newB}px`;
       };
 
       const onUp = () => {
@@ -1358,14 +1391,16 @@
       const colgroup = document.getElementById('results-colgroup');
       if (!thead || !colgroup) return;
 
-      const { order } = _getColumnLayout();
+      const { order, widths } = _getColumnLayout();
+      const base = state.columnAuto !== false ? _naturalColumnWidths() : widths;
+      const fitted = _fitColumnWidths(order, base, _getAvailableColumnsWidth());
       const allChecked = state.filteredFiles.length > 0 && state.filteredFiles.every(it => state.selectedIds.has(it.id));
 
-      colgroup.innerHTML = `<col style="width:${CHECK_COL_WIDTH}px;">` + order.map(k => {
-        return `<col data-col-key="${k}" style="width:100px;">`;
+      colgroup.innerHTML = `<col style="width:${CHECK_COL_WIDTH}px;">` + order.map((k, i) => {
+        return `<col data-col-key="${k}" style="width:${fitted[i]}px;">`;
       }).join('');
 
-      const thCells = order.map(key => {
+      const thCells = order.map((key, i) => {
         const meta = COLUMN_META[key] || { label: key, sortKey: null, cls: '', title: '' };
         const clickAttr = meta.sortKey ? `onclick="setSort('${meta.sortKey}')"` : '';
         const sortIcon = meta.sortKey
@@ -1374,6 +1409,7 @@
         return `
           <th
             data-col-key="${key}"
+            style="width:${fitted[i]}px;"
             draggable="true"
             ondragstart="onColDragStart(event, '${key}')"
             ondragover="onColDragOver(event, '${key}')"
@@ -1382,23 +1418,22 @@
             ondragend="onColDragEnd(event)"
             ${clickAttr}
             class="${meta.cls} th-draggable"
-            title="${meta.title} (Ziehen zum Verschieben · Rand ziehen für Breite)"
+            title="${meta.title} (Ziehen: Verschieben · Rand ziehen: Breite · Doppelklick: optimal anpassen)"
           >
             <span style="pointer-events:none; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:3px;">${meta.label}${sortIcon}</span>
-            <span class="col-resize-handle" draggable="false" onmousedown="startColumnResize(event, '${key}')" onclick="event.stopPropagation()"></span>
+            <span class="col-resize-handle" draggable="false" onmousedown="startColumnResize(event, '${key}')" ondblclick="autoFitSingleColumn(event, '${key}')" onclick="event.stopPropagation()"></span>
           </th>
         `;
       }).join('');
 
       thead.innerHTML = `
         <tr>
-          <th class="col-check">
+          <th class="col-check" style="width:${CHECK_COL_WIDTH}px;">
             <input id="select-all-cb" type="checkbox" ${allChecked ? 'checked' : ''} onchange="toggleSelectAll(this)" title="Alle sichtbaren Dateien auswählen (Tipp: Umschalt+Klick für Bereich)">
           </th>
           ${thCells}
         </tr>
       `;
-      applyColumnWidths();
     }
 
     const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information', 'node_modules', '.git', '__pycache__']);
