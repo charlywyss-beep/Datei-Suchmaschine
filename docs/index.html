@@ -538,6 +538,7 @@
     .type-word { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
     .type-excel { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
     .type-ppt { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+    .type-video { background: #faf5ff; color: #7e22ce; border-color: #e9d5ff; }
     .type-image { background: #f5f3ff; color: #6d28d9; border-color: #ddd6fe; }
     .type-text { background: #ecfeff; color: #0e7490; border-color: #a5f3fc; }
     .type-folder { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
@@ -698,7 +699,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.11 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.12 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -810,6 +811,7 @@
             <button type="button" class="btn" data-cat="word" onclick="setCategory('word')">Word <span class="cat-count" id="cnt-word">0</span></button>
             <button type="button" class="btn" data-cat="excel" onclick="setCategory('excel')">Excel <span class="cat-count" id="cnt-excel">0</span></button>
             <button type="button" class="btn" data-cat="ppt" onclick="setCategory('ppt')">PowerPoint <span class="cat-count" id="cnt-ppt">0</span></button>
+            <button type="button" class="btn" data-cat="video" onclick="setCategory('video')">🎬 Video <span class="cat-count" id="cnt-video">0</span></button>
             <button type="button" class="btn" data-cat="image" onclick="setCategory('image')">Bilder <span class="cat-count" id="cnt-image">0</span></button>
             <button type="button" class="btn" data-cat="text" onclick="setCategory('text')">Text <span class="cat-count" id="cnt-text">0</span></button>
             <button type="button" class="btn" data-cat="other" onclick="setCategory('other')">Sonstige <span class="cat-count" id="cnt-other">0</span></button>
@@ -1455,6 +1457,7 @@
     const EXT_WORD = new Set(['docx', 'doc', 'odt', 'rtf']);
     const EXT_EXCEL = new Set(['xlsx', 'xls', 'xlsm', 'xlsb', 'ods', 'csv']);
     const EXT_PPT = new Set(['pptx', 'ppt', 'ppsx', 'odp']);
+    const EXT_VIDEO = new Set(['mkv', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'm4v', 'ts', 'vob', 'mpg', 'mpeg', 'iso']);
     const EXT_IMAGE = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg', 'ico', 'avif']);
     const EXT_TEXT = new Set(['txt', 'md', 'json', 'xml', 'log', 'ini', 'cfg', 'conf', 'yml', 'yaml', 'html', 'htm', 'css', 'js', 'ts', 'py', 'sql', 'bat', 'ps1']);
 
@@ -1484,6 +1487,7 @@
       if (EXT_WORD.has(ext)) return 'word';
       if (EXT_EXCEL.has(ext)) return 'excel';
       if (EXT_PPT.has(ext)) return 'ppt';
+      if (EXT_VIDEO.has(ext)) return 'video';
       if (EXT_IMAGE.has(ext)) return 'image';
       if (EXT_TEXT.has(ext)) return 'text';
       return 'other';
@@ -2151,7 +2155,7 @@
     function updateCategoryCounts() {
       const scoped = state.allFiles.filter(it => _matchesSubfolder(it.dir, state.activeSubfolder, state.includeSublevels));
       const folderCount = _getScopedFolderItems().length;
-      const counts = { all: scoped.length, folder: folderCount, pdf: 0, word: 0, excel: 0, ppt: 0, image: 0, text: 0, other: 0 };
+      const counts = { all: scoped.length + folderCount, folder: folderCount, pdf: 0, word: 0, excel: 0, ppt: 0, video: 0, image: 0, text: 0, other: 0 };
       scoped.forEach(it => { counts[it.cat] = (counts[it.cat] || 0) + 1; });
       Object.keys(counts).forEach(k => {
         const el = document.getElementById(`cnt-${k}`);
@@ -2887,7 +2891,7 @@
           return true;
         });
       } else {
-        list = state.allFiles.filter(item => {
+        const fileList = state.allFiles.filter(item => {
           if (state.category !== 'all' && item.cat !== state.category) return false;
           if (!_matchesSubfolder(item.dir, state.activeSubfolder, state.includeSublevels)) return false;
           if (terms.length > 0) {
@@ -2899,20 +2903,43 @@
           if (minBytes !== null && (item.size === null || item.size < minBytes)) return false;
           return true;
         });
+
+        if (state.category === 'all') {
+          // Wie im Windows Explorer: Zeige im aktuellen Ordner sowohl die Unterordner (oben) als auch die Dateien!
+          const folderList = _getScopedFolderItems().filter(folder => {
+            if (terms.length > 0) {
+              const hay = `${folder.name} ${folder.fullPath} ${toGermanDisplayPath(folder.fullPath)}`.toLowerCase();
+              if (!terms.every(t => hay.includes(t))) return false;
+            }
+            if (fromTs !== null && (folder.mtime === null || folder.mtime < fromTs)) return false;
+            if (toTs !== null && (folder.mtime === null || folder.mtime > toTs)) return false;
+            if (minBytes !== null && (folder.size === null || folder.size < minBytes)) return false;
+            return true;
+          });
+          list = [...folderList, ...fileList];
+        } else {
+          list = fileList;
+        }
       }
 
       const dir = state.sortAsc ? 1 : -1;
       list.sort((a, b) => {
+        // Ordner stehen wie im Windows Explorer immer vor Dateien
+        if (a.isFolder && !b.isFolder) return -1;
+        if (!a.isFolder && b.isFolder) return 1;
+
         if (state.sortCol === 'size') return ((a.size || 0) - (b.size || 0)) * dir;
         if (state.sortCol === 'mtime') return ((a.mtime || 0) - (b.mtime || 0)) * dir;
         if (state.sortCol === 'dir') {
           return compareHierarchy(a, b) * dir;
         }
-        if (state.category === 'folder' && state.sortCol === 'name') {
+        if (state.sortCol === 'name') {
           const pA = a.fullPath || a.name;
           const pB = b.fullPath || b.name;
-          if (pB.startsWith(pA + '\\')) return -1 * dir;
-          if (pA.startsWith(pB + '\\')) return 1 * dir;
+          if (a.isFolder && b.isFolder) {
+            if (pB.startsWith(pA + '\\')) return -1 * dir;
+            if (pA.startsWith(pB + '\\')) return 1 * dir;
+          }
           return a.name.localeCompare(b.name, 'de', { sensitivity: 'base', numeric: true }) * dir;
         }
         return String(a[state.sortCol] || '').localeCompare(String(b[state.sortCol] || ''), 'de', { sensitivity: 'base', numeric: true }) * dir;
@@ -2931,7 +2958,13 @@
       const totalSize = knownSizes.reduce((s, it) => s + (it.size || 0), 0);
       document.getElementById('stat-shown').textContent = state.filteredFiles.length;
       const unitEl = document.getElementById('stat-unit');
-      if (unitEl) unitEl.textContent = state.category === 'folder' ? 'Ordner' : 'Dateien';
+      if (unitEl) {
+        const hasF = state.filteredFiles.some(x => x.isFolder);
+        const hasD = state.filteredFiles.some(x => !x.isFolder);
+        if (hasF && hasD) unitEl.textContent = 'Einträge';
+        else if (hasF) unitEl.textContent = 'Ordner';
+        else unitEl.textContent = 'Dateien';
+      }
       document.getElementById('stat-size').textContent = (state.cloudSafeMode && knownSizes.length === 0 && state.filteredFiles.length > 0)
         ? '☁️ Cloud-Schonmodus'
         : formatBytes(totalSize);
@@ -3520,6 +3553,17 @@
           if (mySeq !== state.pdfLoadSeq) return;
           const extra = file.size > 300 * 1024 ? '\n\n… (Vorschau auf die ersten 300 KB begrenzt)' : '';
           body.innerHTML = `<pre class="text-preview">${escapeHtml(txt + extra)}</pre>`;
+          return;
+        }
+
+        // 5b. Video (HTML5 Video Player)
+        if (EXT_VIDEO.has(ext)) {
+          state.activeBlobUrl = URL.createObjectURL(file);
+          body.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:14px; background:#0f172a; border-radius:8px;">
+              <video controls autoplay="false" style="max-width:100%; max-height:calc(100vh - 220px); border-radius:6px; outline:none; box-shadow:0 4px 14px rgba(0,0,0,0.4);" src="${state.activeBlobUrl}"></video>
+              <div style="margin-top:10px; color:#cbd5e1; font-size:12px; font-weight:600;">${escapeHtml(item.name)} (${formatBytes(item.size)})</div>
+            </div>`;
           return;
         }
 
