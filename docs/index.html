@@ -699,7 +699,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.12 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.13 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -2383,6 +2383,7 @@
 
     function navigateToSubfolder(dir, allLevels = null, recordHistory = true) {
       closeExplorerFolderPopup();
+      clearActivePreview();
       const normDir = _normItemDir(dir);
       let nextAll;
       if (allLevels === null || allLevels === undefined) {
@@ -2946,6 +2947,9 @@
       });
 
       state.filteredFiles = list;
+      if (state.activeId && !state.filteredFiles.some(x => x.id === state.activeId)) {
+        clearActivePreview();
+      }
       renderTable();
     }
 
@@ -3298,7 +3302,7 @@
       }, delayMs);
     }
 
-    /* Multi-Format Vorschau (PDF.js, Word Mammoth, Excel SheetJS, Bilder, Text) */
+    /* Multi-Format Vorschau (PDF.js, Word Mammoth, Excel SheetJS, Bilder, Text, Video) */
     function clearActivePreview() {
       state.activeId = null;
       state.pdfLoadSeq += 1;
@@ -3308,18 +3312,30 @@
       state.xlsxWorkbook = null;
       state.xlsxActiveSheet = '';
       if (state.activeBlobUrl) { URL.revokeObjectURL(state.activeBlobUrl); state.activeBlobUrl = null; }
-      document.getElementById('preview-title').textContent = 'Dateivorschau';
-      document.getElementById('preview-subpath').textContent = 'Keine Datei ausgewählt';
-      document.getElementById('pdf-toolbar').classList.add('hidden');
-      document.getElementById('xlsx-toolbar').classList.add('hidden');
-      document.getElementById('btn-preview-copy').disabled = true;
-      document.getElementById('btn-preview-copy').style.opacity = '';
-      document.getElementById('btn-preview-copy').title = 'Keine Datei ausgewählt';
-      document.getElementById('btn-preview-tab').disabled = true;
-      document.getElementById('btn-preview-dl').disabled = true;
-      document.getElementById('btn-preview-rename').disabled = true;
-      document.getElementById('preview-body').innerHTML = '<div class="empty-box"><div>Klicke links auf eine Datei (PDF, Word, Excel, Bild oder Text), um sie hier direkt anzuzeigen.</div></div>';
-      updatePathBar();
+      const pTitle = document.getElementById('preview-title');
+      if (pTitle) pTitle.textContent = 'Dateivorschau';
+      const pSub = document.getElementById('preview-subpath');
+      if (pSub) pSub.textContent = 'Keine Datei ausgewählt';
+      const pPdf = document.getElementById('pdf-toolbar');
+      if (pPdf) pPdf.classList.add('hidden');
+      const pXlsx = document.getElementById('xlsx-toolbar');
+      if (pXlsx) pXlsx.classList.add('hidden');
+      const btnCopy = document.getElementById('btn-preview-copy');
+      if (btnCopy) {
+        btnCopy.disabled = true;
+        btnCopy.style.opacity = '';
+        btnCopy.title = 'Keine Datei ausgewählt';
+      }
+      const btnTab = document.getElementById('btn-preview-tab');
+      if (btnTab) btnTab.disabled = true;
+      const btnDl = document.getElementById('btn-preview-dl');
+      if (btnDl) btnDl.disabled = true;
+      const btnRen = document.getElementById('btn-preview-rename');
+      if (btnRen) btnRen.disabled = true;
+      const pBody = document.getElementById('preview-body');
+      if (pBody) {
+        pBody.innerHTML = '<div class="empty-box"><div>Klicke links auf eine Datei oder einen Ordner, um die Vorschau hier anzuzeigen.</div></div>';
+      }
     }
 
     async function renderCurrentPdfPage() {
