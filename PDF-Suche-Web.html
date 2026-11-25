@@ -172,6 +172,34 @@
     .btn-primary:hover:not(:disabled) {
       background: linear-gradient(135deg, #3b82f6, #2563eb); border-color: #1d4ed8; color: #ffffff;
     }
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444, #dc2626); border-color: #dc2626; color: #ffffff;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.28);
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: linear-gradient(135deg, #f87171, #ef4444); border-color: #b91c1c; color: #ffffff;
+    }
+    .btn-danger-soft {
+      background: #fef2f2; border-color: #fecaca; color: #b91c1c;
+    }
+    .btn-danger-soft:hover:not(:disabled) {
+      background: #fee2e2; border-color: #fca5a5; color: #991b1b;
+    }
+    .icon-btn-danger:hover:not(:disabled) {
+      background: #fee2e2; border-color: #fca5a5; color: #dc2626;
+    }
+    .dupe-tag {
+      display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px;
+      border-radius: 999px; font-size: 10.5px; font-weight: 700;
+      background: #fef3c7; color: #b45309; border: 1px solid #fde68a;
+      margin-left: 6px; user-select: none;
+    }
+    tr.is-duplicate {
+      background: rgba(254, 243, 199, 0.22);
+    }
+    tr.is-duplicate:hover td {
+      background: #fef9c3 !important;
+    }
     .btn-soft { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-hover); }
     .btn-soft:hover:not(:disabled) { background: #dbeafe; border-color: #60a5fa; color: #1e40af; }
     .btn-active { background: var(--accent) !important; border-color: var(--accent-hover) !important; color: #ffffff !important; }
@@ -765,7 +793,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.15 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.16 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -941,11 +969,20 @@
       </div>
 
       <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+        <button id="btn-duplicates" type="button" class="btn btn-soft" onclick="toggleDuplicatesFilter()" title="Filtert die Liste auf Dateien mit identischem Namen und identischer Größe in verschiedenen Ordnern">
+          <span>👥 Duplikate (<span id="cnt-dupes">0</span>)</span>
+        </button>
+        <button id="btn-select-dupe-copies" type="button" class="btn btn-soft hidden" onclick="selectDuplicateCopies()" title="Wählt in jeder Duplikat-Gruppe automatisch alle Kopien bis auf das 1. Original aus (für 1-Klick-Löschen)">
+          <span>✓ Kopien markieren</span>
+        </button>
         <button id="btn-reset-cols" type="button" class="btn btn-soft" onclick="resetColumnLayout()" title="Spalten automatisch an die sichtbare Breite anpassen &amp; Reihenfolge zurücksetzen">
           <span>↺ Spalten</span>
         </button>
         <button id="btn-batch-rename" type="button" class="btn btn-soft" disabled onclick="openBatchRenameModal()" title="Markierte Dateien in einem Schritt umbenennen">
           <span>✏️ Massen-Umbenennung</span>
+        </button>
+        <button id="btn-batch-delete" type="button" class="btn btn-danger-soft" disabled onclick="openBatchDeleteModal()" title="Markierte Dateien von der Festplatte löschen">
+          <span>🗑️ Löschen</span>
         </button>
         <button id="btn-toggle-preview" type="button" class="btn btn-active" onclick="togglePreviewPane()">
           <span>👁 Dateivorschau</span>
@@ -1012,6 +1049,7 @@
             <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActiveFileInNewTab()">↗ Öffnen in Tab</button>
             <button id="btn-preview-dl" type="button" class="btn" disabled onclick="downloadActiveFile()" title="Kopie herunterladen (z. B. zum Öffnen in Standard-App)">⬇ Download</button>
             <button id="btn-preview-rename" type="button" class="btn" disabled onclick="openSingleRenameForActive()">✏️ Umbenennen</button>
+            <button id="btn-preview-delete" type="button" class="btn btn-danger-soft" disabled onclick="openDeleteModalForActive()" title="Diese Datei von der Festplatte löschen">🗑️ Löschen</button>
             <button id="btn-preview-max" type="button" class="btn" onclick="togglePreviewMaximize()" title="Vorschau bildschirmfüllend anzeigen (Esc zum Schließen)">⛶ Vollbild</button>
           </div>
         </div>
@@ -1041,6 +1079,35 @@
       </aside>
     </div>
   </main>
+
+  <!-- Modal: Datei(en) löschen -->
+  <div id="modal-delete-confirm" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-delete-confirm')">
+    <div class="modal-card" style="max-width:540px;">
+      <div class="modal-head" style="border-bottom: 1.5px solid #fee2e2; background: #fff5f5;">
+        <h2 style="color: #b91c1c; display:flex; align-items:center; gap:8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span id="delete-modal-title">Datei löschen</span>
+        </h2>
+        <button type="button" class="btn" onclick="closeModal('modal-delete-confirm')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="delete-modal-msg" style="font-size:13.5px; color:#334155; margin-bottom:12px; font-weight:600;">
+          Möchtest du diese Datei wirklich von der Festplatte löschen?
+        </p>
+        <div id="delete-modal-list" class="rename-preview-list" style="max-height: 220px; border-color: #fecaca; background: #fffaf0;"></div>
+        <div style="font-size:12px; color:#b91c1c; margin-top:10px; display:flex; align-items:center; gap:6px;">
+          <span>⚠️ <strong>Achtung:</strong> Die Datei(en) werden direkt von der Festplatte gelöscht.</span>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn" onclick="closeModal('modal-delete-confirm')">Abbrechen</button>
+        <button id="btn-confirm-delete" type="button" class="btn btn-danger" onclick="executePendingDelete()">🗑️ Unwiderruflich löschen</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: Einzel-Umbenennung -->
   <div id="modal-single-rename" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-single-rename')">
@@ -1119,6 +1186,10 @@
       allFiles: [],       // { id, name, ext, cat, dir, relPath, size, mtime, fileHandle, parentHandle, fileObj }
       allDirs: new Set(), // alle gescannten Unterordner (inkl. leerer Ordner!)
       filteredFiles: [],
+      onlyDuplicates: false,
+      duplicateKeys: new Set(),
+      duplicateGroups: new Map(),
+      duplicateCount: 0,
       selectedIds: new Set(),
       lastSelectedId: null,
       activeId: null,
@@ -1962,6 +2033,7 @@
         rebuildSubfolderDropdown();
         updatePathBar();
         updateModeBadge();
+        computeDuplicates();
         applyFilters();
       }
     }
@@ -2964,6 +3036,10 @@
         const fileList = state.allFiles.filter(item => {
           if (state.category !== 'all' && item.cat !== state.category) return false;
           if (!_matchesSubfolder(item.dir, state.activeSubfolder, state.includeSublevels)) return false;
+          if (state.onlyDuplicates) {
+            const k = getDuplicateKey(item);
+            if (!k || !state.duplicateKeys.has(k)) return false;
+          }
           if (terms.length > 0) {
             const hay = `${item.name} ${item.dir} ${item.ext}`.toLowerCase();
             if (!terms.every(t => hay.includes(t))) return false;
@@ -2974,7 +3050,7 @@
           return true;
         });
 
-        if (state.category === 'all') {
+        if (state.category === 'all' && !state.onlyDuplicates) {
           // Wie im Windows Explorer: Zeige im aktuellen Ordner sowohl die Unterordner (oben) als auch die Dateien!
           const folderList = _getScopedFolderItems().filter(folder => {
             if (terms.length > 0) {
@@ -3086,6 +3162,15 @@
         tdName.className = 'col-name';
         tdName.title = item.isFolder ? toGermanDisplayPath(item.fullPath) : item.name;
         tdName.textContent = item.isFolder ? `📁 ${item.name}` : item.name;
+        const dupeKey = getDuplicateKey(item);
+        if (dupeKey && state.duplicateKeys.has(dupeKey)) {
+          tr.classList.add('is-duplicate');
+          const dupeTag = document.createElement('span');
+          dupeTag.className = 'dupe-tag';
+          dupeTag.title = 'Diese Datei existiert mehrfach mit identischem Namen & Größe';
+          dupeTag.textContent = '👥 Kopie';
+          tdName.appendChild(dupeTag);
+        }
 
         const tdExt = document.createElement('td');
         tdExt.className = 'col-ext';
@@ -3163,7 +3248,15 @@
           btnRen.textContent = '✏️';
           btnRen.onclick = () => openSingleRenameModal(item);
 
-          tdAct.append(btnCopy, btnOpen, btnRen);
+          const btnDel = document.createElement('button');
+          btnDel.type = 'button';
+          btnDel.className = 'icon-btn icon-btn-danger';
+          btnDel.title = state.canWrite ? 'Datei löschen' : 'Löschen nur mit Schreibfreigabe';
+          btnDel.disabled = !state.canWrite;
+          btnDel.textContent = '🗑️';
+          btnDel.onclick = () => openSingleDeleteModal(item);
+
+          tdAct.append(btnCopy, btnOpen, btnRen, btnDel);
         }
         const cellMap = {
           name: tdName,
@@ -3188,6 +3281,12 @@
       const btnBatch = document.getElementById('btn-batch-rename');
       btnBatch.disabled = !(state.canWrite && cnt > 0);
       btnBatch.querySelector('span').textContent = cnt > 0 ? `✏️ Massen-Umbenennung (${cnt})` : '✏️ Massen-Umbenennung';
+
+      const btnDelBatch = document.getElementById('btn-batch-delete');
+      if (btnDelBatch) {
+        btnDelBatch.disabled = !(state.canWrite && cnt > 0);
+        btnDelBatch.querySelector('span').textContent = cnt > 0 ? `🗑️ Löschen (${cnt})` : '🗑️ Löschen';
+      }
       const master = document.getElementById('select-all-cb');
       const selectable = state.filteredFiles.filter(it => !it.isFolder);
       if (master) {
@@ -3271,6 +3370,7 @@
       document.getElementById('btn-preview-tab').disabled = true;
       document.getElementById('btn-preview-dl').disabled = true;
       document.getElementById('btn-preview-rename').disabled = true;
+      const btnPrevDelFolder = document.getElementById('btn-preview-delete'); if (btnPrevDelFolder) btnPrevDelFolder.disabled = true;
 
       const lvl = _getSubfolderLevelData(folderItem.fullPath);
       const body = document.getElementById('preview-body');
@@ -3401,6 +3501,8 @@
       if (btnDl) btnDl.disabled = true;
       const btnRen = document.getElementById('btn-preview-rename');
       if (btnRen) btnRen.disabled = true;
+      const btnDelP = document.getElementById('btn-preview-delete');
+      if (btnDelP) btnDelP.disabled = true;
       const pBody = document.getElementById('preview-body');
       if (pBody) {
         pBody.innerHTML = '<div class="empty-box"><div>Klicke links auf eine Datei oder einen Ordner, um die Vorschau hier anzuzeigen.</div></div>';
@@ -3544,6 +3646,7 @@
       document.getElementById('btn-preview-tab').disabled = false;
       document.getElementById('btn-preview-dl').disabled = false;
       document.getElementById('btn-preview-rename').disabled = !state.canWrite;
+      const btnPrevDel = document.getElementById('btn-preview-delete'); if (btnPrevDel) btnPrevDel.disabled = !state.canWrite;
 
       try {
         const file = await getFileObject(item);
@@ -3861,6 +3964,184 @@
         if (item) showFilePreview(item);
       }
       requestAnimationFrame(() => applyColumnWidths());
+    }
+
+    /* Duplikat-Erkennung (identischer Dateiname & Dateigröße in verschiedenen Ordnern) */
+    function getDuplicateKey(item) {
+      if (!item || item.isFolder) return null;
+      return `${(item.name || '').toLowerCase()}|${item.size || 0}`;
+    }
+
+    function computeDuplicates() {
+      const counts = new Map();
+      const groups = new Map();
+      for (const f of state.allFiles) {
+        const k = getDuplicateKey(f);
+        if (!k) continue;
+        counts.set(k, (counts.get(k) || 0) + 1);
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(f);
+      }
+      state.duplicateKeys = new Set();
+      state.duplicateGroups = groups;
+      let totalDupeFiles = 0;
+      for (const [k, count] of counts.entries()) {
+        if (count > 1) {
+          state.duplicateKeys.add(k);
+          totalDupeFiles += count;
+        }
+      }
+      state.duplicateCount = totalDupeFiles;
+      const cntEl = document.getElementById('cnt-dupes');
+      if (cntEl) cntEl.textContent = totalDupeFiles;
+      const btnDupe = document.getElementById('btn-duplicates');
+      if (btnDupe) {
+        btnDupe.classList.toggle('btn-active', state.onlyDuplicates);
+      }
+      const btnSelectCopies = document.getElementById('btn-select-dupe-copies');
+      if (btnSelectCopies) {
+        btnSelectCopies.classList.toggle('hidden', !state.onlyDuplicates || totalDupeFiles === 0);
+      }
+    }
+
+    function toggleDuplicatesFilter() {
+      state.onlyDuplicates = !state.onlyDuplicates;
+      if (state.onlyDuplicates) {
+        state.sortCol = 'name';
+        state.sortAsc = true;
+      }
+      computeDuplicates();
+      applyFilters();
+      const btnDupe = document.getElementById('btn-duplicates');
+      if (btnDupe) btnDupe.classList.toggle('btn-active', state.onlyDuplicates);
+      const btnSelectCopies = document.getElementById('btn-select-dupe-copies');
+      if (btnSelectCopies) btnSelectCopies.classList.toggle('hidden', !state.onlyDuplicates || state.duplicateCount === 0);
+      if (state.onlyDuplicates && state.duplicateCount > 0) {
+        toast(`👥 ${state.duplicateCount} Duplikat-Dateien gefunden`, 'ok');
+      } else if (state.onlyDuplicates && state.duplicateCount === 0) {
+        toast('Keine Duplikate (gleicher Name & Größe) gefunden', 'ok');
+      }
+    }
+
+    function selectDuplicateCopies() {
+      state.selectedIds.clear();
+      for (const [k, files] of state.duplicateGroups.entries()) {
+        if (!state.duplicateKeys.has(k) || files.length <= 1) continue;
+        // Erstes Original bleibt unmarkiert, alle weiteren Kopien werden markiert
+        for (let i = 1; i < files.length; i++) {
+          state.selectedIds.add(files[i].id);
+        }
+      }
+      renderTable();
+      updateSelectionUI();
+      if (state.selectedIds.size > 0) {
+        toast(`✓ ${state.selectedIds.size} Kopie(n) zum Löschen markiert (Originale bleiben erhalten)`, 'ok');
+      } else {
+        toast('Keine Duplikat-Kopien zum Markieren vorhanden', 'ok');
+      }
+    }
+
+    /* Lösch-Engine (File System Access API removeEntry) */
+    let pendingDeleteItems = [];
+
+    function openSingleDeleteModal(item) {
+      if (!state.canWrite) {
+        toast('Löschen erfordert Schreibfreigabe über https:// (GitHub Pages) mit „Ordner wählen…“.', 'err');
+        return;
+      }
+      pendingDeleteItems = [item];
+      showDeleteModal(pendingDeleteItems);
+    }
+
+    function openDeleteModalForActive() {
+      const item = state.allFiles.find(x => x.id === state.activeId);
+      if (item) openSingleDeleteModal(item);
+    }
+
+    function openBatchDeleteModal() {
+      if (!state.canWrite) {
+        toast('Löschen erfordert Schreibfreigabe über https:// (GitHub Pages) mit „Ordner wählen…“.', 'err');
+        return;
+      }
+      const items = state.allFiles.filter(x => state.selectedIds.has(x.id));
+      if (!items.length) return;
+      pendingDeleteItems = items;
+      showDeleteModal(pendingDeleteItems);
+    }
+
+    function showDeleteModal(items) {
+      const modal = document.getElementById('modal-delete-confirm');
+      const title = document.getElementById('delete-modal-title');
+      const msg = document.getElementById('delete-modal-msg');
+      const list = document.getElementById('delete-modal-list');
+      if (!modal || !list) return;
+
+      const count = items.length;
+      title.textContent = count === 1 ? 'Datei löschen' : `${count} Dateien löschen`;
+      msg.textContent = count === 1
+        ? 'Möchtest du diese Datei wirklich von der Festplatte löschen?'
+        : `Möchtest du die folgenden ${count} Dateien wirklich von der Festplatte löschen?`;
+
+      list.innerHTML = '';
+      const maxDisplay = 8;
+      items.slice(0, maxDisplay).forEach(it => {
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:6px 8px; border-bottom:1px solid #fee2e2; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px;';
+        const left = document.createElement('div');
+        left.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+        left.innerHTML = `<strong>${escapeHtml(it.name)}</strong> <span style="color:#64748b; font-size:11px;">(${formatFullFolderPath(it.dir)})</span>`;
+        const right = document.createElement('div');
+        right.style.cssText = 'color:#b91c1c; font-weight:600; flex-shrink:0;';
+        right.textContent = formatBytes(it.size);
+        row.append(left, right);
+        list.appendChild(row);
+      });
+      if (count > maxDisplay) {
+        const more = document.createElement('div');
+        more.style.cssText = 'padding:6px 8px; font-size:11.5px; color:#64748b; font-style:italic;';
+        more.textContent = `... und ${count - maxDisplay} weitere Dateien`;
+        list.appendChild(more);
+      }
+      modal.classList.remove('hidden');
+    }
+
+    async function executePendingDelete() {
+      if (!pendingDeleteItems || !pendingDeleteItems.length) return;
+      closeModal('modal-delete-confirm');
+
+      let successCount = 0;
+      let failCount = 0;
+      const toDelete = [...pendingDeleteItems];
+      pendingDeleteItems = [];
+
+      for (const it of toDelete) {
+        try {
+          if (it.parentHandle && typeof it.parentHandle.removeEntry === 'function') {
+            await it.parentHandle.removeEntry(it.name, it.isFolder ? { recursive: true } : undefined);
+            successCount++;
+            const idx = state.allFiles.findIndex(f => f.id === it.id);
+            if (idx !== -1) state.allFiles.splice(idx, 1);
+            state.selectedIds.delete(it.id);
+            if (state.activeId === it.id) clearActivePreview();
+          } else {
+            failCount++;
+          }
+        } catch (err) {
+          console.error('Delete error:', err);
+          failCount++;
+        }
+      }
+
+      computeDuplicates();
+      applyFilters();
+
+      if (successCount > 0 && failCount === 0) {
+        toast(`✓ ${successCount === 1 ? 'Datei' : successCount + ' Dateien'} erfolgreich gelöscht`, 'ok');
+      } else if (successCount > 0 && failCount > 0) {
+        toast(`⚠️ ${successCount} gelöscht, ${failCount} fehlgeschlagen`, 'ok');
+      } else if (failCount > 0) {
+        toast('Fehler beim Löschen: Datei konnte nicht entfernt werden (Zugriffsrechte prüfen).', 'err');
+      }
     }
 
     /* Umbenennen-Engine (behält jeweilige Dateiendung sicher bei) */
