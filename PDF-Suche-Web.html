@@ -393,7 +393,7 @@
 
     /* Hauptbereich: Tabelle + Vorschau */
     .workspace-split { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
-    .workspace-split.with-preview { gap: 0; grid-template-columns: minmax(320px, 1fr) 14px minmax(320px, var(--preview-w, 44%)); }
+    .workspace-split.with-preview { gap: 0; grid-template-columns: minmax(380px, 1fr) 14px minmax(320px, var(--preview-w, 48%)); }
     .split-handle { display: none; }
     .workspace-split.with-preview .split-handle {
       display: flex; align-items: center; justify-content: center;
@@ -408,8 +408,9 @@
       background: var(--accent); height: 84px;
     }
     .workspace-split.resizing-split { cursor: col-resize; user-select: none; }
+    .workspace-left { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
     .workspace-split.resizing-split .preview-card,
-    .workspace-split.resizing-split .table-card { pointer-events: none; }
+    .workspace-split.resizing-split .workspace-left { pointer-events: none; }
     @media (max-width: 1080px) {
       .workspace-split.with-preview { grid-template-columns: 1fr; gap: 12px; }
       .workspace-split.with-preview .split-handle { display: none; }
@@ -699,7 +700,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.13 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.14 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -713,7 +714,10 @@
   </header>
 
   <main>
-    <!-- BEREICH 1: Ordner wählen & Suche -->
+    <!-- Übergeordneter Split: Links Arbeitsbereich (Suche + Filter + Tabelle) | Rechts Vorschau ganz oben angedockt -->
+    <div id="workspace-split" class="workspace-split with-preview">
+      <div class="workspace-left">
+        <!-- BEREICH 1: Ordner wählen & Suche -->
     <section class="section-card">
       <div class="section-header">
         <span class="section-title">1. Ordner &amp; Dokumenten-Suche</span>
@@ -884,9 +888,8 @@
       </div>
     </div>
 
-    <!-- BEREICH 4: Tabelle + Rechte Multi-Format-Vorschau -->
-    <div id="workspace-split" class="workspace-split with-preview">
-      <div class="table-card">
+        <!-- BEREICH 4: Tabelle -->
+        <div class="table-card">
         <!-- Explorer-Adressleiste direkt über der Tabelle (wie Windows 11 Explorer) -->
         <div id="table-address-bar" class="table-address-bar">
           <div class="table-address-nav">
@@ -927,6 +930,7 @@
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       <div id="split-handle" class="split-handle" role="separator" aria-orientation="vertical"
@@ -3709,7 +3713,7 @@
 
     /* Vorschau-Breite per Maus ziehen (Griff zwischen Tabelle & Vorschau) */
     const PREVIEW_WIDTH_STORAGE_KEY = 'pdf_suche_web_preview_w_v1';
-    const SPLIT_MIN_TABLE = 320;
+    const SPLIT_MIN_TABLE = 380;
     const SPLIT_MIN_PREVIEW = 320;
     const SPLIT_HANDLE_W = 14;
 
