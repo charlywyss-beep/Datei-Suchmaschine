@@ -838,7 +838,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.19 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.20 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -4040,282 +4040,25 @@
         tabOpenCounters[item.name] = (tabOpenCounters[item.name] || 0) + 1;
         const seq = String(tabOpenCounters[item.name]).padStart(2, '0');
         const displayTitle = ext ? `${base}_${seq}.${ext}` : `${base}_${seq}`;
-        const dirLabel = item.dir && item.dir !== '(Hauptordner)' ? ` · ${toGermanDisplayPath(item.dir)}` : '';
 
-        const url = URL.createObjectURL(file);
+        const namedFile = new File([file], displayTitle, { type: file.type || 'application/octet-stream' });
+        const url = URL.createObjectURL(namedFile);
+        const suffix = ext === 'pdf' ? '#navpanes=0&view=Fit' : '';
 
-        const newWin = window.open('', '_blank');
-        if (!newWin) {
-          const suffix = ext === 'pdf' ? '#navpanes=0&view=Fit' : '';
-          window.open(`${url}${suffix}`, '_blank', 'noopener');
-          return;
+        const newWin = window.open(`${url}${suffix}`, '_blank');
+        if (newWin) {
+          try {
+            newWin.document.title = displayTitle;
+            let count = 0;
+            const timer = setInterval(() => {
+              count++;
+              try {
+                if (newWin.document) newWin.document.title = displayTitle;
+              } catch (_) {}
+              if (count > 25 || newWin.closed) clearInterval(timer);
+            }, 60);
+          } catch (_) {}
         }
-
-        const isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
-        let mediaHtml = '';
-        let zoomToolbarHtml = '';
-        let viewerScriptHtml = '';
-
-        if (ext === 'pdf') {
-          mediaHtml = `<iframe src="${url}#navpanes=0&view=Fit" style="width:100%; height:100%; border:none;"></iframe>`;
-        } else if (isImg) {
-          zoomToolbarHtml = `
-            <div class="zoom-toolbar">
-              <button type="button" class="tb-btn" onclick="zoomBy(-0.2)" title="Verkleinern (Minus oder Mausrad)">−</button>
-              <span id="zoom-text" class="zoom-text" title="Aktueller Zoom">100%</span>
-              <button type="button" class="tb-btn" onclick="zoomBy(0.2)" title="Vergrößern (Plus oder Mausrad)">+</button>
-              <button type="button" class="tb-btn" onclick="resetToFit()" title="An Fenster anpassen (Taste 0)">⤢ Einpassen</button>
-              <button type="button" class="tb-btn" onclick="setZoom(1.0)" title="100% Originalgröße (Taste 1)">1:1</button>
-              <button type="button" class="tb-btn" onclick="rotateImg()" title="90° drehen (Taste R)">↻ Drehen</button>
-            </div>
-          `;
-          mediaHtml = `
-            <div id="img-viewport" class="img-viewport" title="Mausrad: Zoomen · Ziehen: Verschieben · Klick: 100% / Einpassen">
-              <img id="target-img" class="zoomable-img" src="${url}" alt="${escapeHtml(displayTitle)}">
-            </div>
-          `;
-          const scriptClose = '<' + '/script>';
-          viewerScriptHtml = `
-            <script>
-              (function() {
-                var img = document.getElementById('target-img');
-                var vp = document.getElementById('img-viewport');
-                var zText = document.getElementById('zoom-text');
-                var scale = 1;
-                var fitScale = 1;
-                var posX = 0, posY = 0;
-                var rotation = 0;
-                var isDragging = false;
-                var startX = 0, startY = 0;
-                var didMove = false;
-
-                function updateTransform(smooth) {
-                  if (!img) return;
-                  img.style.transition = smooth ? 'transform 0.15s ease-out' : 'none';
-                  img.style.transform = 'translate3d(' + posX + 'px, ' + posY + 'px, 0) scale(' + scale + ') rotate(' + rotation + 'deg)';
-                  if (zText) zText.textContent = Math.round(scale * 100) + '%';
-                }
-
-                function calcFitScale() {
-                  if (!img || !vp) return 1;
-                  var vw = vp.clientWidth - 40;
-                  var vh = vp.clientHeight - 40;
-                  var iw = img.naturalWidth || img.width || 800;
-                  var ih = img.naturalHeight || img.height || 600;
-                  if (iw <= 0 || ih <= 0 || vw <= 0 || vh <= 0) return 1;
-                  var isRot90 = (rotation % 180 !== 0);
-                  var effW = isRot90 ? ih : iw;
-                  var effH = isRot90 ? iw : ih;
-                  var s = Math.min(vw / effW, vh / effH, 1.0);
-                  return Math.max(0.05, Math.min(s, 5.0));
-                }
-
-                window.resetToFit = function() {
-                  fitScale = calcFitScale();
-                  scale = fitScale;
-                  posX = 0;
-                  posY = 0;
-                  updateTransform(true);
-                };
-
-                window.setZoom = function(newScale, clientX, clientY) {
-                  var clamped = Math.max(0.1, Math.min(newScale, 20.0));
-                  if (clientX !== undefined && clientY !== undefined && vp) {
-                    var rect = vp.getBoundingClientRect();
-                    var cx = clientX - rect.left - rect.width / 2;
-                    var cy = clientY - rect.top - rect.height / 2;
-                    var ratio = clamped / scale;
-                    posX = cx - (cx - posX) * ratio;
-                    posY = cy - (cy - posY) * ratio;
-                  }
-                  scale = clamped;
-                  updateTransform(false);
-                };
-
-                window.zoomBy = function(delta, clientX, clientY) {
-                  var factor = delta > 0 ? 1.25 : 0.8;
-                  window.setZoom(scale * factor, clientX, clientY);
-                };
-
-                window.rotateImg = function() {
-                  rotation = (rotation + 90) % 360;
-                  fitScale = calcFitScale();
-                  scale = fitScale;
-                  posX = 0;
-                  posY = 0;
-                  updateTransform(true);
-                };
-
-                if (img) {
-                  img.onload = function() { window.resetToFit(); };
-                  if (img.complete) { setTimeout(window.resetToFit, 50); }
-                }
-
-                window.addEventListener('wheel', function(e) {
-                  e.preventDefault();
-                  var delta = e.deltaY < 0 ? 0.2 : -0.2;
-                  window.zoomBy(delta, e.clientX, e.clientY);
-                }, { passive: false });
-
-                if (vp) {
-                  vp.addEventListener('mousedown', function(e) {
-                    if (e.button !== 0) return;
-                    isDragging = true;
-                    didMove = false;
-                    startX = e.clientX - posX;
-                    startY = e.clientY - posY;
-                    vp.style.cursor = 'grabbing';
-                  });
-
-                  window.addEventListener('mousemove', function(e) {
-                    if (!isDragging) return;
-                    var dx = e.clientX - startX;
-                    var dy = e.clientY - startY;
-                    if (Math.abs(dx - posX) > 3 || Math.abs(dy - posY) > 3) {
-                      didMove = true;
-                    }
-                    posX = dx;
-                    posY = dy;
-                    updateTransform(false);
-                  });
-
-                  window.addEventListener('mouseup', function() {
-                    if (isDragging) {
-                      isDragging = false;
-                      if (vp) vp.style.cursor = 'grab';
-                    }
-                  });
-
-                  vp.addEventListener('click', function(e) {
-                    if (didMove) return;
-                    if (Math.abs(scale - fitScale) < 0.05) {
-                      window.setZoom(1.0, e.clientX, e.clientY);
-                    } else {
-                      window.resetToFit();
-                    }
-                  });
-
-                  vp.addEventListener('dblclick', function(e) {
-                    e.preventDefault();
-                    window.resetToFit();
-                  });
-                }
-
-                window.addEventListener('keydown', function(e) {
-                  if (e.key === '+' || e.key === '=') { e.preventDefault(); window.zoomBy(0.2); }
-                  else if (e.key === '-' || e.key === '_') { e.preventDefault(); window.zoomBy(-0.2); }
-                  else if (e.key === '0') { e.preventDefault(); window.resetToFit(); }
-                  else if (e.key === '1') { e.preventDefault(); window.setZoom(1.0); }
-                  else if (e.key === 'r' || e.key === 'R') { e.preventDefault(); window.rotateImg(); }
-                  else if (e.key === 'ArrowLeft') { e.preventDefault(); posX += 50; updateTransform(false); }
-                  else if (e.key === 'ArrowRight') { e.preventDefault(); posX -= 50; updateTransform(false); }
-                  else if (e.key === 'ArrowUp') { e.preventDefault(); posY += 50; updateTransform(false); }
-                  else if (e.key === 'ArrowDown') { e.preventDefault(); posY -= 50; updateTransform(false); }
-                });
-
-                window.addEventListener('resize', function() {
-                  if (Math.abs(scale - fitScale) < 0.05) {
-                    window.resetToFit();
-                  }
-                });
-              })();
-            ` + scriptClose;
-        } else if (['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(ext)) {
-          mediaHtml = `
-            <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:center;">
-              <video src="${url}" controls autoplay style="max-width:100%; max-height:100%;"></video>
-            </div>`;
-        } else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
-          mediaHtml = `
-            <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:center;">
-              <audio src="${url}" controls autoplay></audio>
-            </div>`;
-        } else {
-          mediaHtml = `<iframe src="${url}" style="width:100%; height:100%; border:none; background:#ffffff;"></iframe>`;
-        }
-
-        newWin.document.write(`<!DOCTYPE html>
-<html lang="de" style="width:100%; height:100%; margin:0; padding:0; overflow:hidden;">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>${escapeHtml(displayTitle)}${escapeHtml(dirLabel)}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>📄</text></svg>">
-  <style>
-    * { box-sizing: border-box; }
-    html, body {
-      width: 100%; height: 100%; margin: 0; padding: 0;
-      background: #020617; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      overflow: hidden; user-select: none;
-    }
-    .top-bar {
-      position: fixed; top: 0; left: 0; right: 0; height: 42px;
-      background: #0f172a; color: #f8fafc; display: flex; align-items: center;
-      justify-content: space-between; padding: 0 16px; font-size: 13px; font-weight: 600;
-      border-bottom: 1px solid #1e293b; z-index: 100;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    }
-    .top-title-wrap {
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 45%;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .zoom-toolbar {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: #1e293b; padding: 2px 6px; border-radius: 6px;
-      border: 1px solid #334155;
-    }
-    .tb-btn {
-      height: 26px; padding: 0 8px; border: 1px solid transparent;
-      background: transparent; color: #f8fafc; border-radius: 4px;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      display: inline-flex; align-items: center; justify-content: center;
-      transition: all 0.12s ease;
-    }
-    .tb-btn:hover { background: #334155; color: #38bdf8; }
-    .zoom-text {
-      font-size: 11.5px; font-weight: 700; color: #94a3b8;
-      min-width: 44px; text-align: center; font-variant-numeric: tabular-nums;
-      user-select: none;
-    }
-    .dl-btn {
-      background: #2563eb; color: #ffffff; text-decoration: none; padding: 5px 12px;
-      border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;
-      transition: background 0.12s ease;
-    }
-    .dl-btn:hover { background: #3b82f6; }
-    .content-area {
-      position: absolute; top: 42px; left: 0; right: 0; bottom: 0;
-      overflow: hidden; display: flex; align-items: center; justify-content: center;
-    }
-    .img-viewport {
-      width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-      overflow: hidden; position: relative; cursor: grab; background: #020617;
-    }
-    .zoomable-img {
-      display: block; transform-origin: center center;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.7); border-radius: 4px;
-      background: #0f172a; pointer-events: none;
-    }
-  </style>
-</head>
-<body>
-  <div class="top-bar">
-    <div class="top-title-wrap">
-      <span>📄 ${escapeHtml(displayTitle)}</span>
-      <span style="color:#94a3b8; font-weight:400; font-size:12px; margin-left:6px;">${escapeHtml(dirLabel)}</span>
-    </div>
-    ${zoomToolbarHtml}
-    <div>
-      <a class="dl-btn" href="${url}" download="${escapeHtml(displayTitle)}">⬇ Herunterladen</a>
-    </div>
-  </div>
-  <div class="content-area">
-    ${mediaHtml}
-  </div>
-  ${viewerScriptHtml}
-</body>
-</html>`);
-        newWin.document.close();
       } catch (err) {
         toast(`Datei konnte nicht geöffnet werden: ${err.message}`, 'err');
       }
