@@ -793,7 +793,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.16 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.17 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -3850,12 +3850,88 @@
       }
     }
 
+    const tabOpenCounters = {};
+
     async function openFileInNewTab(item) {
       try {
         const file = await getFileObject(item);
+        const ext = getExt(item.name).toLowerCase();
+        const base = getStem(item.name);
+        tabOpenCounters[item.name] = (tabOpenCounters[item.name] || 0) + 1;
+        const seq = String(tabOpenCounters[item.name]).padStart(2, '0');
+        const displayTitle = ext ? `${base}_${seq}.${ext}` : `${base}_${seq}`;
+        const dirLabel = item.dir && item.dir !== '(Hauptordner)' ? ` · ${toGermanDisplayPath(item.dir)}` : '';
+
         const url = URL.createObjectURL(file);
-        const suffix = getExt(item.name) === 'pdf' ? '#navpanes=0&view=Fit' : '';
-        window.open(`${url}${suffix}`, '_blank', 'noopener');
+
+        const newWin = window.open('', '_blank');
+        if (!newWin) {
+          const suffix = ext === 'pdf' ? '#navpanes=0&view=Fit' : '';
+          window.open(`${url}${suffix}`, '_blank', 'noopener');
+          return;
+        }
+
+        let mediaHtml = '';
+        if (ext === 'pdf') {
+          mediaHtml = `<iframe src="${url}#navpanes=0&view=Fit" style="width:100%; height:100%; border:none;"></iframe>`;
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) {
+          mediaHtml = `
+            <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+              <img src="${url}" alt="${escapeHtml(displayTitle)}" style="max-width:100%; max-height:100%; object-fit:contain; box-shadow:0 4px 20px rgba(0,0,0,0.5); border-radius:4px; background:#fff;">
+            </div>`;
+        } else if (['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(ext)) {
+          mediaHtml = `
+            <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:center;">
+              <video src="${url}" controls autoplay style="max-width:100%; max-height:100%;"></video>
+            </div>`;
+        } else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+          mediaHtml = `
+            <div style="display:flex; width:100%; height:100%; align-items:center; justify-content:center;">
+              <audio src="${url}" controls autoplay></audio>
+            </div>`;
+        } else {
+          mediaHtml = `<iframe src="${url}" style="width:100%; height:100%; border:none; background:#ffffff;"></iframe>`;
+        }
+
+        newWin.document.write(`<!DOCTYPE html>
+<html lang="de" style="width:100%; height:100%; margin:0; padding:0; overflow:hidden;">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(displayTitle)}${escapeHtml(dirLabel)}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>📄</text></svg>">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #0f172a; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+    .top-bar {
+      height: 38px; background: #1e293b; color: #f8fafc; display: flex; align-items: center;
+      justify-content: space-between; padding: 0 16px; font-size: 13px; font-weight: 600;
+      border-bottom: 1px solid #334155; user-select: none;
+    }
+    .top-bar a.dl-btn {
+      background: #2563eb; color: #ffffff; text-decoration: none; padding: 4px 11px;
+      border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;
+      transition: background 0.12s ease;
+    }
+    .top-bar a.dl-btn:hover { background: #3b82f6; }
+    .content-area { width: 100%; height: calc(100% - 38px); position: relative; }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+      <span>📄 ${escapeHtml(displayTitle)}</span>
+      <span style="color:#94a3b8; font-weight:400; font-size:12px; margin-left:8px;">${escapeHtml(dirLabel)}</span>
+    </div>
+    <div>
+      <a class="dl-btn" href="${url}" download="${escapeHtml(displayTitle)}">⬇ Herunterladen</a>
+    </div>
+  </div>
+  <div class="content-area">
+    ${mediaHtml}
+  </div>
+</body>
+</html>`);
+        newWin.document.close();
       } catch (err) {
         toast(`Datei konnte nicht geöffnet werden: ${err.message}`, 'err');
       }
