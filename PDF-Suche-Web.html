@@ -121,16 +121,16 @@
     }
 
     /* Eingabefelder */
-    .input-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
-    .input-wrap { position: relative; flex: 1 1 280px; display: flex; align-items: center; }
+    .input-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+    .input-wrap { position: relative; flex: 1 1 180px; min-width: 160px; display: flex; align-items: center; }
     .input-icon {
-      position: absolute; left: 13px; color: var(--text-muted);
+      position: absolute; left: 12px; color: var(--text-muted);
       pointer-events: none; display: flex; align-items: center;
     }
     .main-input {
-      width: 100%; height: 44px; padding: 0 36px 0 40px; border-radius: var(--radius);
+      width: 100%; height: 38px; padding: 0 32px 0 36px; border-radius: 8px;
       border: 1.5px solid var(--border-input); background: #ffffff; color: var(--text);
-      font-size: 14px; font-weight: 500; font-family: inherit;
+      font-size: 13px; font-weight: 500; font-family: inherit;
       box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
       transition: border-color 0.14s ease, box-shadow 0.14s ease;
     }
@@ -164,7 +164,7 @@
     }
     .btn:active:not(:disabled) { transform: translateY(1px); }
     .btn:disabled { opacity: 0.48; cursor: not-allowed; box-shadow: none; }
-    .btn-lg { height: 44px; padding: 0 18px; border-radius: var(--radius); font-size: 13.5px; }
+    .btn-lg { height: 38px; padding: 0 13px; border-radius: 8px; font-size: 13px; gap: 6px; }
     .btn-primary {
       background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #1d4ed8; color: #ffffff;
       box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
@@ -176,45 +176,110 @@
     .btn-soft:hover:not(:disabled) { background: #dbeafe; border-color: #60a5fa; color: #1e40af; }
     .btn-active { background: var(--accent) !important; border-color: var(--accent-hover) !important; color: #ffffff !important; }
 
-    /* Kategorie-Schnellfilter */
-    .cat-row { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    /* Kategorie-Schnellfilter & Filter-Buttons */
+    .cat-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
     .cat-count {
-      font-size: 11px; font-weight: 700; opacity: 0.78;
-      padding: 0 5px; border-radius: 999px; background: rgba(15, 23, 42, 0.07);
+      font-size: 11px; font-weight: 700; opacity: 0.82;
+      padding: 1px 5px; border-radius: 999px; background: rgba(15, 23, 42, 0.08);
+      margin-left: 2px;
     }
-    .btn-active .cat-count { background: rgba(255, 255, 255, 0.22); opacity: 1; }
+    .btn-active .cat-count { background: rgba(255, 255, 255, 0.24); opacity: 1; }
 
-    /* Filter-Zeilen: kompaktes 2-Spalten-Raster (Dateityp | Dateigröße  /  Zeitraum | Änderungsdatum) */
+    /* Filter-Raster: Flexibel, bündig ausgerichtet & responsiv via Container Query */
+    .filter-row-type { grid-area: type; }
+    .filter-row-size { grid-area: size; }
+    .filter-row-time { grid-area: time; }
+    .filter-row-date { grid-area: date; }
+
     .filter-grid {
-      display: grid; grid-template-columns: max-content max-content; justify-content: start;
-      column-gap: 36px; row-gap: 8px; align-items: start;
+      display: grid;
+      grid-template-columns: auto auto;
+      grid-template-areas:
+        "type type"
+        "time size"
+        "date date";
+      column-gap: 16px;
+      row-gap: 8px;
+      align-items: center;
     }
-    .filter-row { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px; min-width: 0; }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
     .filter-label {
-      width: 106px; min-width: 106px; max-width: 106px; flex-shrink: 0;
-      height: 34px; display: inline-flex; align-items: center;
-      font-weight: 700; color: var(--text-sec); font-size: 12.5px; cursor: default;
+      width: 86px;
+      min-width: 86px;
+      max-width: 86px;
+      flex-shrink: 0;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      font-weight: 700;
+      color: var(--text-sec);
+      font-size: 12px;
+      cursor: default;
     }
-    .filter-controls, .cat-row {
-      flex: 1; min-width: 0;
-      display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+
+    .filter-controls {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
     }
-    @media (max-width: 1600px) {
-      .filter-grid { grid-template-columns: minmax(0, 1fr); }
-      .filter-row-size { order: 4; }
+
+    .cat-row .btn,
+    .filter-row-size .btn,
+    .filter-row-time .btn,
+    .filter-row-date .btn {
+      height: 30px;
+      padding: 0 9px;
+      font-size: 12px;
+      gap: 4px;
     }
-    @media (max-width: 520px) {
-      .filter-row { flex-wrap: wrap; }
-      .filter-label { width: 100%; height: auto; margin-bottom: 2px; }
-    }
+
     .date-box {
-      display: inline-flex; align-items: center; height: 34px; width: 172px;
-      border-radius: var(--radius-sm); border: 1.5px solid var(--border-input); background: #ffffff;
-      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06); padding: 0 8px 0 10px; gap: 6px;
+      display: inline-flex;
+      align-items: center;
+      height: 30px;
+      width: 154px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border-input);
+      background: #ffffff;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+      padding: 0 6px 0 8px;
+      gap: 5px;
     }
     .date-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16); }
-    .inline-prefix { font-size: 11.5px; font-weight: 700; color: var(--text-muted); user-select: none; flex-shrink: 0; }
-    .date-box input { border: none; outline: none; background: transparent; width: 100%; font-family: inherit; font-size: 12.5px; color: var(--text); }
+    .inline-prefix { font-size: 11px; font-weight: 700; color: var(--text-muted); user-select: none; flex-shrink: 0; }
+    .date-box input { border: none; outline: none; background: transparent; width: 100%; font-family: inherit; font-size: 12px; color: var(--text); }
+
+    @container workspace (min-width: 1240px) {
+      .filter-grid {
+        grid-template-columns: max-content auto;
+        grid-template-areas:
+          "type size"
+          "time date";
+        column-gap: 24px;
+      }
+    }
+
+    @container workspace (max-width: 720px) {
+      .filter-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "type"
+          "size"
+          "time"
+          "date";
+      }
+    }
 
     /* Gemerkte Ordner & Pfad-Leiste */
     .saved-folders-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
@@ -408,7 +473,7 @@
       background: var(--accent); height: 84px;
     }
     .workspace-split.resizing-split { cursor: col-resize; user-select: none; }
-    .workspace-left { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+    .workspace-left { min-width: 0; display: flex; flex-direction: column; gap: 12px; container-type: inline-size; container-name: workspace; }
     .workspace-split.resizing-split .preview-card,
     .workspace-split.resizing-split .workspace-left { pointer-events: none; }
     @media (max-width: 1080px) {
@@ -700,7 +765,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.14 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.15 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -739,11 +804,11 @@
         </button>
 
         <button id="btn-pick-readonly" type="button" class="btn btn-lg" onclick="pickDirectoryReadOnly()" title="Notfall-Öffnen für von Chrome/Edge gesperrte Windows-Systemordner (z. B. C:\Desktop, C:\Downloads, C:\Dokumente) – 100 % lokal im Browser (trotz Windows-Text ‚Hochladen‘ wird nichts gesendet). Für normale Ordner bitte ‚Ordner wählen…‘ nutzen.">
-          <span>🛡️ Systemordner (Nur-Lesen)</span>
+          <span>🛡️ Systemordner</span>
         </button>
 
         <button id="btn-reopen-last" type="button" class="btn btn-soft btn-lg hidden" onclick="reopenLastDirectory()" title="Zuletzt gewählten Ordner mit einem Klick wieder öffnen">
-          <span>↺ Letzten Ordner öffnen</span>
+          <span>↺ Zuletzt geöffnet</span>
         </button>
 
         <button id="btn-rescan" type="button" class="btn btn-soft btn-lg hidden" onclick="rescanCurrentFolder()" title="Ordner erneut einlesen, falls zwischenzeitlich neue Dateien dazugekommen sind">
@@ -806,7 +871,7 @@
       </div>
 
       <div class="filter-grid">
-        <div class="filter-row">
+        <div class="filter-row filter-row-type">
           <span class="filter-label">Dateityp:</span>
           <div class="cat-row filter-controls" id="category-buttons">
             <button type="button" class="btn btn-active" data-cat="all" onclick="setCategory('all')">Alle <span class="cat-count" id="cnt-all">0</span></button>
@@ -835,7 +900,7 @@
           </div>
         </div>
 
-        <div class="filter-row">
+        <div class="filter-row filter-row-time">
           <span class="filter-label">Zeitraum:</span>
           <div class="filter-controls">
             <button type="button" class="btn" data-tf="today" onclick="toggleTimeframe('today')">Heute</button>
@@ -845,7 +910,7 @@
           </div>
         </div>
 
-        <div class="filter-row">
+        <div class="filter-row filter-row-date">
           <span class="filter-label">Änderungsdatum:</span>
           <div class="filter-controls">
             <div class="date-box">
@@ -1768,7 +1833,7 @@
       } catch (_) {}
       const btn = document.getElementById('btn-reopen-last');
       if (btn) {
-        btn.querySelector('span').textContent = `↺ Letzten Ordner öffnen (${disp})`;
+        btn.querySelector('span').textContent = `↺ Zuletzt: ${disp}`;
         btn.classList.remove('hidden');
       }
       const hint = document.getElementById('folder-hint');
