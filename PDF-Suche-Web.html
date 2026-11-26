@@ -911,7 +911,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.40 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.41 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1318,6 +1318,7 @@
       multiRootMode: false,
       multiRootPrefixes: new Map(),
       activeMultiEntries: [],
+      awaitingSearch: false,
       canWrite: false,
       allFiles: [],       // { id, name, ext, cat, dir, relPath, size, mtime, fileHandle, parentHandle, fileObj }
       allDirs: new Set(), // alle gescannten Unterordner (inkl. leerer Ordner!)
@@ -2052,6 +2053,7 @@
       state.multiRootMode = false;
       state.multiRootPrefixes = new Map();
       state.activeMultiEntries = [];
+      state.awaitingSearch = false;
       const bpWrap = document.querySelector('.basepath-wrap');
       if (bpWrap) bpWrap.classList.remove('hidden');
       state.rootHandle = handle;
@@ -2261,9 +2263,17 @@
     }
 
     async function rescanCurrentFolder() {
+      const q = (document.getElementById('search-input')?.value || '').trim();
+      const emptyQuery = !q;
+      state.awaitingSearch = emptyQuery;
+      if (emptyQuery) {
+        state.filteredFiles = [];
+        clearActivePreview();
+        renderTable();
+      }
       if (state.multiRootMode) {
         const list = (state.activeMultiEntries && state.activeMultiEntries.length) ? state.activeMultiEntries : savedFoldersList;
-        await scanMultipleEntries(list, state.rootName || `Alle Ordner (${list.length})`, state.activeDrive || 'ALL');
+        await scanMultipleEntries(list, state.rootName || `Alle Ordner (${list.length})`, state.activeDrive || 'ALL', emptyQuery);
       } else if (state.rootHandle) {
         await scanDirectoryHandle(state.rootHandle);
       }
@@ -2274,10 +2284,12 @@
         toast('Noch keine Ordner gemerkt – wähle zuerst mindestens einen Ordner über „Ordner wählen…“.', 'err');
         return;
       }
-      await scanMultipleEntries(savedFoldersList, `Alle Ordner (${savedFoldersList.length})`, 'ALL');
+      state.awaitingSearch = false;
+      await scanMultipleEntries(savedFoldersList, `Alle Ordner (${savedFoldersList.length})`, 'ALL', false);
     }
 
-    async function scanMultipleEntries(entriesList, titleLabel, activeDriveLetter = 'ALL') {
+    async function scanMultipleEntries(entriesList, titleLabel, activeDriveLetter = 'ALL', preserveAwaitingSearch = false) {
+      if (!preserveAwaitingSearch) state.awaitingSearch = false;
       if (!entriesList || !entriesList.length) {
         toast('Keine Ordner zum Einlesen vorhanden.', 'err');
         return;
@@ -2826,6 +2838,7 @@
     }
 
     function setCategory(cat) {
+      state.awaitingSearch = false;
       const prevCat = state.category;
       state.category = cat;
       if (cat === 'folder' && prevCat !== 'folder') {
@@ -3249,6 +3262,7 @@
     }
 
     function navigateToSubfolder(dir, allLevels = null, recordHistory = true) {
+      state.awaitingSearch = false;
       closeExplorerFolderPopup();
       clearActivePreview();
       const normDir = _normItemDir(dir);
@@ -3758,6 +3772,16 @@
       const toTs = dTo ? new Date(`${dTo}T23:59:59.999`).getTime() : null;
       const minBytes = parseSizeBytes(document.getElementById('min-size-input').value);
 
+      const hasAnyCriteria = !!(q || state.category !== 'all' || state.onlyDuplicates || state.activeSubfolder || !state.includeSublevels || fromTs !== null || toTs !== null || minBytes !== null);
+      if (hasAnyCriteria) state.awaitingSearch = false;
+
+      if (state.awaitingSearch) {
+        state.filteredFiles = [];
+        renderTable();
+        updatePathBar();
+        return;
+      }
+
       let list;
       if (state.category === 'folder') {
         list = _getScopedFolderItems().filter(folder => {
@@ -3864,7 +3888,9 @@
       if (state.filteredFiles.length === 0) {
         const rawQ = (document.getElementById('search-input').value || '').trim();
         const looksLikePath = /^[a-zA-Z]:[\\/]|^\\\\/.test(rawQ);
-        if (looksLikePath) {
+        if (state.awaitingSearch && !rawQ) {
+          tbody.innerHTML = `<tr><td colspan="8"><div class="empty-box"><h3>✓ ${state.allFiles.length} Dateien in „${escapeHtml(state.rootName)}“ neu eingelesen</h3><div style="margin-bottom:10px;">Das Suchfeld ist leer – gib oben einen <strong>Suchbegriff</strong> ein, wähle einen Filter oder klicke auf einen Ordner.</div><button type="button" class="btn btn-primary" onclick="state.awaitingSearch=false; applyFilters();">Alle ${state.allFiles.length} Dateien anzeigen</button></div></td></tr>`;
+        } else if (looksLikePath) {
           tbody.innerHTML = `<tr><td colspan="8"><div class="empty-box"><h3>Ordnerpfad im Suchfeld erkannt</h3><div style="margin-bottom:10px;">Das obere Suchfeld filtert nach <strong>Dateinamen</strong> – nicht nach dem Windows-Ordnerpfad.<br>Die <strong>${state.allFiles.length} Dateien</strong> aus „${escapeHtml(state.rootName)}“ sind bereits geladen.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn btn-primary" onclick="adoptSearchAsBasePath()">Als Basis-Pfad übernehmen &amp; alle anzeigen</button><button type="button" class="btn" onclick="clearSearchInput()">Suchfeld leeren</button></div></div></td></tr>`;
         } else if (state.activeSubfolder && !rawQ && state.category === 'all' && !state.timeframe && !state.sizePreset) {
           const dispFolder = toGermanDisplayPath(state.activeSubfolder);
