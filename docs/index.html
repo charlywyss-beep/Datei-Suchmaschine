@@ -911,7 +911,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.39 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.40 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1937,7 +1937,7 @@
         try { savedPref = localStorage.getItem(getBasePathStorageKey(entry.name)) || ''; } catch (_) {}
         const drvTag = getEntryDrive(entry);
         const baseDisp = savedPref ? toGermanDisplayPath(savedPref) : toGermanFolderLabel(entry.name);
-        const labelTxt = (drvTag && !baseDisp.toUpperCase().startsWith(drvTag + ':')) ? `[${drvTag}:] ${baseDisp}` : baseDisp;
+        const labelTxt = (drvTag && !baseDisp.toUpperCase().startsWith(drvTag + ':')) ? `${drvTag}: ${baseDisp}` : baseDisp;
         btnOpen.title = `Gespeicherten Ordner öffnen: ${labelTxt}`;
         btnOpen.textContent = `📂 ${labelTxt}`;
         btnOpen.onclick = () => openSavedFolderById(entry.id);
@@ -2329,7 +2329,11 @@
       state.rootHandle = null;
       state.basePathPrefix = '';
       const dynamicLabel = granted
-        .map(g => toGermanFolderLabel((g.entry && g.entry.name) || 'Ordner'))
+        .map(g => {
+          const base = toGermanFolderLabel((g.entry && g.entry.name) || 'Ordner');
+          const drv = getEntryDrive(g.entry);
+          return (drv && !base.toUpperCase().startsWith(drv + ':')) ? `${drv}: ${base}` : base;
+        })
         .filter(Boolean)
         .join(' - ');
       state.rootName = dynamicLabel || titleLabel || `Ordner (${granted.length})`;
@@ -2370,7 +2374,9 @@
         for (const itemRoot of granted) {
           if (state.cancelRequested) break;
           const entry = itemRoot.entry;
-          const rawLabel = toGermanFolderLabel(entry.name || 'Ordner').replace(/[\\/]+/g, '_') || 'Ordner';
+          const baseName = toGermanFolderLabel(entry.name || 'Ordner').replace(/[\\/]+/g, '_') || 'Ordner';
+          const drvTag = getEntryDrive(entry);
+          const rawLabel = (drvTag && !baseName.toUpperCase().startsWith(drvTag + ':')) ? `${drvTag}: ${baseName}` : baseName;
           let rootSeg = rawLabel;
           let dupIdx = 2;
           while (usedSegs.has(rootSeg.toLowerCase())) {
@@ -3000,7 +3006,12 @@
     function formatRootDisplayPath() {
       const pref = (state.basePathPrefix || '').replace(/[\\/]+$/, '');
       if (pref) return pref;
-      return toGermanFolderLabel(state.rootName || '');
+      const base = toGermanFolderLabel(state.rootName || '');
+      const drv = (state.activeDrive || '').toUpperCase();
+      if (drv && /^[A-Z]$/.test(drv) && base && !base.toUpperCase().startsWith(drv + ':')) {
+        return `${drv}: ${base}`;
+      }
+      return base;
     }
 
     function formatFullFolderPath(subDir) {
