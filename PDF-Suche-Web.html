@@ -359,6 +359,10 @@
       height: 30px;
       box-sizing: border-box;
     }
+    .drive-chips-group.needs-drive {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
     .drive-chip-label {
       font-size: 11px;
       font-weight: 700;
@@ -867,7 +871,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.27 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.28 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1331,7 +1335,7 @@
     const COLUMN_META = {
       name: { label: 'Name', sortKey: 'name', cls: 'col-name', title: 'Nach Name sortieren' },
       ext: { label: 'Typ', sortKey: 'ext', cls: 'col-ext', title: 'Nach Dateityp sortieren' },
-      dir: { label: 'Unterordner', sortKey: 'dir', cls: 'col-dir', title: 'Nach Unterordner sortieren' },
+      dir: { label: 'Ordnerpfad', sortKey: 'dir', cls: 'col-dir', title: 'Nach Ordnerpfad sortieren' },
       size: { label: 'Größe', sortKey: 'size', cls: 'col-size', title: 'Nach Größe sortieren' },
       mtime: { label: 'Geändert', sortKey: 'mtime', cls: 'col-date', title: 'Nach Änderungsdatum sortieren' },
       act: { label: 'Aktionen', sortKey: null, cls: 'col-act', title: 'Spalte per Ziehen verschieben' }
@@ -1418,7 +1422,7 @@
         if (!it.isFolder) hasFiles = true;
         const nameStr = (it.isFolder ? '📁 ' : '') + (it.name || '');
         nameMax = Math.max(nameMax, _measureTextWidth(nameStr, true));
-        const d = it.dir === '(Hauptordner)' ? it.dir : toGermanDisplayPath(it.dir || '');
+        const d = toGermanDisplayPath(formatFullFolderPath(it.dir || ''));
         dirMax = Math.max(dirMax, _measureTextWidth(d, false));
         const s = it.isFolder ? (it.totalFiles === 0 ? 'leer (0)' : formatBytes(it.size)) : formatBytes(it.size);
         sizeMax = Math.max(sizeMax, _measureTextWidth(s, false));
@@ -2487,6 +2491,14 @@
         if (l && d === l) btn.classList.add('active');
         else btn.classList.remove('active');
       });
+      const grp = document.getElementById('drive-chips-group');
+      if (grp) {
+        const needs = !!state.rootName && !l;
+        grp.classList.toggle('needs-drive', needs);
+        grp.title = needs
+          ? 'Laufwerk noch nicht zugeordnet (Browser versteckt es) – klicke 1× auf C:, D: oder E: bzw. trage rechts den Basis-Pfad ein'
+          : 'Laufwerk mit 1 Klick wechseln (z. B. C:, D:, E:)';
+      }
     }
 
     function setDriveLetter(letter) {
@@ -3401,7 +3413,7 @@
 
         const tdDir = document.createElement('td');
         tdDir.className = 'col-dir';
-        const dispDir = item.dir === '(Hauptordner)' ? item.dir : toGermanDisplayPath(item.dir);
+        const dispDir = toGermanDisplayPath(formatFullFolderPath(item.dir));
         tdDir.title = dispDir;
         tdDir.textContent = dispDir;
 
