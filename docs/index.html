@@ -910,7 +910,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.33 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.34 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -2222,10 +2222,8 @@
       toast(hintTxt, 'ok');
 
       try {
-        // Eigene Picker-ID pro Laufwerk (drive-c, drive-d, drive-e), damit Chrome/Edge sich für C:, D: und E:
-        // jeweils einen EIGENEN Startordner merkt und C: nicht mehr bei D:\01\Documents landet!
+        // Eigene Picker-ID pro Laufwerk (drive_c, drive_d, drive_e) – OHNE erzwungenes startIn (kein gesperrtes Downloads/Documents!)
         const pickOpts = { id: `drive_${cleanL.toLowerCase()}` };
-        if (cleanL === 'C') pickOpts.startIn = 'downloads';
         let handle;
         try {
           handle = await window.showDirectoryPicker({ mode: 'readwrite', ...pickOpts });
