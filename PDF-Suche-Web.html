@@ -543,7 +543,7 @@
 
     /* Explorer Unterordner-Popup-Fenster */
     .explorer-popup {
-      position: fixed; z-index: 120; min-width: 230px; max-width: 340px; max-height: 360px;
+      position: fixed; z-index: 120; min-width: 250px; max-width: 380px; max-height: 420px;
       overflow-y: auto; background: #ffffff; border: 1px solid var(--border);
       border-radius: 10px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
       padding: 5px; display: flex; flex-direction: column; gap: 2px;
@@ -552,7 +552,7 @@
     .explorer-popup-head {
       display: flex; align-items: center; justify-content: space-between; gap: 6px;
       padding: 5px 8px 6px; border-bottom: 1px solid var(--divider); margin-bottom: 2px;
-      font-size: 11.5px; font-weight: 700; color: var(--text-sec);
+      font-size: 11.5px; font-weight: 700; color: var(--text-sec); flex-shrink: 0;
     }
     .explorer-popup-back {
       border: 1px solid var(--border); background: #f8fafc; color: var(--text);
@@ -561,7 +561,7 @@
     }
     .explorer-popup-back:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-hover); }
     .explorer-popup-row {
-      display: flex; align-items: stretch; border-radius: 7px; overflow: hidden;
+      display: flex; align-items: stretch; border-radius: 7px; overflow: hidden; flex-shrink: 0;
     }
     .explorer-popup-row.active { background: #eff6ff; }
     .explorer-popup-item {
@@ -583,7 +583,7 @@
     }
     .explorer-popup-drill:hover { background: #dbeafe; color: var(--accent-hover); }
     .explorer-popup-drill-spacer { width: 28px; flex-shrink: 0; pointer-events: none; }
-    .explorer-popup-div { height: 1px; background: var(--divider); margin: 3px 4px; }
+    .explorer-popup-div { height: 1px; background: var(--divider); margin: 3px 4px; flex-shrink: 0; }
 
     /* Ergebnis-Toolbar */
     .results-toolbar {
@@ -911,7 +911,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.37 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.38 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -3062,6 +3062,7 @@
       }
 
       closeExplorerFolderPopup();
+      pop.scrollTop = 0;
       _popupAnchorEl = anchorEl;
       _popupCurrentDir = normTarget;
       anchorEl.classList.add('menu-open');
