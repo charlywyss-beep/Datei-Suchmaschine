@@ -921,7 +921,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.45 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.46 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -2089,7 +2089,7 @@
       await saveSavedFoldersList();
       try { localStorage.removeItem(getBasePathStorageKey(entry.name)); } catch (_) {}
       if (savedFoldersList.length === 0 || wasActive) {
-        await resetLoadedWorkspace(savedFoldersList.length === 0);
+        await resetLoadedWorkspace(true);
       } else {
         renderSavedFoldersRow();
       }
@@ -2245,6 +2245,11 @@
       }
       const rec = await loadLastDirectoryHandle();
       if (!rec || !rec.handle) return;
+      const stillSaved = savedFoldersList.some(x => (x.name || '').toLowerCase() === (rec.name || '').toLowerCase());
+      if (!stillSaved) {
+        await clearLastDirectoryHandle();
+        return;
+      }
       savedLastHandle = rec.handle;
       const disp = rec.name || localStorage.getItem('pdf_suche_last_folder_name') || 'Letzter Ordner';
       try {
