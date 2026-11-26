@@ -921,7 +921,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.44 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.45 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -2010,6 +2010,70 @@
       if (btn) setTimeout(() => btn.focus(), 20);
     }
 
+    async function clearLastDirectoryHandle() {
+      savedLastHandle = null;
+      try { localStorage.removeItem('pdf_suche_last_folder_name'); } catch (_) {}
+      try {
+        const db = await openHandleDb();
+        if (!db) return;
+        await new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).delete('last_dir');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        });
+      } catch (_) {}
+    }
+
+    async function resetLoadedWorkspace(clearLastDir = false) {
+      state.rootHandle = null;
+      state.rootName = '';
+      state.activeDrive = '';
+      state.basePathPrefix = '';
+      state.multiRootMode = false;
+      state.multiRootPrefixes = new Map();
+      state.activeMultiEntries = [];
+      state.awaitingSearch = false;
+      state.canWrite = false;
+      state.allFiles = [];
+      state.allDirs = new Set();
+      state.filteredFiles = [];
+      state.selectedIds.clear();
+      state.lastSelectedId = null;
+      clearActivePreview();
+      resetFolderNavigation();
+      showModeNotice('');
+
+      const bp = document.getElementById('base-path-prefix');
+      if (bp) { bp.value = ''; bp.title = 'Windows-Basis-Pfad eintragen…'; }
+      const bpWrap = document.querySelector('.basepath-wrap');
+      if (bpWrap) bpWrap.classList.remove('hidden');
+      const pathBar = document.getElementById('path-bar');
+      if (pathBar) pathBar.classList.add('hidden');
+      const chipsBar = document.getElementById('subfolder-chips-bar');
+      if (chipsBar) { chipsBar.classList.add('hidden'); chipsBar.innerHTML = ''; }
+      const btnRescan = document.getElementById('btn-rescan');
+      if (btnRescan) btnRescan.classList.add('hidden');
+      const btnReopen = document.getElementById('btn-reopen-last');
+      if (btnReopen) btnReopen.classList.add('hidden');
+      const hint = document.getElementById('folder-hint');
+      if (hint) {
+        hint.classList.remove('loaded');
+        hint.textContent = 'Wähle zuerst einen Ordner auf deinem PC oder Netzlaufwerk';
+      }
+
+      if (clearLastDir) await clearLastDirectoryHandle();
+
+      updateCategoryCounts();
+      rebuildSubfolderDropdown();
+      updatePathBar();
+      updateModeBadge();
+      computeDuplicates();
+      renderTable();
+      renderSavedFoldersRow();
+      _highlightDriveButtons();
+    }
+
     async function executeRemoveSavedFolder() {
       const id = _pendingRemoveSavedId;
       _pendingRemoveSavedId = null;
@@ -2020,10 +2084,15 @@
       let savedBase = '';
       try { savedBase = (localStorage.getItem(getBasePathStorageKey(entry.name)) || '').trim(); } catch (_) {}
       const label = savedBase || toGermanFolderLabel(entry.name);
+      const wasActive = (!state.multiRootMode && state.rootName && entry.name.toLowerCase() === state.rootName.toLowerCase());
       savedFoldersList = savedFoldersList.filter(x => x.id !== id);
       await saveSavedFoldersList();
       try { localStorage.removeItem(getBasePathStorageKey(entry.name)); } catch (_) {}
-      renderSavedFoldersRow();
+      if (savedFoldersList.length === 0 || wasActive) {
+        await resetLoadedWorkspace(savedFoldersList.length === 0);
+      } else {
+        renderSavedFoldersRow();
+      }
       toast(`Gemerkter Ordner entfernt: ${label}`, 'ok');
     }
 
@@ -2170,6 +2239,10 @@
       savedFoldersList = await loadSavedFoldersList();
       renderSavedFoldersRow();
       _highlightDriveButtons();
+      if (!savedFoldersList.length) {
+        await clearLastDirectoryHandle();
+        return;
+      }
       const rec = await loadLastDirectoryHandle();
       if (!rec || !rec.handle) return;
       savedLastHandle = rec.handle;
@@ -2305,6 +2378,10 @@
     }
 
     async function rescanCurrentFolder() {
+      if (!savedFoldersList || savedFoldersList.length === 0) {
+        await resetLoadedWorkspace(true);
+        return;
+      }
       const q = (document.getElementById('search-input')?.value || '').trim();
       const emptyQuery = !q;
       state.awaitingSearch = emptyQuery;
