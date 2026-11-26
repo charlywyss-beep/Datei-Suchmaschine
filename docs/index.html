@@ -871,7 +871,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.28 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.29 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -949,8 +949,8 @@
       <div id="path-bar" class="path-bar hidden" style="margin-bottom: 8px;">
         <div class="path-breadcrumbs" id="path-breadcrumbs"></div>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1 1 auto; justify-content:flex-end;">
-          <div class="drive-chips-group" id="drive-chips-group" title="Laufwerk manuell zuordnen oder wechseln (Browser verrät den Laufwerksbuchstaben aus Sicherheitsgründen nicht)">
-            <span class="drive-chip-label">Laufwerk:</span>
+          <div class="drive-chips-group hidden" id="drive-chips-group" title="Beschriftung des geöffneten Hauptlaufwerks anpassen (wechselt nicht die Festplatte)">
+            <span class="drive-chip-label">Laufwerk-Buchstabe:</span>
             <button type="button" class="drive-chip-btn" data-drive="C" onclick="setDriveLetter('C')">C:</button>
             <button type="button" class="drive-chip-btn" data-drive="D" onclick="setDriveLetter('D')">D:</button>
             <button type="button" class="drive-chip-btn" data-drive="E" onclick="setDriveLetter('E')">E:</button>
@@ -960,7 +960,7 @@
               id="base-path-prefix"
               type="text"
               class="basepath-input"
-              placeholder="Basis-Pfad (z. B. C:\… oder D:\…)"
+              placeholder="Optional: Echten Explorer-Pfad einfügen (z. B. C:\Benutzer\Haus_Übernahme)"
               title="Windows-Basis-Pfad eintragen – bleibt dauerhaft gespeichert, bis du ihn manuell per × löschst"
               oninput="onBasePathPrefixChanged(this.value)"
             >
@@ -2474,6 +2474,15 @@
     }
 
     function _highlightDriveButtons(letter) {
+      const grp = document.getElementById('drive-chips-group');
+      const isRootDrive = /^[a-zA-Z]:$/i.test(state.rootName || '');
+      if (grp) {
+        // Nur anzeigen, wenn wirklich ein Hauptlaufwerk ohne Ordnernamen geöffnet wurde (nicht bei normalen Unterordnern!)
+        grp.classList.toggle('hidden', !isRootDrive);
+        grp.classList.remove('needs-drive');
+      }
+      if (!isRootDrive) return;
+
       let l = (letter || '').toUpperCase().slice(0, 1);
       if (!l) {
         if (state.basePathPrefix && /^[a-zA-Z]:/.test(state.basePathPrefix)) {
@@ -2481,8 +2490,6 @@
         } else if (state.rootName && /^[a-zA-Z]:/.test(state.rootName)) {
           l = state.rootName.slice(0, 1).toUpperCase();
         } else {
-          // Wenn der Browser keinen Laufwerksbuchstaben kennt und noch kein Basis-Pfad gesetzt ist,
-          // KEINEN falschen Buchstaben (wie D:) blau markieren!
           l = '';
         }
       }
@@ -2491,14 +2498,6 @@
         if (l && d === l) btn.classList.add('active');
         else btn.classList.remove('active');
       });
-      const grp = document.getElementById('drive-chips-group');
-      if (grp) {
-        const needs = !!state.rootName && !l;
-        grp.classList.toggle('needs-drive', needs);
-        grp.title = needs
-          ? 'Laufwerk noch nicht zugeordnet (Browser versteckt es) – klicke 1× auf C:, D: oder E: bzw. trage rechts den Basis-Pfad ein'
-          : 'Laufwerk mit 1 Klick wechseln (z. B. C:, D:, E:)';
-      }
     }
 
     function setDriveLetter(letter) {
