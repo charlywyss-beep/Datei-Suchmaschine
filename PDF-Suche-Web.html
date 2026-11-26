@@ -921,7 +921,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.46 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.47 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1146,7 +1146,10 @@
             <span class="addr-folder-icon" aria-hidden="true">📁</span>
             <div class="table-address-crumbs" id="table-address-crumbs"></div>
           </div>
-          <div class="table-address-actions">
+          <div class="table-address-actions" style="display:flex; align-items:center; gap:5px;">
+            <button type="button" class="addr-action-btn" id="table-btn-open-explorer" onclick="openCurrentFolderInExplorer()" title="Aktuellen Ordner direkt im Windows Explorer öffnen (erfordert Explorer-Protokoll)">
+              <span>📂 Explorer</span>
+            </button>
             <button type="button" class="addr-action-btn" id="table-btn-copy-path" onclick="copyCurrentFolderPath()" title="Aktuellen Ordnerpfad für Windows Explorer kopieren">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -1186,6 +1189,7 @@
             <div id="preview-subpath" class="preview-subpath">Keine Datei ausgewählt</div>
           </div>
           <div style="display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0;">
+            <button id="btn-preview-explorer" type="button" class="btn" disabled onclick="openActiveFileInExplorer()" title="Datei direkt im Windows Explorer öffnen &amp; markieren">📂 Explorer</button>
             <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActiveFilePath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad kopieren</button>
             <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActiveFileInNewTab()">↗ Öffnen in Tab</button>
             <button id="btn-preview-dl" type="button" class="btn" disabled onclick="downloadActiveFile()" title="Kopie herunterladen (z. B. zum Öffnen in Standard-App)">⬇ Download</button>
@@ -1401,11 +1405,11 @@
       dir: 200,
       size: 78,
       mtime: 124,
-      act: 118
+      act: 152
     };
     /* Harte Minimalbreite (per Ziehen noch erreichbar) & „Wohlfühl“-Minimum fuer die Auto-Anpassung */
-    const COLUMN_HARD_MIN = { name: 70, ext: 44, dir: 56, size: 50, mtime: 76, act: 60 };
-    const COLUMN_SOFT_MIN = { name: 150, dir: 100, ext: 54, size: 66, mtime: 104, act: 112 };
+    const COLUMN_HARD_MIN = { name: 70, ext: 44, dir: 56, size: 50, mtime: 76, act: 70 };
+    const COLUMN_SOFT_MIN = { name: 150, dir: 100, ext: 54, size: 66, mtime: 104, act: 148 };
     const COLUMN_FLEX = { name: true, dir: true };
     const COLUMN_META = {
       name: { label: 'Name', sortKey: 'name', cls: 'col-name', title: 'Nach Name sortieren' },
@@ -1518,7 +1522,7 @@
         dir: Math.round(clamp(Math.max(hDir, dirMax + 28), 118, 420)),
         size: Math.round(clamp(Math.max(hSize, sizeMax + 24), 84, 130)),
         mtime: Math.max(hMtime, 132),
-        act: hasFiles ? Math.max(hAct, 118) : Math.max(hAct, 88)
+        act: hasFiles ? Math.max(hAct, 152) : Math.max(hAct, 108)
       };
       state._natCache = { ref, len: ref.length, widths };
       return widths;
@@ -4097,25 +4101,45 @@
           const btnOpenDir = document.createElement('button');
           btnOpenDir.type = 'button';
           btnOpenDir.className = 'icon-btn';
-          btnOpenDir.title = `Ordner „${item.name}“ öffnen`;
+          btnOpenDir.title = `Ordner „${item.name}“ in der Suche öffnen`;
           btnOpenDir.textContent = '📂';
           btnOpenDir.onclick = () => openFolderFromSearch(item.fullPath);
+
+          const btnExpDir = document.createElement('button');
+          btnExpDir.type = 'button';
+          btnExpDir.className = 'icon-btn';
+          const fullDir = formatFullFolderPath(item.fullPath);
+          btnExpDir.title = hasFullWindowsPath(fullDir)
+            ? `Im Windows Explorer öffnen:\n${fullDir}`
+            : 'Im Windows Explorer öffnen (erst Basis-Pfad eintragen)';
+          btnExpDir.style.opacity = hasFullWindowsPath(fullDir) ? '' : '0.45';
+          btnExpDir.textContent = '🗂️';
+          btnExpDir.onclick = () => openInWindowsExplorer(item);
 
           const btnCopy = document.createElement('button');
           btnCopy.type = 'button';
           btnCopy.className = 'icon-btn';
-          const fullDir = formatFullFolderPath(item.fullPath);
           btnCopy.title = getCopyPathTooltip(item);
           btnCopy.style.opacity = hasFullWindowsPath(fullDir) ? '' : '0.45';
           btnCopy.textContent = '📋';
           btnCopy.onclick = () => copyFilePath(item);
 
-          tdAct.append(btnOpenDir, btnCopy);
+          tdAct.append(btnOpenDir, btnExpDir, btnCopy);
         } else {
+          const btnExp = document.createElement('button');
+          btnExp.type = 'button';
+          btnExp.className = 'icon-btn';
+          const fullDir = formatFullFolderPath(item.dir);
+          btnExp.title = hasFullWindowsPath(fullDir)
+            ? `Im Windows Explorer öffnen & markieren:\n${fullDir}\\${item.name}`
+            : 'Im Windows Explorer öffnen (erst Basis-Pfad eintragen)';
+          btnExp.style.opacity = hasFullWindowsPath(fullDir) ? '' : '0.45';
+          btnExp.textContent = '📂';
+          btnExp.onclick = () => openInWindowsExplorer(item);
+
           const btnCopy = document.createElement('button');
           btnCopy.type = 'button';
           btnCopy.className = 'icon-btn';
-          const fullDir = formatFullFolderPath(item.dir);
           btnCopy.title = getCopyPathTooltip(item);
           btnCopy.style.opacity = hasFullWindowsPath(fullDir) ? '' : '0.45';
           btnCopy.textContent = '📋';
@@ -4144,7 +4168,7 @@
           btnDel.textContent = '🗑️';
           btnDel.onclick = () => openSingleDeleteModal(item);
 
-          tdAct.append(btnCopy, btnOpen, btnRen, btnDel);
+          tdAct.append(btnExp, btnCopy, btnOpen, btnRen, btnDel);
         }
         const cellMap = {
           name: tdName,
@@ -4377,6 +4401,12 @@
       if (pPdf) pPdf.classList.add('hidden');
       const pXlsx = document.getElementById('xlsx-toolbar');
       if (pXlsx) pXlsx.classList.add('hidden');
+      const btnExp = document.getElementById('btn-preview-explorer');
+      if (btnExp) {
+        btnExp.disabled = true;
+        btnExp.style.opacity = '';
+        btnExp.title = 'Keine Datei ausgewählt';
+      }
       const btnCopy = document.getElementById('btn-preview-copy');
       if (btnCopy) {
         btnCopy.disabled = true;
@@ -4726,6 +4756,8 @@
         btn.disabled = true;
         btn.style.opacity = '';
         btn.title = 'Keine Datei ausgewählt';
+        const btnExp = document.getElementById('btn-preview-explorer');
+        if (btnExp) { btnExp.disabled = true; btnExp.style.opacity = ''; btnExp.title = 'Keine Datei ausgewählt'; }
         return;
       }
       const p = formatFullFolderPath(item.isFolder ? item.fullPath : item.dir);
@@ -4733,6 +4765,58 @@
       btn.disabled = false;
       btn.style.opacity = hasFull ? '' : '0.55';
       btn.title = getCopyPathTooltip(item);
+      const btnExp = document.getElementById('btn-preview-explorer');
+      if (btnExp) {
+        btnExp.disabled = false;
+        btnExp.style.opacity = hasFull ? '' : '0.55';
+        btnExp.title = hasFull
+          ? (item.isFolder ? `Im Windows Explorer öffnen:\n${p}` : `Im Windows Explorer öffnen & markieren:\n${p.replace(/[\\/]+$/, '')}\\${item.name}`)
+          : 'Kein vollständiger Windows-Pfad – bitte oben rechts einmalig den Basis-Pfad eintragen';
+      }
+    }
+
+    function _triggerExplorerProtocol(targetWinPath) {
+      const url = `suchmaschine-explorer://open?path=${encodeURIComponent(targetWinPath)}`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 200);
+      toast(`📂 Öffne im Windows Explorer:\n${targetWinPath}`, 'ok');
+    }
+
+    function openInWindowsExplorer(item) {
+      if (!item) return;
+      const folderPart = formatFullFolderPath(item.isFolder ? item.fullPath : item.dir);
+      if (!hasFullWindowsPath(folderPart)) {
+        const bp = document.getElementById('base-path-prefix');
+        if (bp) {
+          bp.focus();
+          bp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        toast(`Kein vollständiger Windows-Pfad (nur „${folderPart}“) – bitte oben rechts einmalig den Basis-Pfad eintragen`, 'err');
+        return;
+      }
+      const fullTarget = item.isFolder
+        ? folderPart
+        : `${folderPart.replace(/[\\/]+$/, '')}\\${item.name}`;
+      _triggerExplorerProtocol(fullTarget);
+    }
+
+    function openActiveFileInExplorer() {
+      const item = state.filteredFiles.find(x => x.id === state.activeId) || state.allFiles.find(x => x.id === state.activeId);
+      if (item) openInWindowsExplorer(item);
+    }
+
+    function openCurrentFolderInExplorer() {
+      const cur = _normItemDir(state.activeSubfolder);
+      const full = formatFullFolderPath(cur);
+      if (!hasFullWindowsPath(full)) {
+        toast(`Kein vollständiger Windows-Pfad für diesen Ordner („${full}“).`, 'err');
+        return;
+      }
+      _triggerExplorerProtocol(full);
     }
 
     async function copyFilePath(item) {
