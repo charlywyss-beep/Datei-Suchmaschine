@@ -911,7 +911,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.38 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.39 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1013,7 +1013,6 @@
         </div>
       </div>
       <div id="subfolder-chips-bar" class="subfolder-chips-bar hidden"></div>
-      <div id="explorer-folder-popup" class="explorer-popup hidden" role="menu"></div>
 
       <input id="fallback-folder-input" type="file" webkitdirectory directory multiple class="hidden" onchange="handleFallbackFiles(this.files)">
       <div id="mode-notice" class="info-banner hidden"></div>
@@ -1308,6 +1307,7 @@
     </div>
   </div>
 
+  <div id="explorer-folder-popup" class="explorer-popup hidden" role="menu"></div>
   <div id="toast-box"></div>
 
   <script>
@@ -3031,9 +3031,10 @@
     }
 
     let _popupAnchorEl = null;
+    let _popupAnchorRect = null;
     let _popupCurrentDir = null;
 
-    function closeExplorerFolderPopup() {
+    function closeExplorerFolderPopup(preserveAnchorRect = false) {
       const pop = document.getElementById('explorer-folder-popup');
       if (pop) {
         pop.classList.add('hidden');
@@ -3045,12 +3046,14 @@
         if (splitWrap) splitWrap.classList.remove('menu-open');
       }
       _popupAnchorEl = null;
+      if (!preserveAnchorRect) _popupAnchorRect = null;
       _popupCurrentDir = null;
     }
 
-    function openExplorerFolderPopup(anchorEl, dirPath, baseDirPath = null) {
+    function openExplorerFolderPopup(anchorEl, dirPath, baseDirPath = null, clickEv = null) {
       const pop = document.getElementById('explorer-folder-popup');
       if (!pop || !anchorEl) return;
+      if (pop.parentElement !== document.body) document.body.appendChild(pop);
 
       const normTarget = _normItemDir(dirPath);
       const normBase = baseDirPath !== null ? _normItemDir(baseDirPath) : normTarget;
@@ -3061,9 +3064,25 @@
         return;
       }
 
-      closeExplorerFolderPopup();
+      // Aktuelle Anker-Position VOR dem Neuaufbau sichern (damit beim Weiterklicken ▸ niemals 0,0 entsteht)
+      let savedRect = null;
+      if (anchorEl && anchorEl.isConnected) {
+        const r = anchorEl.getBoundingClientRect();
+        if (r && (r.width > 0 || r.height > 0)) {
+          savedRect = { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+        }
+      }
+      if (!savedRect && _popupAnchorRect) {
+        savedRect = _popupAnchorRect;
+      }
+      if (!savedRect && clickEv && typeof clickEv.clientX === 'number') {
+        savedRect = { left: clickEv.clientX, top: clickEv.clientY, right: clickEv.clientX, bottom: clickEv.clientY + 6, width: 1, height: 6 };
+      }
+
+      closeExplorerFolderPopup(true);
       pop.scrollTop = 0;
       _popupAnchorEl = anchorEl;
+      _popupAnchorRect = savedRect;
       _popupCurrentDir = normTarget;
       anchorEl.classList.add('menu-open');
       const splitWrap = anchorEl.closest('.folder-split');
@@ -3179,18 +3198,40 @@
         });
       }
 
-      // Positionieren unterhalb des angeklickten Pfeils (Viewport-sicher)
+      // Positionieren direkt unterhalb (bzw. oberhalb) des angeklickten Pfeils – immer im sichtbaren Viewport
+      pop.style.maxHeight = '420px';
       pop.classList.remove('hidden');
-      const rect = anchorEl.getBoundingClientRect();
-      const popW = pop.offsetWidth || 240;
-      const popH = pop.offsetHeight || 200;
-      let left = rect.left;
+
+      let rect = _popupAnchorRect;
+      if (anchorEl && anchorEl.isConnected) {
+        const liveR = anchorEl.getBoundingClientRect();
+        if (liveR && (liveR.width > 0 || liveR.height > 0)) {
+          rect = liveR;
+          _popupAnchorRect = { left: liveR.left, top: liveR.top, right: liveR.right, bottom: liveR.bottom, width: liveR.width, height: liveR.height };
+        }
+      }
+      if (!rect) {
+        rect = { left: 24, top: 200, right: 48, bottom: 230, width: 24, height: 30 };
+      }
+
+      const popW = pop.offsetWidth || 260;
+      let left = Math.max(10, rect.left);
       if (left + popW > window.innerWidth - 12) {
         left = Math.max(10, window.innerWidth - popW - 12);
       }
-      let top = rect.bottom + 4;
-      if (top + popH > window.innerHeight - 12 && rect.top - popH - 4 > 10) {
-        top = rect.top - popH - 4;
+
+      const availBelow = window.innerHeight - (rect.bottom + 4) - 12;
+      const availAbove = rect.top - 16;
+      let top;
+      if (availBelow >= 200 || availBelow >= availAbove) {
+        const capH = Math.max(140, Math.min(420, availBelow));
+        pop.style.maxHeight = `${Math.round(capH)}px`;
+        top = rect.bottom + 4;
+      } else {
+        const capH = Math.max(140, Math.min(420, availAbove));
+        pop.style.maxHeight = `${Math.round(capH)}px`;
+        const actualH = Math.min(pop.offsetHeight || capH, capH);
+        top = Math.max(10, rect.top - actualH - 4);
       }
       pop.style.left = `${Math.round(left)}px`;
       pop.style.top = `${Math.round(top)}px`;
@@ -3352,7 +3393,7 @@
           arrowBtn.title = `Unterordner von „${disp}“ anzeigen`;
           arrowBtn.onclick = e => {
             e.stopPropagation();
-            openExplorerFolderPopup(arrowBtn, c.fullPath, c.fullPath);
+            openExplorerFolderPopup(arrowBtn, c.fullPath, c.fullPath, e);
           };
 
           split.append(mainBtn, arrowBtn);
@@ -3416,7 +3457,7 @@
             sep.title = 'Unterordner anzeigen';
             sep.onclick = e => {
               e.stopPropagation();
-              openExplorerFolderPopup(sep, targetDir, targetDir);
+              openExplorerFolderPopup(sep, targetDir, targetDir, e);
             };
           }
         }
