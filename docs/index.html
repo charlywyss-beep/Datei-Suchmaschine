@@ -911,7 +911,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.42 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.43 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1236,6 +1236,22 @@
       <div class="modal-foot">
         <button type="button" class="btn" onclick="closeModal('modal-delete-confirm')">Abbrechen</button>
         <button id="btn-confirm-delete" type="button" class="btn btn-danger" onclick="executePendingDelete()">🗑️ Unwiderruflich löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Gemerkten Ordner aus Liste löschen -->
+  <div id="modal-remove-saved-folder" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-remove-saved-folder')">
+    <div class="modal-card" style="max-width:420px;">
+      <div class="modal-body" style="padding:20px 22px 16px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:36px; height:36px; border-radius:9px; background:#eff6ff; border:1px solid #bfdbfe; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0;">📂</div>
+          <div id="remove-saved-folder-text" style="font-size:14px; font-weight:600; color:#0f172a; line-height:1.4;">Gemerkten Ordner aus Liste löschen?</div>
+        </div>
+      </div>
+      <div class="modal-foot" style="padding:12px 18px; background:#f8fafc;">
+        <button type="button" class="btn" onclick="closeModal('modal-remove-saved-folder')">Abbrechen</button>
+        <button id="btn-confirm-remove-saved" type="button" class="btn btn-primary" onclick="executeRemoveSavedFolder()">Löschen</button>
       </div>
     </div>
   </div>
@@ -1967,17 +1983,33 @@
       }
     }
 
-    async function removeSavedFolderById(id) {
+    let _pendingRemoveSavedId = null;
+
+    function removeSavedFolderById(id) {
       const entry = savedFoldersList.find(x => x.id === id);
       if (!entry) return;
       let savedBase = '';
       try { savedBase = (localStorage.getItem(getBasePathStorageKey(entry.name)) || '').trim(); } catch (_) {}
       const label = savedBase || toGermanFolderLabel(entry.name);
-      const confirmed = window.confirm(
-        `Gemerkten Ordner „${label}“ wirklich aus der Liste entfernen?\n\n` +
-        `Hinweis: Es wird nur die Verknüpfung (inkl. gespeichertem Basis-Pfad) in der Web-App entfernt – auf deiner Festplatte werden keine Dateien gelöscht.`
-      );
-      if (!confirmed) return;
+      _pendingRemoveSavedId = id;
+      const txtEl = document.getElementById('remove-saved-folder-text');
+      if (txtEl) txtEl.textContent = `Gemerkten Ordner „${label}“ aus Liste löschen?`;
+      const modal = document.getElementById('modal-remove-saved-folder');
+      if (modal) modal.classList.remove('hidden');
+      const btn = document.getElementById('btn-confirm-remove-saved');
+      if (btn) setTimeout(() => btn.focus(), 20);
+    }
+
+    async function executeRemoveSavedFolder() {
+      const id = _pendingRemoveSavedId;
+      _pendingRemoveSavedId = null;
+      closeModal('modal-remove-saved-folder');
+      if (!id) return;
+      const entry = savedFoldersList.find(x => x.id === id);
+      if (!entry) return;
+      let savedBase = '';
+      try { savedBase = (localStorage.getItem(getBasePathStorageKey(entry.name)) || '').trim(); } catch (_) {}
+      const label = savedBase || toGermanFolderLabel(entry.name);
       savedFoldersList = savedFoldersList.filter(x => x.id !== id);
       await saveSavedFoldersList();
       try { localStorage.removeItem(getBasePathStorageKey(entry.name)); } catch (_) {}
@@ -5461,6 +5493,7 @@
       document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
           closeExplorerFolderPopup();
+          closeModal('modal-remove-saved-folder');
           const card = document.getElementById('preview-card');
           if (card && card.classList.contains('maximized')) togglePreviewMaximize(true);
         } else if (state.pdfDoc && document.activeElement?.tagName !== 'INPUT') {
