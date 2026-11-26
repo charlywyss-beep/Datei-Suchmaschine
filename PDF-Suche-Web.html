@@ -838,7 +838,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.21 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.22 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -3758,6 +3758,51 @@
       }
     }
 
+    let lastPdfWheelTime = 0;
+
+    function handlePdfWheel(e) {
+      if (!state.pdfDoc || state.pdfDoc.numPages <= 1) return;
+      const body = document.getElementById('preview-body');
+      const card = document.getElementById('preview-card');
+      if (!body || !card) return;
+
+      const isMax = card.classList.contains('maximized') || !!document.fullscreenElement;
+
+      if (e.ctrlKey) {
+        e.preventDefault();
+        pdfChangeZoom(e.deltaY < 0 ? 0.2 : -0.2);
+        return;
+      }
+
+      const hasVScroll = body.scrollHeight > body.clientHeight + 10;
+      const canScrollDown = hasVScroll && (body.scrollTop + body.clientHeight < body.scrollHeight - 15);
+      const canScrollUp = hasVScroll && (body.scrollTop > 15);
+
+      if (e.deltaY > 0) {
+        if (state.pdfFitMode === 'fit' || isMax || !canScrollDown) {
+          const now = Date.now();
+          if (now - lastPdfWheelTime < 260) return;
+          if (state.pdfPageNum < state.pdfDoc.numPages) {
+            e.preventDefault();
+            lastPdfWheelTime = now;
+            pdfStepPage(1);
+            body.scrollTop = 0;
+          }
+        }
+      } else if (e.deltaY < 0) {
+        if (state.pdfFitMode === 'fit' || isMax || !canScrollUp) {
+          const now = Date.now();
+          if (now - lastPdfWheelTime < 260) return;
+          if (state.pdfPageNum > 1) {
+            e.preventDefault();
+            lastPdfWheelTime = now;
+            pdfStepPage(-1);
+            if (hasVScroll) body.scrollTop = body.scrollHeight;
+          }
+        }
+      }
+    }
+
     function pdfStepPage(delta) {
       if (!state.pdfDoc) return;
       const next = state.pdfPageNum + delta;
@@ -4600,10 +4645,20 @@
           const card = document.getElementById('preview-card');
           if (card && card.classList.contains('maximized')) togglePreviewMaximize(true);
         } else if (state.pdfDoc && document.activeElement?.tagName !== 'INPUT') {
-          if (e.key === 'ArrowLeft') pdfStepPage(-1);
-          if (e.key === 'ArrowRight') pdfStepPage(1);
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') {
+            e.preventDefault();
+            pdfStepPage(-1);
+          } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) {
+            e.preventDefault();
+            pdfStepPage(1);
+          }
         }
       });
+
+      const pCard = document.getElementById('preview-card');
+      if (pCard) {
+        pCard.addEventListener('wheel', handlePdfWheel, { passive: false });
+      }
     });
   </script>
 </body>
