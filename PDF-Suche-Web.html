@@ -335,6 +335,17 @@
       color: #4f46e5; padding: 4px 7px; cursor: pointer; font-size: 11px;
     }
     .saved-folder-del:hover { background: #fee2e2; color: var(--danger); }
+    .multi-all-pill {
+      display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px;
+      border-radius: 8px; border: 1px solid #93c5fd; background: #eff6ff; color: #1d4ed8;
+      font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .multi-all-pill:hover { background: #dbeafe; border-color: var(--accent); }
+    .multi-all-pill.active {
+      background: var(--accent); border-color: var(--accent); color: #ffffff;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.28);
+    }
 
     .path-bar {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
@@ -871,7 +882,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.29 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.30 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1270,6 +1281,8 @@
     const state = {
       rootHandle: null,
       rootName: '',
+      multiRootMode: false,
+      multiRootPrefixes: new Map(),
       canWrite: false,
       allFiles: [],       // { id, name, ext, cat, dir, relPath, size, mtime, fileHandle, parentHandle, fileObj }
       allDirs: new Set(), // alle gescannten Unterordner (inkl. leerer Ordner!)
@@ -1852,9 +1865,18 @@
       if (!savedFoldersList.length) { row.classList.add('hidden'); row.innerHTML = ''; return; }
       row.classList.remove('hidden');
       row.innerHTML = '<span style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em; margin-right:4px; cursor:default;">Gemerkte Ordner:</span>';
+      if (savedFoldersList.length >= 2) {
+        const btnAll = document.createElement('button');
+        btnAll.type = 'button';
+        btnAll.className = 'multi-all-pill' + (state.multiRootMode ? ' active' : '');
+        btnAll.textContent = `🔍 Alle zusammen (${savedFoldersList.length})`;
+        btnAll.title = 'Alle gemerkten Ordner (auf C:, D:, E: …) gleichzeitig in einer einzigen Suche einlesen';
+        btnAll.onclick = () => scanAllSavedFolders();
+        row.appendChild(btnAll);
+      }
       savedFoldersList.forEach(entry => {
         const pill = document.createElement('div');
-        const isCur = state.rootName && entry.name.toLowerCase() === state.rootName.toLowerCase();
+        const isCur = !state.multiRootMode && state.rootName && entry.name.toLowerCase() === state.rootName.toLowerCase();
         pill.className = 'saved-folder-pill' + (isCur ? ' active' : '');
         const btnOpen = document.createElement('button');
         btnOpen.type = 'button';
@@ -1958,6 +1980,10 @@
           if (permR !== 'granted') return false;
         }
       }
+      state.multiRootMode = false;
+      state.multiRootPrefixes = new Map();
+      const bpWrap = document.querySelector('.basepath-wrap');
+      if (bpWrap) bpWrap.classList.remove('hidden');
       state.rootHandle = handle;
       const rawName = (handle.name || '').trim();
       let rootName = rawName;
@@ -2055,7 +2081,179 @@
     }
 
     async function rescanCurrentFolder() {
-      if (state.rootHandle) await scanDirectoryHandle(state.rootHandle);
+      if (state.multiRootMode) await scanAllSavedFolders();
+      else if (state.rootHandle) await scanDirectoryHandle(state.rootHandle);
+    }
+
+    async function scanAllSavedFolders() {
+      if (!savedFoldersList || !savedFoldersList.length) {
+        toast('Noch keine Ordner gemerkt – wähle zuerst mindestens einen Ordner über „Ordner wählen…“.', 'err');
+        return;
+      }
+
+      const granted = [];
+      let anyWrite = false;
+      let skippedCount = 0;
+
+      for (const entry of savedFoldersList) {
+        if (!entry || !entry.handle) { skippedCount += 1; continue; }
+        let entryWrite = true;
+        try {
+          if (entry.handle.queryPermission) {
+            let permW = await entry.handle.queryPermission({ mode: 'readwrite' });
+            if (permW !== 'granted' && entry.handle.requestPermission) {
+              try { permW = await entry.handle.requestPermission({ mode: 'readwrite' }); } catch (_) {}
+            }
+            if (permW === 'granted') {
+              entryWrite = true;
+            } else {
+              entryWrite = false;
+              let permR = await entry.handle.queryPermission({ mode: 'read' });
+              if (permR !== 'granted' && entry.handle.requestPermission) {
+                try { permR = await entry.handle.requestPermission({ mode: 'read' }); } catch (_) {}
+              }
+              if (permR !== 'granted') {
+                skippedCount += 1;
+                continue;
+              }
+            }
+          }
+          if (entryWrite) anyWrite = true;
+          granted.push({ entry, canWrite: entryWrite });
+        } catch (_) {
+          skippedCount += 1;
+        }
+      }
+
+      if (!granted.length) {
+        toast('Keine Freigabe für die gemerkten Ordner erteilt.', 'err');
+        return;
+      }
+
+      state.multiRootMode = true;
+      state.multiRootPrefixes = new Map();
+      state.rootHandle = null;
+      state.basePathPrefix = '';
+      state.rootName = `Alle Ordner (${granted.length})`;
+      state.canWrite = anyWrite;
+      state.scanning = true;
+      state.cancelRequested = false;
+      state.allFiles = [];
+      state.allDirs = new Set();
+      state.selectedIds.clear();
+      state.lastSelectedId = null;
+      clearActivePreview();
+
+      const bpWrap = document.querySelector('.basepath-wrap');
+      if (bpWrap) bpWrap.classList.add('hidden');
+      const drvGrp = document.getElementById('drive-chips-group');
+      if (drvGrp) drvGrp.classList.add('hidden');
+      document.getElementById('btn-reopen-last').classList.add('hidden');
+      document.getElementById('btn-rescan').classList.remove('hidden');
+      renderSavedFoldersRow();
+
+      const btnCancel = document.getElementById('btn-cancel-scan');
+      const hint = document.getElementById('folder-hint');
+      const chkCloud = document.getElementById('chk-cloud-safe');
+      const manualCloud = !!(state.cloudSafeManual || (chkCloud && chkCloud.checked));
+      btnCancel.classList.remove('hidden');
+      hint.classList.remove('loaded');
+      hint.textContent = `🔍 Durchsuche alle ${granted.length} freigegebenen Ordner…`;
+
+      if (skippedCount > 0) {
+        showModeNotice(`ℹ️ ${granted.length} Ordner geladen (${skippedCount} ohne Freigabe übersprungen). Alle gefundenen Dateien sind sofort durchsuchbar.`);
+      } else {
+        showModeNotice('');
+      }
+
+      const usedSegs = new Set();
+      let counter = 0;
+      let lastPaint = performance.now();
+
+      try {
+        for (const itemRoot of granted) {
+          if (state.cancelRequested) break;
+          const entry = itemRoot.entry;
+          const rawLabel = toGermanFolderLabel(entry.name || 'Ordner').replace(/[\\/]+/g, '_') || 'Ordner';
+          let rootSeg = rawLabel;
+          let dupIdx = 2;
+          while (usedSegs.has(rootSeg.toLowerCase())) {
+            rootSeg = `${rawLabel} (${dupIdx++})`;
+          }
+          usedSegs.add(rootSeg.toLowerCase());
+
+          let savedPref = '';
+          try { savedPref = (localStorage.getItem(getBasePathStorageKey(entry.name)) || '').trim().replace(/[\\/]+$/, ''); } catch (_) {}
+          state.multiRootPrefixes.set(rootSeg, savedPref || rootSeg);
+          state.allDirs.add(rootSeg);
+
+          const cloudSafe = !!(manualCloud || isCloudFolderName(entry.name, savedPref));
+          const queue = [{ handle: entry.handle, relDir: rootSeg }];
+
+          while (queue.length > 0 && !state.cancelRequested) {
+            const { handle, relDir } = queue.shift();
+            try {
+              for await (const [name, child] of handle.entries()) {
+                if (state.cancelRequested) break;
+                if (child.kind === 'directory') {
+                  const low = name.toLowerCase();
+                  if (low.startsWith('$') || SKIP_DIRS.has(low)) continue;
+                  const subRel = `${relDir}\\${name}`;
+                  state.allDirs.add(subRel);
+                  queue.push({ handle: child, relDir: subRel });
+                } else if (child.kind === 'file') {
+                  if (name.startsWith('~$') || name.toLowerCase() === 'desktop.ini' || name.toLowerCase() === 'thumbs.db') continue;
+                  try {
+                    let fSize = null;
+                    let fMtime = null;
+                    if (!cloudSafe) {
+                      const file = await child.getFile();
+                      fSize = file.size || 0;
+                      fMtime = file.lastModified || 0;
+                    }
+                    counter += 1;
+                    const ext = getExt(name);
+                    const cat = getCategoryForExt(ext);
+                    state.allFiles.push({
+                      id: `f_${counter}`,
+                      name,
+                      ext: ext ? ext.toUpperCase() : '—',
+                      cat,
+                      dir: relDir,
+                      relPath: `${relDir}\\${name}`,
+                      size: fSize,
+                      mtime: fMtime,
+                      fileHandle: child,
+                      parentHandle: handle,
+                      fileObj: null,
+                    });
+                  } catch (_) {}
+                }
+                const now = performance.now();
+                if (now - lastPaint > 120) {
+                  lastPaint = now;
+                  hint.textContent = `🔍 Durchsuche „${rootSeg}“… ${counter} Dateien gesamt`;
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      } finally {
+        state.scanning = false;
+        btnCancel.classList.add('hidden');
+        hint.classList.add('loaded');
+        hint.textContent = state.cancelRequested
+          ? `Scan gestoppt · ${state.rootName} · ${state.allFiles.length} Dateien`
+          : `✓ Geladen: ${state.rootName} · ${state.allFiles.length} Dateien`;
+        resetFolderNavigation();
+        updateCategoryCounts();
+        rebuildSubfolderDropdown();
+        updatePathBar();
+        updateModeBadge();
+        computeDuplicates();
+        applyFilters();
+        renderSavedFoldersRow();
+      }
     }
 
     function cancelScan() { state.cancelRequested = true; }
@@ -2176,6 +2374,10 @@
 
     function handleFallbackFiles(fileList) {
       if (!fileList || fileList.length === 0) return;
+      state.multiRootMode = false;
+      state.multiRootPrefixes = new Map();
+      const bpWrap = document.querySelector('.basepath-wrap');
+      if (bpWrap) bpWrap.classList.remove('hidden');
       state.rootHandle = null;
       state.canWrite = false;
       state.allFiles = [];
@@ -2578,6 +2780,21 @@
     }
 
     function formatFullFolderPath(subDir) {
+      if (state.multiRootMode) {
+        if (!subDir || subDir === '(Hauptordner)') return state.rootName || 'Alle Ordner';
+        const norm = String(subDir).replace(/\//g, '\\').replace(/^\\+|\\+$/g, '');
+        const parts = norm.split('\\').filter(Boolean);
+        if (!parts.length) return state.rootName || 'Alle Ordner';
+        const first = parts[0];
+        const rest = parts.slice(1);
+        const mapped = (state.multiRootPrefixes && state.multiRootPrefixes.get(first)) || first;
+        if (!rest.length) {
+          if (/^[a-zA-Z]:$/i.test(mapped)) return `${mapped}\\`;
+          return mapped;
+        }
+        const cleanMapped = mapped.replace(/[\\/]+$/, '');
+        return `${cleanMapped}\\${toGermanDisplayPath(rest.join('\\'))}`;
+      }
       const root = formatRootDisplayPath();
       if (!subDir || subDir === '(Hauptordner)') {
         if (/^[a-zA-Z]:$/i.test(root)) return `${root}\\`;
@@ -2970,7 +3187,7 @@
 
       const isRootDrive = /^[a-zA-Z]:$/i.test(state.rootName);
 
-      if (hasFullWin || isRootDrive) {
+      if (!state.multiRootMode && (hasFullWin || isRootDrive)) {
         const driveMatch = fullDisplay.match(/^([a-zA-Z]:)($|\\(.*)$)/) || [null, (state.rootName || 'D:').toUpperCase()];
         const driveLetter = (driveMatch && driveMatch[1] ? driveMatch[1] : (state.rootName || 'D:')).toUpperCase();
 
