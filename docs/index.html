@@ -320,31 +320,41 @@
     .saved-folders-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
     .saved-folder-pill {
       display: inline-flex; align-items: center; border-radius: 8px;
-      border: 1px solid #a5b4fc; background: #eef2ff; color: #3730a3;
+      border: 1px solid #cbd5e1; background: #ffffff; color: #334155;
       overflow: hidden; font-size: 12px; font-weight: 600;
+      transition: all 0.14s ease;
     }
-    .saved-folder-pill.active { border-color: var(--accent); background: #dbeafe; color: #1e40af; }
+    .saved-folder-pill:hover { border-color: #93c5fd; background: #f8fafc; }
+    .saved-folder-pill.active {
+      border-color: #1d4ed8; background: var(--accent); color: #ffffff;
+      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.32);
+    }
     .saved-folder-btn {
       border: none; background: transparent; color: inherit; font-family: inherit;
-      font-size: 12px; font-weight: 700; padding: 4px 8px; cursor: pointer;
+      font-size: 12px; font-weight: 700; padding: 4px 9px; cursor: pointer;
       display: inline-flex; align-items: center; gap: 5px;
     }
     .saved-folder-btn:hover { background: rgba(37, 99, 235, 0.08); }
+    .saved-folder-pill.active .saved-folder-btn:hover { background: rgba(255, 255, 255, 0.12); }
     .saved-folder-del {
-      border: none; border-left: 1px solid rgba(99, 102, 241, 0.25); background: transparent;
-      color: #4f46e5; padding: 4px 7px; cursor: pointer; font-size: 11px;
+      border: none; border-left: 1px solid #e2e8f0; background: transparent;
+      color: #64748b; padding: 4px 7px; cursor: pointer; font-size: 11px;
     }
     .saved-folder-del:hover { background: #fee2e2; color: var(--danger); }
+    .saved-folder-pill.active .saved-folder-del {
+      border-left-color: rgba(255, 255, 255, 0.28); color: rgba(255, 255, 255, 0.88);
+    }
+    .saved-folder-pill.active .saved-folder-del:hover { background: #ef4444; color: #ffffff; }
     .multi-all-pill {
       display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px;
-      border-radius: 8px; border: 1px solid #93c5fd; background: #eff6ff; color: #1d4ed8;
+      border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; color: #1e40af;
       font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
       transition: all 0.14s ease;
     }
-    .multi-all-pill:hover { background: #dbeafe; border-color: var(--accent); }
+    .multi-all-pill:hover { background: #eff6ff; border-color: var(--accent); }
     .multi-all-pill.active {
-      background: var(--accent); border-color: var(--accent); color: #ffffff;
-      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.28);
+      background: var(--accent); border-color: #1d4ed8; color: #ffffff;
+      box-shadow: 0 1px 4px rgba(37, 99, 235, 0.32);
     }
 
     .drive-switch-bar {
@@ -911,7 +921,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.43 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.44 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
