@@ -910,7 +910,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.31 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.32 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1889,6 +1889,18 @@
                 changed = true;
               }
             });
+            // Alte fehlerhafte C:\-Hauptlaufwerk-Einträge (aus v3.18–v3.28, wo D:\ fälschlich als C:\ gespeichert wurde)
+            // automatisch bereinigen, da Chrome/Edge keinen Direktzugriff auf C:\-Root erlaubt.
+            const beforeLen = list.length;
+            list = list.filter(item => {
+              const n = (item && item.name || '').trim().toUpperCase();
+              if (n === 'C:' || n === 'C:\\') {
+                try { localStorage.removeItem(getBasePathStorageKey(item.name)); } catch (_) {}
+                return false;
+              }
+              return true;
+            });
+            if (list.length !== beforeLen) changed = true;
             if (changed) setTimeout(() => saveSavedFoldersList(), 200);
             resolve(list);
           };
@@ -2007,7 +2019,11 @@
         return await new Promise((resolve) => {
           const tx = db.transaction(IDB_STORE, 'readonly');
           const req = tx.objectStore(IDB_STORE).get('last_dir');
-          req.onsuccess = () => resolve(req.result || null);
+          req.onsuccess = () => {
+            const rec = req.result || null;
+            if (rec && (rec.name === 'C:' || rec.name === 'C:\\')) { resolve(null); return; }
+            resolve(rec);
+          };
           req.onerror = () => resolve(null);
         });
       } catch (_) { return null; }
@@ -2206,16 +2222,21 @@
       toast(hintTxt, 'ok');
 
       try {
+        const pickOpts = cleanL === 'C' ? { startIn: 'documents' } : {};
         let handle;
         try {
-          handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+          handle = await window.showDirectoryPicker({ mode: 'readwrite', ...pickOpts });
         } catch (e) {
           if (e && e.name === 'AbortError') return;
-          handle = await window.showDirectoryPicker({ mode: 'read' });
+          handle = await window.showDirectoryPicker({ mode: 'read', ...pickOpts });
         }
 
         const rawName = (handle.name || '').trim();
         const isRoot = (!rawName || rawName === '\\' || rawName === '/');
+        if (cleanL === 'C' && isRoot) {
+          toast('Auf C: blockiert der Browser das Hauptlaufwerk – du hast vermutlich D:\\ oder E:\\ gewählt. Bitte wähle auf C: einen konkreten Ordner (z. B. Haus_Übernahme).', 'err');
+          return;
+        }
         const dispName = isRoot ? `${cleanL}:` : toGermanFolderLabel(rawName);
 
         if (isRoot) {
