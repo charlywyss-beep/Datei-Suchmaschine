@@ -910,7 +910,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.35 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.36 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -2327,7 +2327,11 @@
       state.activeDrive = activeDriveLetter;
       state.rootHandle = null;
       state.basePathPrefix = '';
-      state.rootName = titleLabel || `Alle Ordner (${granted.length})`;
+      const dynamicLabel = granted
+        .map(g => toGermanFolderLabel((g.entry && g.entry.name) || 'Ordner'))
+        .filter(Boolean)
+        .join(' - ');
+      state.rootName = dynamicLabel || titleLabel || `Ordner (${granted.length})`;
       state.canWrite = anyWrite;
       state.scanning = true;
       state.cancelRequested = false;
