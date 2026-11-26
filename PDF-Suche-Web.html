@@ -786,10 +786,22 @@
       border-radius: 0; z-index: 75; box-shadow: none; border: none;
     }
     .preview-head {
-      padding: 10px 14px; background: #f8fafc; border-bottom: 1px solid var(--divider);
-      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 9px 12px; background: #f8fafc; border-bottom: 1px solid var(--divider);
+      display: flex; flex-direction: column; align-items: stretch; gap: 7px;
+      min-width: 0;
+    }
+    .preview-card.maximized .preview-head {
+      flex-direction: row; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px;
     }
     .preview-title-wrap { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .preview-actions {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 5px;
+      min-width: 0;
+    }
+    .preview-actions .btn {
+      height: 29px; padding: 0 9px; font-size: 12px; border-radius: 7px;
+    }
     .preview-title { font-size: 13px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .preview-subpath { font-size: 11.5px; font-weight: 600; color: var(--accent-hover); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .preview-body {
@@ -921,7 +933,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.47 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.48 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1188,7 +1200,7 @@
             <div id="preview-title" class="preview-title">Dateivorschau</div>
             <div id="preview-subpath" class="preview-subpath">Keine Datei ausgewählt</div>
           </div>
-          <div style="display:flex; flex-wrap:wrap; gap:6px; flex-shrink:0;">
+          <div class="preview-actions">
             <button id="btn-preview-explorer" type="button" class="btn" disabled onclick="openActiveFileInExplorer()" title="Datei direkt im Windows Explorer öffnen &amp; markieren">📂 Explorer</button>
             <button id="btn-preview-copy" type="button" class="btn" disabled onclick="copyActiveFilePath()" title="Ordnerpfad in die Zwischenablage kopieren (für Windows Explorer)">📋 Pfad kopieren</button>
             <button id="btn-preview-tab" type="button" class="btn" disabled onclick="openActiveFileInNewTab()">↗ Öffnen in Tab</button>
@@ -1405,11 +1417,11 @@
       dir: 200,
       size: 78,
       mtime: 124,
-      act: 152
+      act: 178
     };
     /* Harte Minimalbreite (per Ziehen noch erreichbar) & „Wohlfühl“-Minimum fuer die Auto-Anpassung */
-    const COLUMN_HARD_MIN = { name: 70, ext: 44, dir: 56, size: 50, mtime: 76, act: 70 };
-    const COLUMN_SOFT_MIN = { name: 150, dir: 100, ext: 54, size: 66, mtime: 104, act: 148 };
+    const COLUMN_HARD_MIN = { name: 70, ext: 44, dir: 56, size: 50, mtime: 76, act: 120 };
+    const COLUMN_SOFT_MIN = { name: 150, dir: 100, ext: 54, size: 66, mtime: 104, act: 176 };
     const COLUMN_FLEX = { name: true, dir: true };
     const COLUMN_META = {
       name: { label: 'Name', sortKey: 'name', cls: 'col-name', title: 'Nach Name sortieren' },
@@ -1444,6 +1456,7 @@
         } catch (_) {}
         state.columnOrder = loadedOrder ? [...loadedOrder] : [...DEFAULT_COLUMN_ORDER];
         state.columnWidths = Object.assign({}, DEFAULT_COLUMN_WIDTHS, loadedWidths || {});
+        if (Number(state.columnWidths.act) < 176) state.columnWidths.act = 178;
         state.columnAuto = loadedAuto;
       }
       return { order: state.columnOrder, widths: state.columnWidths };
@@ -1522,7 +1535,7 @@
         dir: Math.round(clamp(Math.max(hDir, dirMax + 28), 118, 420)),
         size: Math.round(clamp(Math.max(hSize, sizeMax + 24), 84, 130)),
         mtime: Math.max(hMtime, 132),
-        act: hasFiles ? Math.max(hAct, 152) : Math.max(hAct, 108)
+        act: hasFiles ? Math.max(hAct, 178) : Math.max(hAct, 114)
       };
       state._natCache = { ref, len: ref.length, widths };
       return widths;
