@@ -838,7 +838,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.20 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.21 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -4045,20 +4045,76 @@
         const url = URL.createObjectURL(namedFile);
         const suffix = ext === 'pdf' ? '#navpanes=0&view=Fit' : '';
 
-        const newWin = window.open(`${url}${suffix}`, '_blank');
-        if (newWin) {
-          try {
-            newWin.document.title = displayTitle;
-            let count = 0;
-            const timer = setInterval(() => {
-              count++;
-              try {
-                if (newWin.document) newWin.document.title = displayTitle;
-              } catch (_) {}
-              if (count > 25 || newWin.closed) clearInterval(timer);
-            }, 60);
-          } catch (_) {}
+        const newWin = window.open('', '_blank');
+        if (!newWin) {
+          window.open(`${url}${suffix}`, '_blank');
+          return;
         }
+
+        const isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
+        let innerContent = '';
+
+        if (ext === 'pdf') {
+          innerContent = `<iframe src="${url}#navpanes=0&view=Fit" style="width:100%; height:100%; border:none; display:block; margin:0; padding:0;"></iframe>`;
+        } else if (isImg) {
+          const scriptClose = '<' + '/script>';
+          innerContent = `
+            <div style="min-width:100%; min-height:100%; display:flex; align-items:center; justify-content:center;">
+              <img id="img" src="${url}" alt="${escapeHtml(displayTitle)}" style="display:block; margin:auto; max-width:100vw; max-height:100vh; object-fit:contain; cursor:zoom-in; user-select:none;">
+            </div>
+            <script>
+              (function() {
+                var img = document.getElementById('img');
+                var isFit = true;
+                img.onclick = function(e) {
+                  if (isFit) {
+                    img.style.maxWidth = 'none';
+                    img.style.maxHeight = 'none';
+                    img.style.cursor = 'zoom-out';
+                    isFit = false;
+                    var rx = e.clientX / window.innerWidth;
+                    var ry = e.clientY / window.innerHeight;
+                    var sx = rx * (img.naturalWidth || img.width) - window.innerWidth / 2;
+                    var sy = ry * (img.naturalHeight || img.height) - window.innerHeight / 2;
+                    window.scrollTo(Math.max(0, sx), Math.max(0, sy));
+                  } else {
+                    img.style.maxWidth = '100vw';
+                    img.style.maxHeight = '100vh';
+                    img.style.cursor = 'zoom-in';
+                    isFit = true;
+                    window.scrollTo(0, 0);
+                  }
+                };
+              })();
+            ` + scriptClose;
+        } else if (['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(ext)) {
+          innerContent = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"><video src="${url}" controls autoplay style="max-width:100%; max-height:100%;"></video></div>`;
+        } else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+          innerContent = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"><audio src="${url}" controls autoplay></audio></div>`;
+        } else {
+          innerContent = `<iframe src="${url}" style="width:100%; height:100%; border:none; display:block; margin:0; padding:0; background:#fff;"></iframe>`;
+        }
+
+        const bg = isImg ? '#0e0e0e' : (ext === 'pdf' ? '#525659' : '#000000');
+        const overflow = isImg ? 'auto' : 'hidden';
+
+        newWin.document.open();
+        newWin.document.write(`<!DOCTYPE html>
+<html lang="de" style="width:100%; height:100%; margin:0; padding:0; overflow:${overflow};">
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(displayTitle)}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>${ext === 'pdf' ? '📄' : (isImg ? '🖼️' : '🎬')}</text></svg>">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: ${bg}; overflow: ${overflow}; }
+  </style>
+</head>
+<body>
+  ${innerContent}
+</body>
+</html>`);
+        newWin.document.close();
       } catch (err) {
         toast(`Datei konnte nicht geöffnet werden: ${err.message}`, 'err');
       }
