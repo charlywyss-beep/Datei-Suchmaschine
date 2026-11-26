@@ -261,6 +261,13 @@
       align-items: center;
       gap: 5px;
     }
+    .filter-btn-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex-wrap: nowrap;
+      white-space: nowrap;
+    }
 
     .cat-row .btn,
     .filter-row-size .btn,
@@ -860,7 +867,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.23 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.24 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -1004,10 +1011,14 @@
         <div class="filter-row filter-row-time">
           <span class="filter-label">Zeitraum:</span>
           <div class="filter-controls">
-            <button type="button" class="btn" data-tf="today" onclick="toggleTimeframe('today')">Heute</button>
-            <button type="button" class="btn" data-tf="week" onclick="toggleTimeframe('week')">Diese Woche</button>
-            <button type="button" class="btn" data-tf="month" onclick="toggleTimeframe('month')">Dieser Monat</button>
-            <button type="button" class="btn" data-tf="year" onclick="toggleTimeframe('year')">Dieses Jahr</button>
+            <div class="filter-btn-group">
+              <button type="button" class="btn" data-tf="today" onclick="toggleTimeframe('today')">Heute</button>
+              <button type="button" class="btn" data-tf="week" onclick="toggleTimeframe('week')">Diese Woche</button>
+            </div>
+            <div class="filter-btn-group">
+              <button type="button" class="btn" data-tf="month" onclick="toggleTimeframe('month')">Dieser Monat</button>
+              <button type="button" class="btn" data-tf="year" onclick="toggleTimeframe('year')">Dieses Jahr</button>
+            </div>
           </div>
         </div>
 
