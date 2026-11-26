@@ -386,14 +386,36 @@
       border-color: var(--accent);
       box-shadow: 0 1px 2px rgba(37, 99, 235, 0.25);
     }
-    .basepath-wrap { position: relative; display: inline-flex; align-items: center; }
+    .basepath-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      flex: 1 1 auto;
+      min-width: 280px;
+      max-width: 760px;
+    }
     .basepath-input {
-      height: 30px; width: 245px; padding: 0 26px 0 9px; border-radius: 7px;
-      border: 1px solid var(--border-input); background: #ffffff; color: var(--text);
-      font-family: inherit; font-size: 12px; font-weight: 600;
+      height: 30px;
+      width: 100%;
+      min-width: 280px;
+      max-width: 760px;
+      padding: 0 28px 0 10px;
+      border-radius: 7px;
+      border: 1px solid var(--border-input);
+      background: #ffffff;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.18s ease;
     }
     .basepath-input::placeholder { color: var(--text-muted); font-weight: 400; }
-    .basepath-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16); }
+    .basepath-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+      max-width: 900px;
+    }
     .basepath-clear {
       position: absolute; right: 4px; width: 20px; height: 20px; border: none;
       background: transparent; color: var(--text-muted); border-radius: 4px;
@@ -838,7 +860,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.22 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.23 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -915,7 +937,7 @@
       <!-- Aktueller Pfad, Basis-Pfad & Unterordner-Auswahl -->
       <div id="path-bar" class="path-bar hidden" style="margin-bottom: 8px;">
         <div class="path-breadcrumbs" id="path-breadcrumbs"></div>
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1 1 auto; justify-content:flex-end;">
           <div class="drive-chips-group" id="drive-chips-group" title="Laufwerk mit 1 Klick wechseln (z. B. C:, D:, E:)">
             <span class="drive-chip-label">Laufwerk:</span>
             <button type="button" class="drive-chip-btn" data-drive="C" onclick="setDriveLetter('C')">C:</button>
@@ -2497,11 +2519,16 @@
       try { val = localStorage.getItem(getBasePathStorageKey(rootName)) || ''; } catch (_) {}
       state.basePathPrefix = val.trim();
       const inp = document.getElementById('base-path-prefix');
-      if (inp) inp.value = state.basePathPrefix;
+      if (inp) {
+        inp.value = state.basePathPrefix;
+        inp.title = state.basePathPrefix ? `Gespeicherter Basis-Pfad: ${state.basePathPrefix}` : 'Windows-Basis-Pfad eintragen…';
+      }
     }
 
     function onBasePathPrefixChanged(val) {
       state.basePathPrefix = (val || '').trim();
+      const inp = document.getElementById('base-path-prefix');
+      if (inp) inp.title = state.basePathPrefix ? `Gespeicherter Basis-Pfad: ${state.basePathPrefix}` : 'Windows-Basis-Pfad eintragen…';
       if (state.rootName) {
         try { localStorage.setItem(getBasePathStorageKey(state.rootName), state.basePathPrefix); } catch (_) {}
       }
