@@ -347,6 +347,34 @@
       box-shadow: 0 1px 3px rgba(37, 99, 235, 0.28);
     }
 
+    .drive-switch-bar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px;
+    }
+    .drive-nav-btn {
+      height: 30px; padding: 0 11px; border-radius: 8px;
+      border: 1px solid #cbd5e1; background: #ffffff; color: #334155;
+      font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: all 0.14s ease;
+    }
+    .drive-nav-btn.has-data {
+      border-color: #93c5fd; background: #f8fafc; color: #0f172a;
+    }
+    .drive-nav-btn:hover {
+      background: #eff6ff; border-color: var(--accent); color: var(--accent);
+    }
+    .drive-nav-btn.active {
+      background: var(--accent); border-color: var(--accent); color: #ffffff;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.28);
+    }
+    .drive-add-c-btn {
+      border-style: dashed; border-color: #94a3b8; color: #475569; font-weight: 600; font-size: 12px;
+    }
+    .drive-add-c-btn:hover { border-style: solid; }
+    .drive-badge {
+      font-size: 11px; font-weight: 600; opacity: 0.85;
+    }
+
     .path-bar {
       display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
       gap: 10px; padding: 8px 12px; border-radius: 9px;
@@ -882,7 +910,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.30 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.31 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -953,6 +981,15 @@
         </div>
       </div>
 
+      <!-- Echte Laufwerks-Umschaltung (wechselt wirklich das Laufwerk & liest neu ein) -->
+      <div id="drive-switch-bar" class="drive-switch-bar">
+        <span style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em; margin-right:2px; cursor:default;">Laufwerke:</span>
+        <button type="button" class="drive-nav-btn" data-drive="C" onclick="switchToDrive('C')" title="Alle freigegebenen Ordner auf C: (ohne Systemordner) einlesen &amp; durchsuchen">💿 C: <span class="drive-badge" id="drv-badge-C"></span></button>
+        <button type="button" class="drive-nav-btn" data-drive="D" onclick="switchToDrive('D')" title="Laufwerk D: wechseln &amp; neu einlesen">💿 D: <span class="drive-badge" id="drv-badge-D"></span></button>
+        <button type="button" class="drive-nav-btn" data-drive="E" onclick="switchToDrive('E')" title="Laufwerk E: wechseln &amp; neu einlesen">💿 E: <span class="drive-badge" id="drv-badge-E"></span></button>
+        <button type="button" class="drive-nav-btn drive-add-c-btn" onclick="addFolderForDrive('C')" title="Weiteren freigegebenen Ordner auf C: hinzufügen (z. B. unter C:\Benutzer\…)">+ Ordner auf C:</button>
+      </div>
+
       <!-- Gemerkte Ordner -->
       <div id="saved-folders-row" class="saved-folders-row hidden"></div>
 
@@ -960,12 +997,6 @@
       <div id="path-bar" class="path-bar hidden" style="margin-bottom: 8px;">
         <div class="path-breadcrumbs" id="path-breadcrumbs"></div>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1 1 auto; justify-content:flex-end;">
-          <div class="drive-chips-group hidden" id="drive-chips-group" title="Beschriftung des geöffneten Hauptlaufwerks anpassen (wechselt nicht die Festplatte)">
-            <span class="drive-chip-label">Laufwerk-Buchstabe:</span>
-            <button type="button" class="drive-chip-btn" data-drive="C" onclick="setDriveLetter('C')">C:</button>
-            <button type="button" class="drive-chip-btn" data-drive="D" onclick="setDriveLetter('D')">D:</button>
-            <button type="button" class="drive-chip-btn" data-drive="E" onclick="setDriveLetter('E')">E:</button>
-          </div>
           <div class="basepath-wrap">
             <input
               id="base-path-prefix"
@@ -1281,8 +1312,10 @@
     const state = {
       rootHandle: null,
       rootName: '',
+      activeDrive: '',
       multiRootMode: false,
       multiRootPrefixes: new Map(),
+      activeMultiEntries: [],
       canWrite: false,
       allFiles: [],       // { id, name, ext, cat, dir, relPath, size, mtime, fileHandle, parentHandle, fileObj }
       allDirs: new Set(), // alle gescannten Unterordner (inkl. leerer Ordner!)
@@ -1689,7 +1722,12 @@
       `;
     }
 
-    const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information', 'node_modules', '.git', '__pycache__']);
+    const SKIP_DIRS = new Set([
+      '$recycle.bin', 'system volume information', 'windows', 'windowsapps',
+      'program files', 'program files (x86)', 'programdata', 'appdata',
+      'recovery', 'perflogs', 'msocache', 'boot', 'intel', 'amd',
+      'node_modules', '.git', '__pycache__', 'default', 'all users', 'default user'
+    ]);
     const IDB_NAME = 'pdf_suche_pro_web_v1';
     const IDB_STORE = 'handles';
     let savedLastHandle = null;
@@ -1883,7 +1921,9 @@
         btnOpen.className = 'saved-folder-btn';
         let savedPref = '';
         try { savedPref = localStorage.getItem(getBasePathStorageKey(entry.name)) || ''; } catch (_) {}
-        const labelTxt = savedPref ? toGermanDisplayPath(savedPref) : toGermanFolderLabel(entry.name);
+        const drvTag = getEntryDrive(entry);
+        const baseDisp = savedPref ? toGermanDisplayPath(savedPref) : toGermanFolderLabel(entry.name);
+        const labelTxt = (drvTag && !baseDisp.toUpperCase().startsWith(drvTag + ':')) ? `[${drvTag}:] ${baseDisp}` : baseDisp;
         btnOpen.title = `Gespeicherten Ordner öffnen: ${labelTxt}`;
         btnOpen.textContent = `📂 ${labelTxt}`;
         btnOpen.onclick = () => openSavedFolderById(entry.id);
@@ -1898,13 +1938,14 @@
         pill.append(btnOpen, btnDel);
         row.appendChild(pill);
       });
+      _highlightDriveButtons();
     }
 
     async function openSavedFolderById(id) {
       const entry = savedFoldersList.find(x => x.id === id);
       if (!entry || !entry.handle) return;
       try {
-        const ok = await activateDirectoryHandle(entry.handle, true);
+        const ok = await activateDirectoryHandle(entry.handle, true, getEntryDrive(entry));
         if (!ok) toast('Ordner-Freigabe wurde abgebrochen.', 'err');
       } catch (err) {
         toast(`Ordner konnte nicht geöffnet werden: ${err.message}`, 'err');
@@ -1929,21 +1970,31 @@
       toast(`Gemerkter Ordner entfernt: ${label}`, 'ok');
     }
 
-    async function saveLastDirectoryHandle(handle, displayName) {
+    async function saveLastDirectoryHandle(handle, displayName, driveLetter = '') {
       try {
         const db = await openHandleDb();
         if (!db) return;
+        const cleanDrv = (driveLetter || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1);
         await new Promise((resolve, reject) => {
           const tx = db.transaction(IDB_STORE, 'readwrite');
-          tx.objectStore(IDB_STORE).put({ handle, name: displayName }, 'last_dir');
+          tx.objectStore(IDB_STORE).put({ handle, name: displayName, drive: cleanDrv }, 'last_dir');
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
         });
         savedLastHandle = handle;
         localStorage.setItem('pdf_suche_last_folder_name', displayName || '');
         const existing = savedFoldersList.find(x => x.name.toLowerCase() === (displayName || '').toLowerCase());
-        if (existing) existing.handle = handle;
-        else savedFoldersList.push({ id: `dir_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, name: displayName, handle });
+        if (existing) {
+          existing.handle = handle;
+          if (cleanDrv) existing.drive = cleanDrv;
+        } else {
+          savedFoldersList.push({
+            id: `dir_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            name: displayName,
+            drive: cleanDrv,
+            handle
+          });
+        }
         await saveSavedFoldersList();
         renderSavedFoldersRow();
       } catch (_) {}
@@ -1962,7 +2013,7 @@
       } catch (_) { return null; }
     }
 
-    async function activateDirectoryHandle(handle, askPermission = true) {
+    async function activateDirectoryHandle(handle, askPermission = true, forcedDrive = '') {
       let canWrite = true;
       if (handle.queryPermission) {
         let permW = await handle.queryPermission({ mode: 'readwrite' });
@@ -1982,18 +2033,31 @@
       }
       state.multiRootMode = false;
       state.multiRootPrefixes = new Map();
+      state.activeMultiEntries = [];
       const bpWrap = document.querySelector('.basepath-wrap');
       if (bpWrap) bpWrap.classList.remove('hidden');
       state.rootHandle = handle;
+
+      const cleanForced = (forcedDrive || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1);
       const rawName = (handle.name || '').trim();
       let rootName = rawName;
       if (!rootName || rootName === '\\' || rootName === '/' || rootName.toLowerCase() === 'gewähltes laufwerk') {
-        rootName = detectDriveLetter();
+        if (cleanForced) {
+          rootName = cleanForced + ':';
+        } else {
+          const suggested = detectDriveLetter();
+          const ans = askPermission
+            ? window.prompt('Welches Laufwerk hast du gerade geöffnet? (z. B. D:, E:, F:)', suggested)
+            : suggested;
+          const letter = ((ans || suggested).trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1)) || 'D';
+          rootName = letter + ':';
+        }
       } else if (/^[a-zA-Z]:?$/.test(rootName)) {
         rootName = rootName.toUpperCase().replace(/:?$/, ':');
       } else {
         rootName = toGermanFolderLabel(rootName);
       }
+
       state.rootName = rootName;
       state.canWrite = canWrite;
       loadSavedBasePathPrefix(state.rootName);
@@ -2006,9 +2070,20 @@
           if (bp) bp.value = state.basePathPrefix;
         }
       }
+
+      // Laufwerk bestimmen (forcedDrive > rootName-Laufwerk > Basis-Pfad > bestehender Eintrag)
+      let resolvedDrive = cleanForced;
+      if (!resolvedDrive && /^[a-zA-Z]:$/i.test(state.rootName)) resolvedDrive = state.rootName[0].toUpperCase();
+      if (!resolvedDrive && state.basePathPrefix && /^[a-zA-Z]:/.test(state.basePathPrefix)) resolvedDrive = state.basePathPrefix[0].toUpperCase();
+      if (!resolvedDrive) {
+        const ex = savedFoldersList.find(x => x.name.toLowerCase() === state.rootName.toLowerCase());
+        if (ex) resolvedDrive = getEntryDrive(ex);
+      }
+      state.activeDrive = resolvedDrive;
+
       document.getElementById('btn-reopen-last').classList.add('hidden');
       document.getElementById('btn-rescan').classList.remove('hidden');
-      await saveLastDirectoryHandle(handle, state.rootName);
+      await saveLastDirectoryHandle(handle, state.rootName, resolvedDrive);
       if (!canWrite) {
         showModeNotice('ℹ️ Schreibfreigabe wurde nicht erteilt – Dateien können gesucht &amp; angezeigt werden, Umbenennen ist schreibgeschützt.');
       } else {
@@ -2032,6 +2107,7 @@
       if (!window.showDirectoryPicker || !window.isSecureContext) return;
       savedFoldersList = await loadSavedFoldersList();
       renderSavedFoldersRow();
+      _highlightDriveButtons();
       const rec = await loadLastDirectoryHandle();
       if (!rec || !rec.handle) return;
       savedLastHandle = rec.handle;
@@ -2040,7 +2116,7 @@
         const permW = await savedLastHandle.queryPermission({ mode: 'readwrite' });
         const permR = permW === 'granted' ? 'granted' : await savedLastHandle.queryPermission({ mode: 'read' });
         if (permR === 'granted') {
-          await activateDirectoryHandle(savedLastHandle, false);
+          await activateDirectoryHandle(savedLastHandle, false, rec.drive || '');
           return;
         }
       } catch (_) {}
@@ -2080,9 +2156,93 @@
       document.getElementById('fallback-folder-input').click();
     }
 
+    function getEntryDrive(entry) {
+      if (!entry) return '';
+      if (entry.drive && /^[a-zA-Z]$/.test(entry.drive)) return entry.drive.toUpperCase();
+      const n = (entry.name || '').trim();
+      if (/^[a-zA-Z]:$/.test(n)) return n[0].toUpperCase();
+      let pref = '';
+      try { pref = (localStorage.getItem(getBasePathStorageKey(entry.name)) || '').trim(); } catch (_) {}
+      const m = pref.match(/^([a-zA-Z]):/);
+      if (m) return m[1].toUpperCase();
+      return '';
+    }
+
+    async function switchToDrive(letter) {
+      const cleanL = (letter || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1);
+      if (!cleanL) return;
+
+      const matches = (savedFoldersList || []).filter(entry => getEntryDrive(entry) === cleanL);
+      if (!matches.length) {
+        await addFolderForDrive(cleanL);
+        return;
+      }
+
+      if (matches.length === 1) {
+        try {
+          const ok = await activateDirectoryHandle(matches[0].handle, true, cleanL);
+          if (!ok) toast(`Freigabe für Laufwerk ${cleanL}: wurde abgebrochen.`, 'err');
+        } catch (err) {
+          toast(`Laufwerk ${cleanL}: konnte nicht eingelesen werden: ${err.message}`, 'err');
+        }
+        return;
+      }
+
+      await scanMultipleEntries(matches, `${cleanL}: (${matches.length} Ordner)`, cleanL);
+    }
+
+    async function addFolderForDrive(letter) {
+      const cleanL = (letter || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1);
+      if (!cleanL) return;
+
+      if (!window.showDirectoryPicker || !window.isSecureContext) {
+        toast('Direkte Ordner-Auswahl wird in diesem Browser-Modus nicht unterstützt.', 'err');
+        return;
+      }
+
+      const hintTxt = cleanL === 'C'
+        ? 'Bitte einen freigegebenen Ordner auf C: wählen (z. B. unter C:\\Benutzer\\…)'
+        : `Bitte Laufwerk ${cleanL}:\\ (oder einen Ordner auf ${cleanL}:) im Dialog auswählen`;
+      toast(hintTxt, 'ok');
+
+      try {
+        let handle;
+        try {
+          handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        } catch (e) {
+          if (e && e.name === 'AbortError') return;
+          handle = await window.showDirectoryPicker({ mode: 'read' });
+        }
+
+        const rawName = (handle.name || '').trim();
+        const isRoot = (!rawName || rawName === '\\' || rawName === '/');
+        const dispName = isRoot ? `${cleanL}:` : toGermanFolderLabel(rawName);
+
+        if (isRoot) {
+          try { localStorage.setItem(getBasePathStorageKey(dispName), `${cleanL}:\\`); } catch (_) {}
+        }
+
+        await saveLastDirectoryHandle(handle, dispName, cleanL);
+
+        const matches = (savedFoldersList || []).filter(entry => getEntryDrive(entry) === cleanL);
+        if (cleanL === 'C' && matches.length >= 2) {
+          await scanMultipleEntries(matches, `C: (${matches.length} Ordner)`, 'C');
+        } else {
+          await activateDirectoryHandle(handle, true, cleanL);
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        toast(`Ordnerzugriff auf ${cleanL}:: ${err.message}`, 'err');
+      }
+    }
+
     async function rescanCurrentFolder() {
-      if (state.multiRootMode) await scanAllSavedFolders();
-      else if (state.rootHandle) await scanDirectoryHandle(state.rootHandle);
+      if (state.multiRootMode) {
+        const list = (state.activeMultiEntries && state.activeMultiEntries.length) ? state.activeMultiEntries : savedFoldersList;
+        await scanMultipleEntries(list, state.rootName || `Alle Ordner (${list.length})`, state.activeDrive || 'ALL');
+      } else if (state.rootHandle) {
+        await scanDirectoryHandle(state.rootHandle);
+      }
     }
 
     async function scanAllSavedFolders() {
@@ -2090,12 +2250,20 @@
         toast('Noch keine Ordner gemerkt – wähle zuerst mindestens einen Ordner über „Ordner wählen…“.', 'err');
         return;
       }
+      await scanMultipleEntries(savedFoldersList, `Alle Ordner (${savedFoldersList.length})`, 'ALL');
+    }
+
+    async function scanMultipleEntries(entriesList, titleLabel, activeDriveLetter = 'ALL') {
+      if (!entriesList || !entriesList.length) {
+        toast('Keine Ordner zum Einlesen vorhanden.', 'err');
+        return;
+      }
 
       const granted = [];
       let anyWrite = false;
       let skippedCount = 0;
 
-      for (const entry of savedFoldersList) {
+      for (const entry of entriesList) {
         if (!entry || !entry.handle) { skippedCount += 1; continue; }
         let entryWrite = true;
         try {
@@ -2126,15 +2294,17 @@
       }
 
       if (!granted.length) {
-        toast('Keine Freigabe für die gemerkten Ordner erteilt.', 'err');
+        toast('Keine Freigabe für die gewählten Ordner erteilt.', 'err');
         return;
       }
 
       state.multiRootMode = true;
       state.multiRootPrefixes = new Map();
+      state.activeMultiEntries = granted.map(g => g.entry);
+      state.activeDrive = activeDriveLetter;
       state.rootHandle = null;
       state.basePathPrefix = '';
-      state.rootName = `Alle Ordner (${granted.length})`;
+      state.rootName = titleLabel || `Alle Ordner (${granted.length})`;
       state.canWrite = anyWrite;
       state.scanning = true;
       state.cancelRequested = false;
@@ -2146,8 +2316,6 @@
 
       const bpWrap = document.querySelector('.basepath-wrap');
       if (bpWrap) bpWrap.classList.add('hidden');
-      const drvGrp = document.getElementById('drive-chips-group');
-      if (drvGrp) drvGrp.classList.add('hidden');
       document.getElementById('btn-reopen-last').classList.add('hidden');
       document.getElementById('btn-rescan').classList.remove('hidden');
       renderSavedFoldersRow();
@@ -2158,7 +2326,7 @@
       const manualCloud = !!(state.cloudSafeManual || (chkCloud && chkCloud.checked));
       btnCancel.classList.remove('hidden');
       hint.classList.remove('loaded');
-      hint.textContent = `🔍 Durchsuche alle ${granted.length} freigegebenen Ordner…`;
+      hint.textContent = `🔍 Lese ${state.rootName} neu ein…`;
 
       if (skippedCount > 0) {
         showModeNotice(`ℹ️ ${granted.length} Ordner geladen (${skippedCount} ohne Freigabe übersprungen). Alle gefundenen Dateien sind sofort durchsuchbar.`);
@@ -2675,67 +2843,45 @@
       return 'D:';
     }
 
-    function _highlightDriveButtons(letter) {
-      const grp = document.getElementById('drive-chips-group');
-      const isRootDrive = /^[a-zA-Z]:$/i.test(state.rootName || '');
-      if (grp) {
-        // Nur anzeigen, wenn wirklich ein Hauptlaufwerk ohne Ordnernamen geöffnet wurde (nicht bei normalen Unterordnern!)
-        grp.classList.toggle('hidden', !isRootDrive);
-        grp.classList.remove('needs-drive');
-      }
-      if (!isRootDrive) return;
-
-      let l = (letter || '').toUpperCase().slice(0, 1);
-      if (!l) {
-        if (state.basePathPrefix && /^[a-zA-Z]:/.test(state.basePathPrefix)) {
-          l = state.basePathPrefix.slice(0, 1).toUpperCase();
-        } else if (state.rootName && /^[a-zA-Z]:/.test(state.rootName)) {
-          l = state.rootName.slice(0, 1).toUpperCase();
-        } else {
-          l = '';
-        }
-      }
-      document.querySelectorAll('.drive-chip-btn').forEach(btn => {
-        const d = (btn.getAttribute('data-drive') || '').toUpperCase();
-        if (l && d === l) btn.classList.add('active');
-        else btn.classList.remove('active');
+    function _highlightDriveButtons() {
+      const counts = { C: 0, D: 0, E: 0 };
+      (savedFoldersList || []).forEach(entry => {
+        const d = getEntryDrive(entry);
+        if (d && counts[d] !== undefined) counts[d] += 1;
       });
-    }
 
-    function setDriveLetter(letter) {
-      const cleanL = (letter || 'D').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1) || 'D';
-      const driveStr = cleanL + ':';
-      const driveSlash = cleanL + ':\\';
-
-      try { localStorage.setItem('pdf_suche_last_drive_letter', driveStr); } catch (_) {}
-
-      const isCurrentDrive = /^[a-zA-Z]:$/i.test(state.rootName) || state.rootName === 'Gewähltes Laufwerk';
-      if (isCurrentDrive || !state.rootName) {
-        state.rootName = driveStr;
-        state.basePathPrefix = driveSlash;
-        try { localStorage.setItem(getBasePathStorageKey(driveStr), driveSlash); } catch (_) {}
-      } else {
-        if (!state.basePathPrefix) {
-          state.basePathPrefix = `${driveSlash}${state.rootName}`;
-        } else {
-          state.basePathPrefix = state.basePathPrefix.replace(/^[a-zA-Z]:/, driveStr);
+      let activeDrv = (state.activeDrive || '').toUpperCase();
+      if (!activeDrv && !state.multiRootMode) {
+        if (state.basePathPrefix && /^[a-zA-Z]:/.test(state.basePathPrefix)) {
+          activeDrv = state.basePathPrefix[0].toUpperCase();
+        } else if (state.rootName && /^[a-zA-Z]:$/i.test(state.rootName)) {
+          activeDrv = state.rootName[0].toUpperCase();
         }
-        try { localStorage.setItem(getBasePathStorageKey(state.rootName), state.basePathPrefix); } catch (_) {}
       }
 
-      const bp = document.getElementById('base-path-prefix');
-      if (bp) bp.value = state.basePathPrefix;
-
-      const hint = document.getElementById('folder-hint');
-      if (hint && state.allFiles.length) {
-        hint.textContent = `✓ Geladen: ${state.rootName} · ${state.allFiles.length} Dateien`;
-      }
-
-      _highlightDriveButtons(cleanL);
-      updatePathBar();
-      renderSavedFoldersRow();
-      applyFilters();
-      toast(`Laufwerk auf ${driveStr} umgestellt`, 'ok');
+      ['C', 'D', 'E'].forEach(drv => {
+        const btn = document.querySelector(`.drive-nav-btn[data-drive="${drv}"]`);
+        const badge = document.getElementById(`drv-badge-${drv}`);
+        const cnt = counts[drv] || 0;
+        if (badge) {
+          if (drv === 'C' && cnt > 0) badge.textContent = `(${cnt})`;
+          else if (cnt > 0) badge.textContent = '✓';
+          else badge.textContent = '';
+        }
+        if (btn) {
+          btn.classList.toggle('active', activeDrv === drv);
+          btn.classList.toggle('has-data', cnt > 0);
+          if (drv === 'C') {
+            btn.title = cnt > 0
+              ? `Alle ${cnt} freigegebenen Ordner auf C: (ohne Systemordner) neu einlesen & durchsuchen`
+              : 'Freigegebenen Ordner auf C: auswählen & einlesen';
+          } else {
+            btn.title = cnt > 0
+              ? `Laufwerk ${drv}: wechseln & neu einlesen`
+              : `Laufwerk ${drv}: einmalig im Windows-Dialog auswählen & einlesen`;
+          }
+        }
+      });
     }
 
     function getBasePathStorageKey(rootName) { return `pdf_suche_base_prefix::${(rootName || '').toLowerCase()}`; }
@@ -2757,6 +2903,16 @@
       if (inp) inp.title = state.basePathPrefix ? `Gespeicherter Basis-Pfad: ${state.basePathPrefix}` : 'Windows-Basis-Pfad eintragen…';
       if (state.rootName) {
         try { localStorage.setItem(getBasePathStorageKey(state.rootName), state.basePathPrefix); } catch (_) {}
+        const m = state.basePathPrefix.match(/^([a-zA-Z]):/);
+        if (m) {
+          const drv = m[1].toUpperCase();
+          state.activeDrive = drv;
+          const ex = savedFoldersList.find(x => x.name.toLowerCase() === state.rootName.toLowerCase());
+          if (ex && ex.drive !== drv) {
+            ex.drive = drv;
+            saveSavedFoldersList();
+          }
+        }
       }
       updatePathBar();
       renderSavedFoldersRow();
