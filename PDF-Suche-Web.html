@@ -867,7 +867,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.25 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.26 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -4142,16 +4142,16 @@
         } else if (isImg) {
           const scriptClose = '<' + '/script>';
           innerContent = `
-            <div id="vp" style="width:100%; height:100%; position:relative; overflow:hidden; cursor:zoom-in; background:#0e0e0e; display:flex; align-items:center; justify-content:center; user-select:none;">
-              <img id="img" src="${url}" alt="${escapeHtml(displayTitle)}" style="display:block; max-width:none; max-height:none; transform-origin:0 0; pointer-events:none; box-shadow:0 4px 28px rgba(0,0,0,0.7); user-select:none;">
+            <div id="vp" style="width:100%; height:100%; position:relative; overflow:hidden; cursor:zoom-in; background:#0e0e0e; user-select:none;">
+              <img id="img" src="${url}" alt="${escapeHtml(displayTitle)}" style="position:absolute; top:0; left:0; margin:0; display:block; max-width:none; max-height:none; transform-origin:0 0; pointer-events:none; box-shadow:0 4px 28px rgba(0,0,0,0.7); user-select:none; opacity:0;">
             </div>
 
             <div class="zoom-floating-pill">
               <button type="button" class="zf-btn" onclick="zoomBy(-0.25)" title="Verkleinern (− oder Mausrad)">−</button>
               <span id="zf-text" class="zf-text">100%</span>
               <button type="button" class="zf-btn" onclick="zoomBy(0.25)" title="Vergrößern (+ oder Mausrad)">+</button>
-              <button type="button" class="zf-btn" onclick="resetToFit()" title="An Fenster anpassen (Doppelklick oder Taste 0)">⤢</button>
-              <button type="button" class="zf-btn" onclick="setZoom(1.0)" title="100% Originalgröße (Taste 1)">1:1</button>
+              <button type="button" class="zf-btn" onclick="fitToWindow()" title="An Fenster anpassen (Doppelklick oder Taste 0)">⤢</button>
+              <button type="button" class="zf-btn" onclick="resetTo100()" title="100% Originalgröße (Taste 1)">1:1</button>
             </div>
 
             <style>
@@ -4216,71 +4216,113 @@
                 if (!vp || !img) return;
 
                 var scale = 1;
-                var fitScale = 1;
+                var initialScale = 1;
                 var posX = 0, posY = 0;
                 var isDragging = false;
                 var startX = 0, startY = 0;
                 var didMove = false;
+                var initialized = false;
 
-                function updateTransform(smooth) {
-                  img.style.transition = smooth ? 'transform 0.12s ease-out' : 'none';
-                  img.style.transform = 'translate3d(' + posX + 'px, ' + posY + 'px, 0) scale(' + scale + ')';
-                  if (zfText) zfText.textContent = Math.round(scale * 100) + '%';
-                  if (Math.abs(scale - fitScale) < 0.04) {
-                    vp.style.cursor = 'zoom-in';
-                  } else {
-                    vp.style.cursor = 'grab';
+                function imgSize() {
+                  return {
+                    w: img.naturalWidth || img.width || 800,
+                    h: img.naturalHeight || img.height || 600
+                  };
+                }
+
+                function clampAndCenter() {
+                  var vw = window.innerWidth;
+                  var vh = window.innerHeight;
+                  var sz = imgSize();
+                  var sw = sz.w * scale;
+                  var sh = sz.h * scale;
+                  if (sw <= vw) {
+                    posX = (vw - sw) / 2;
+                  }
+                  if (sh <= vh) {
+                    posY = (vh - sh) / 2;
                   }
                 }
 
-                function calcFit() {
-                  var vw = window.innerWidth;
-                  var vh = window.innerHeight;
-                  var iw = img.naturalWidth || img.width || 800;
-                  var ih = img.naturalHeight || img.height || 600;
-                  if (iw <= 0 || ih <= 0 || vw <= 0 || vh <= 0) return 1;
-                  return Math.min(vw / iw, vh / ih, 1.0);
+                function updateTransform(smooth) {
+                  clampAndCenter();
+                  img.style.transition = smooth ? 'transform 0.14s ease-out' : 'none';
+                  img.style.transform = 'translate3d(' + posX + 'px, ' + posY + 'px, 0) scale(' + scale + ')';
+                  if (img.style.opacity !== '1') img.style.opacity = '1';
+                  if (zfText) zfText.textContent = Math.round(scale * 100) + '%';
+                  var sz = imgSize();
+                  var fitsInView = (sz.w * scale <= window.innerWidth + 2 && sz.h * scale <= window.innerHeight + 2);
+                  vp.style.cursor = fitsInView ? 'zoom-in' : 'grab';
                 }
 
-                window.resetToFit = function() {
-                  fitScale = calcFit();
-                  scale = fitScale;
-                  var iw = img.naturalWidth || img.width || 800;
-                  var ih = img.naturalHeight || img.height || 600;
-                  posX = (window.innerWidth - iw * scale) / 2;
-                  posY = (window.innerHeight - ih * scale) / 2;
+                function calcInitialFit(allowUpscale) {
+                  var vw = Math.max(100, window.innerWidth - 32);
+                  var vh = Math.max(100, window.innerHeight - 32);
+                  var sz = imgSize();
+                  if (sz.w <= 0 || sz.h <= 0) return 1;
+                  var fit = Math.min(vw / sz.w, vh / sz.h);
+                  return allowUpscale ? Math.min(fit, 8.0) : Math.min(fit, 1.0);
+                }
+
+                window.resetToFit = function(smooth) {
+                  initialScale = calcInitialFit(false);
+                  scale = initialScale;
+                  var sz = imgSize();
+                  posX = (window.innerWidth - sz.w * scale) / 2;
+                  posY = (window.innerHeight - sz.h * scale) / 2;
+                  updateTransform(smooth !== false);
+                  initialized = true;
+                };
+
+                window.fitToWindow = function() {
+                  var target = calcInitialFit(true);
+                  scale = target;
+                  var sz = imgSize();
+                  posX = (window.innerWidth - sz.w * scale) / 2;
+                  posY = (window.innerHeight - sz.h * scale) / 2;
                   updateTransform(true);
                 };
 
-                window.setZoom = function(newScale, clientX, clientY) {
+                window.resetTo100 = function() {
+                  scale = 1.0;
+                  var sz = imgSize();
+                  posX = (window.innerWidth - sz.w) / 2;
+                  posY = (window.innerHeight - sz.h) / 2;
+                  updateTransform(true);
+                };
+
+                window.setZoom = function(newScale, clientX, clientY, smooth) {
                   var clamped = Math.max(0.08, Math.min(newScale, 25.0));
                   var mx = (clientX !== undefined) ? clientX : window.innerWidth / 2;
                   var my = (clientY !== undefined) ? clientY : window.innerHeight / 2;
                   posX = mx - (mx - posX) * (clamped / scale);
                   posY = my - (my - posY) * (clamped / scale);
                   scale = clamped;
-                  updateTransform(true);
+                  updateTransform(smooth !== false);
                 };
 
                 window.zoomBy = function(delta, clientX, clientY) {
                   var factor = delta > 0 ? 1.25 : 0.8;
-                  window.setZoom(scale * factor, clientX, clientY);
+                  window.setZoom(scale * factor, clientX, clientY, true);
                 };
 
-                img.onload = function() { window.resetToFit(); };
-                if (img.complete) { setTimeout(window.resetToFit, 30); }
+                function initOnce() {
+                  if (img.naturalWidth > 0) {
+                    window.resetToFit(false);
+                  }
+                }
+                img.onload = initOnce;
+                if (img.complete && img.naturalWidth > 0) {
+                  initOnce();
+                } else {
+                  setTimeout(initOnce, 60);
+                }
 
-                // 1. Mausrad: Zoomen zentriert auf Cursor
+                // 1. Mausrad: Stufenloses Zoomen zentriert auf Cursor
                 window.addEventListener('wheel', function(e) {
                   e.preventDefault();
                   var factor = e.deltaY < 0 ? 1.18 : (1 / 1.18);
-                  var newScale = Math.max(0.08, Math.min(scale * factor, 25.0));
-                  var mx = e.clientX;
-                  var my = e.clientY;
-                  posX = mx - (mx - posX) * (newScale / scale);
-                  posY = my - (my - posY) * (newScale / scale);
-                  scale = newScale;
-                  updateTransform(false);
+                  window.setZoom(scale * factor, e.clientX, e.clientY, false);
                 }, { passive: false });
 
                 // 2. Drag & Pan mit linker Maustaste
@@ -4291,7 +4333,8 @@
                   didMove = false;
                   startX = e.clientX - posX;
                   startY = e.clientY - posY;
-                  if (Math.abs(scale - fitScale) >= 0.04) {
+                  var sz = imgSize();
+                  if (sz.w * scale > window.innerWidth + 2 || sz.h * scale > window.innerHeight + 2) {
                     vp.style.cursor = 'grabbing';
                   }
                 });
@@ -4311,26 +4354,29 @@
                 window.addEventListener('mouseup', function() {
                   if (isDragging) {
                     isDragging = false;
-                    vp.style.cursor = (Math.abs(scale - fitScale) < 0.04) ? 'zoom-in' : 'grab';
+                    var sz = imgSize();
+                    var fitsInView = (sz.w * scale <= window.innerWidth + 2 && sz.h * scale <= window.innerHeight + 2);
+                    vp.style.cursor = fitsInView ? 'zoom-in' : 'grab';
                   }
                 });
 
-                // 3. Lupe-Klick: Wenn eingepasst -> Zoom an Klickstelle; wenn gezoomt -> Zurück zu Einpassen
+                // 3. Lupe-Klick: Zoomt rein (auf 100% oder 200% bei kleinen Bildern) bzw. zurück zur Mitte
                 window.addEventListener('click', function(e) {
                   if (e.target.closest && e.target.closest('.zoom-floating-pill')) return;
                   if (didMove) return;
-                  if (Math.abs(scale - fitScale) < 0.04) {
-                    window.setZoom(1.0, e.clientX, e.clientY);
+                  if (Math.abs(scale - initialScale) < 0.04) {
+                    var targetScale = (initialScale < 0.95) ? 1.0 : 2.0;
+                    window.setZoom(targetScale, e.clientX, e.clientY, true);
                   } else {
-                    window.resetToFit();
+                    window.resetToFit(true);
                   }
                 });
 
-                // Doppelklick: Immer auf Bildschirmgröße einpassen
+                // Doppelklick: Immer zentriert einpassen
                 window.addEventListener('dblclick', function(e) {
                   if (e.target.closest && e.target.closest('.zoom-floating-pill')) return;
                   e.preventDefault();
-                  window.resetToFit();
+                  window.resetToFit(true);
                 });
 
                 // 4. Tastatur: Plus (+), Minus (-), 0 (Einpassen), 1 (1:1)
@@ -4343,16 +4389,18 @@
                     window.zoomBy(-0.25);
                   } else if (e.key === '0') {
                     e.preventDefault();
-                    window.resetToFit();
+                    window.fitToWindow();
                   } else if (e.key === '1') {
                     e.preventDefault();
-                    window.setZoom(1.0);
+                    window.resetTo100();
                   }
                 });
 
                 window.addEventListener('resize', function() {
-                  if (Math.abs(scale - fitScale) < 0.05) {
-                    window.resetToFit();
+                  if (!initialized || Math.abs(scale - initialScale) < 0.05) {
+                    window.resetToFit(false);
+                  } else {
+                    updateTransform(false);
                   }
                 });
               })();
