@@ -582,6 +582,7 @@
       display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .explorer-popup-drill:hover { background: #dbeafe; color: var(--accent-hover); }
+    .explorer-popup-drill-spacer { width: 28px; flex-shrink: 0; pointer-events: none; }
     .explorer-popup-div { height: 1px; background: var(--divider); margin: 3px 4px; }
 
     /* Ergebnis-Toolbar */
@@ -910,7 +911,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.36 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.37 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -3093,6 +3094,15 @@
         pop.appendChild(head);
       }
 
+      const hasAnyDrill = lvl.children.some(c => c.nestedCount > 0);
+      const addDrillSpacer = rowEl => {
+        if (!hasAnyDrill) return;
+        const sp = document.createElement('span');
+        sp.className = 'explorer-popup-drill-spacer';
+        sp.setAttribute('aria-hidden', 'true');
+        rowEl.appendChild(sp);
+      };
+
       // Obere Option: Alle Dateien in diesem Ordner inkl. Unterordner
       const allRow = document.createElement('div');
       allRow.className = 'explorer-popup-row' + ((curSelectedDir === normTarget && state.includeSublevels) ? ' active' : '');
@@ -3105,6 +3115,7 @@
         navigateToSubfolder(normTarget, true, true);
       };
       allRow.appendChild(allBtn);
+      addDrillSpacer(allRow);
       pop.appendChild(allRow);
 
       // Wenn es direkte Dateien im Ordner selbst gibt, auch den Ordner selbst anbieten
@@ -3114,12 +3125,13 @@
         const selfBtn = document.createElement('button');
         selfBtn.type = 'button';
         selfBtn.className = 'explorer-popup-item';
-        selfBtn.innerHTML = `<span class="explorer-popup-name">📂 ${escapeHtml(dispTitle)}</span><span class="explorer-popup-cnt">${lvl.directInCur}</span>`;
+        selfBtn.innerHTML = `<span class="explorer-popup-name">📂 ${escapeHtml(dispTitle)} (direkt)</span><span class="explorer-popup-cnt">${lvl.directInCur}</span>`;
         selfBtn.onclick = () => {
           closeExplorerFolderPopup();
           navigateToSubfolder(normTarget, false, true);
         };
         selfRow.appendChild(selfBtn);
+        addDrillSpacer(selfRow);
         pop.appendChild(selfRow);
       }
 
@@ -3158,6 +3170,8 @@
               openExplorerFolderPopup(anchorEl, c.fullPath, normBase);
             };
             row.appendChild(drillBtn);
+          } else {
+            addDrillSpacer(row);
           }
 
           pop.appendChild(row);
