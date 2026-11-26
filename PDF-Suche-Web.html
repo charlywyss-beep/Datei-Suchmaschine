@@ -910,7 +910,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.34 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.35 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -981,13 +981,14 @@
         </div>
       </div>
 
-      <!-- Echte Laufwerks-Umschaltung (wechselt wirklich das Laufwerk & liest neu ein) -->
+      <!-- Echte Laufwerks-Umschaltung (dynamisch für C:, D:, E:, F:, G: … inkl. USB-Sticks) -->
       <div id="drive-switch-bar" class="drive-switch-bar">
         <span style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em; margin-right:2px; cursor:default;">Laufwerke:</span>
-        <button type="button" class="drive-nav-btn" data-drive="C" onclick="switchToDrive('C')" title="Alle freigegebenen Ordner auf C: (ohne Systemordner) einlesen &amp; durchsuchen">💿 C: <span class="drive-badge" id="drv-badge-C"></span></button>
-        <button type="button" class="drive-nav-btn" data-drive="D" onclick="switchToDrive('D')" title="Laufwerk D: wechseln &amp; neu einlesen">💿 D: <span class="drive-badge" id="drv-badge-D"></span></button>
-        <button type="button" class="drive-nav-btn" data-drive="E" onclick="switchToDrive('E')" title="Laufwerk E: wechseln &amp; neu einlesen">💿 E: <span class="drive-badge" id="drv-badge-E"></span></button>
+        <button type="button" class="drive-nav-btn" data-drive="C" onclick="switchToDrive('C')" title="Alle freigegebenen Ordner auf C: (ohne Systemordner) einlesen &amp; durchsuchen">💿 C:</button>
+        <button type="button" class="drive-nav-btn" data-drive="D" onclick="switchToDrive('D')" title="Laufwerk D: wechseln &amp; neu einlesen">💿 D:</button>
+        <button type="button" class="drive-nav-btn" data-drive="E" onclick="switchToDrive('E')" title="Laufwerk E: wechseln &amp; neu einlesen">💿 E:</button>
         <button type="button" class="drive-nav-btn drive-add-c-btn" onclick="addFolderForDrive('C')" title="Weiteren freigegebenen Ordner auf C: hinzufügen (z. B. unter C:\Benutzer\…)">+ Ordner auf C:</button>
+        <button type="button" class="drive-nav-btn drive-add-c-btn" onclick="addCustomDrive()" title="Weiteres Laufwerk / USB-Stick hinzufügen (z. B. F:, G:, H:, Z:)">+ USB / Laufwerk…</button>
       </div>
 
       <!-- Gemerkte Ordner -->
@@ -2865,11 +2866,35 @@
       return 'D:';
     }
 
-    function _highlightDriveButtons() {
-      const counts = { C: 0, D: 0, E: 0 };
+    async function addCustomDrive() {
+      const used = new Set(['C', 'D', 'E']);
       (savedFoldersList || []).forEach(entry => {
         const d = getEntryDrive(entry);
-        if (d && counts[d] !== undefined) counts[d] += 1;
+        if (d) used.add(d);
+      });
+      let nextLetter = 'F';
+      for (const ch of 'FGHIJKLMNOPQRSTUVWXYZ') {
+        if (!used.has(ch)) { nextLetter = ch; break; }
+      }
+      const ans = window.prompt('Welchen Laufwerksbuchstaben hat dein USB-Stick / Laufwerk? (z. B. F:, G:, H:, Z:)', `${nextLetter}:`);
+      if (!ans) return;
+      const cleanL = ans.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1);
+      if (!cleanL) return;
+      await addFolderForDrive(cleanL);
+    }
+
+    function _highlightDriveButtons() {
+      const bar = document.getElementById('drive-switch-bar');
+      if (!bar) return;
+
+      const counts = {};
+      const driveSet = new Set(['C', 'D', 'E']);
+      (savedFoldersList || []).forEach(entry => {
+        const d = getEntryDrive(entry);
+        if (d) {
+          counts[d] = (counts[d] || 0) + 1;
+          driveSet.add(d);
+        }
       });
 
       let activeDrv = (state.activeDrive || '').toUpperCase();
@@ -2880,30 +2905,46 @@
           activeDrv = state.rootName[0].toUpperCase();
         }
       }
+      if (activeDrv && /^[A-Z]$/.test(activeDrv)) driveSet.add(activeDrv);
 
-      ['C', 'D', 'E'].forEach(drv => {
-        const btn = document.querySelector(`.drive-nav-btn[data-drive="${drv}"]`);
-        const badge = document.getElementById(`drv-badge-${drv}`);
+      const drives = Array.from(driveSet).sort();
+      bar.innerHTML = '<span style="font-size:11.5px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.04em; margin-right:2px; cursor:default;">Laufwerke:</span>';
+
+      drives.forEach(drv => {
         const cnt = counts[drv] || 0;
-        if (badge) {
-          // Kein verwirrender Haken ✓ (sah aus wie fest angehakt) – nur Ordner-Anzahl bei mehreren Ordnern anzeigen
-          if (cnt > 1) badge.textContent = `(${cnt})`;
-          else badge.textContent = '';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'drive-nav-btn' + (activeDrv === drv ? ' active' : '') + (cnt > 0 ? ' has-data' : '');
+        btn.dataset.drive = drv;
+        btn.onclick = () => switchToDrive(drv);
+        btn.textContent = cnt > 1 ? `💿 ${drv}: (${cnt})` : `💿 ${drv}:`;
+        if (drv === 'C') {
+          btn.title = cnt > 0
+            ? `Alle ${cnt} freigegebenen Ordner auf C: (ohne Systemordner) neu einlesen & durchsuchen`
+            : 'Freigegebenen Ordner auf C: auswählen & einlesen';
+        } else {
+          btn.title = cnt > 0
+            ? `Laufwerk ${drv}: wechseln & neu einlesen`
+            : `Laufwerk ${drv}: einmalig im Windows-Dialog auswählen & einlesen`;
         }
-        if (btn) {
-          btn.classList.toggle('active', activeDrv === drv);
-          btn.classList.toggle('has-data', cnt > 0);
-          if (drv === 'C') {
-            btn.title = cnt > 0
-              ? `Alle ${cnt} freigegebenen Ordner auf C: (ohne Systemordner) neu einlesen & durchsuchen`
-              : 'Freigegebenen Ordner auf C: auswählen & einlesen';
-          } else {
-            btn.title = cnt > 0
-              ? `Laufwerk ${drv}: wechseln & neu einlesen`
-              : `Laufwerk ${drv}: einmalig im Windows-Dialog auswählen & einlesen`;
-          }
-        }
+        bar.appendChild(btn);
       });
+
+      const btnAddC = document.createElement('button');
+      btnAddC.type = 'button';
+      btnAddC.className = 'drive-nav-btn drive-add-c-btn';
+      btnAddC.textContent = '+ Ordner auf C:';
+      btnAddC.title = 'Weiteren freigegebenen Ordner auf C: hinzufügen (z. B. unter C:\\Benutzer\\…)';
+      btnAddC.onclick = () => addFolderForDrive('C');
+      bar.appendChild(btnAddC);
+
+      const btnAddDrv = document.createElement('button');
+      btnAddDrv.type = 'button';
+      btnAddDrv.className = 'drive-nav-btn drive-add-c-btn';
+      btnAddDrv.textContent = '+ USB / Laufwerk…';
+      btnAddDrv.title = 'Weiteres Laufwerk oder USB-Stick hinzufügen (z. B. F:, G:, H:, Z:)';
+      btnAddDrv.onclick = () => addCustomDrive();
+      bar.appendChild(btnAddDrv);
     }
 
     function getBasePathStorageKey(rootName) { return `pdf_suche_base_prefix::${(rootName || '').toLowerCase()}`; }
