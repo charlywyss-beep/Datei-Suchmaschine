@@ -867,7 +867,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.26 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.27 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -945,10 +945,10 @@
       <div id="path-bar" class="path-bar hidden" style="margin-bottom: 8px;">
         <div class="path-breadcrumbs" id="path-breadcrumbs"></div>
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1 1 auto; justify-content:flex-end;">
-          <div class="drive-chips-group" id="drive-chips-group" title="Laufwerk mit 1 Klick wechseln (z. B. C:, D:, E:)">
+          <div class="drive-chips-group" id="drive-chips-group" title="Laufwerk manuell zuordnen oder wechseln (Browser verrät den Laufwerksbuchstaben aus Sicherheitsgründen nicht)">
             <span class="drive-chip-label">Laufwerk:</span>
             <button type="button" class="drive-chip-btn" data-drive="C" onclick="setDriveLetter('C')">C:</button>
-            <button type="button" class="drive-chip-btn active" data-drive="D" onclick="setDriveLetter('D')">D:</button>
+            <button type="button" class="drive-chip-btn" data-drive="D" onclick="setDriveLetter('D')">D:</button>
             <button type="button" class="drive-chip-btn" data-drive="E" onclick="setDriveLetter('E')">E:</button>
           </div>
           <div class="basepath-wrap">
@@ -956,7 +956,7 @@
               id="base-path-prefix"
               type="text"
               class="basepath-input"
-              placeholder="Basis-Pfad (z. B. D:\…)"
+              placeholder="Basis-Pfad (z. B. C:\… oder D:\…)"
               title="Windows-Basis-Pfad eintragen – bleibt dauerhaft gespeichert, bis du ihn manuell per × löschst"
               oninput="onBasePathPrefixChanged(this.value)"
             >
@@ -2477,12 +2477,14 @@
         } else if (state.rootName && /^[a-zA-Z]:/.test(state.rootName)) {
           l = state.rootName.slice(0, 1).toUpperCase();
         } else {
-          l = 'D';
+          // Wenn der Browser keinen Laufwerksbuchstaben kennt und noch kein Basis-Pfad gesetzt ist,
+          // KEINEN falschen Buchstaben (wie D:) blau markieren!
+          l = '';
         }
       }
       document.querySelectorAll('.drive-chip-btn').forEach(btn => {
         const d = (btn.getAttribute('data-drive') || '').toUpperCase();
-        if (d === l) btn.classList.add('active');
+        if (l && d === l) btn.classList.add('active');
         else btn.classList.remove('active');
       });
     }
