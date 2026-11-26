@@ -911,7 +911,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.41 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.42 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
       </div>
     </div>
@@ -3889,7 +3889,7 @@
         const rawQ = (document.getElementById('search-input').value || '').trim();
         const looksLikePath = /^[a-zA-Z]:[\\/]|^\\\\/.test(rawQ);
         if (state.awaitingSearch && !rawQ) {
-          tbody.innerHTML = `<tr><td colspan="8"><div class="empty-box"><h3>✓ ${state.allFiles.length} Dateien in „${escapeHtml(state.rootName)}“ neu eingelesen</h3><div style="margin-bottom:10px;">Das Suchfeld ist leer – gib oben einen <strong>Suchbegriff</strong> ein, wähle einen Filter oder klicke auf einen Ordner.</div><button type="button" class="btn btn-primary" onclick="state.awaitingSearch=false; applyFilters();">Alle ${state.allFiles.length} Dateien anzeigen</button></div></td></tr>`;
+          tbody.innerHTML = '';
         } else if (looksLikePath) {
           tbody.innerHTML = `<tr><td colspan="8"><div class="empty-box"><h3>Ordnerpfad im Suchfeld erkannt</h3><div style="margin-bottom:10px;">Das obere Suchfeld filtert nach <strong>Dateinamen</strong> – nicht nach dem Windows-Ordnerpfad.<br>Die <strong>${state.allFiles.length} Dateien</strong> aus „${escapeHtml(state.rootName)}“ sind bereits geladen.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><button type="button" class="btn btn-primary" onclick="adoptSearchAsBasePath()">Als Basis-Pfad übernehmen &amp; alle anzeigen</button><button type="button" class="btn" onclick="clearSearchInput()">Suchfeld leeren</button></div></div></td></tr>`;
         } else if (state.activeSubfolder && !rawQ && state.category === 'all' && !state.timeframe && !state.sizePreset) {
