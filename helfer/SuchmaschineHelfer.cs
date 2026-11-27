@@ -361,6 +361,14 @@ namespace DokumentenSucheHelfer
 
         static void RouteApi(string path, HttpListenerRequest req, HttpListenerResponse res)
         {
+            if (path.StartsWith("/api/view/", StringComparison.OrdinalIgnoreCase))
+            {
+                string rawName = req.Url.AbsolutePath.Substring("/api/view/".Length);
+                string dispName = Uri.UnescapeDataString(rawName ?? "").Trim();
+                HandleStreamFile(req, res, dispName);
+                return;
+            }
+
             switch (path)
             {
                 case "/api/ping":
@@ -376,7 +384,7 @@ namespace DokumentenSucheHelfer
                     HandleScan(req, res);
                     break;
                 case "/api/file":
-                    HandleStreamFile(req, res);
+                    HandleStreamFile(req, res, null);
                     break;
                 case "/api/rename":
                     HandleRename(req, res);
@@ -759,7 +767,7 @@ namespace DokumentenSucheHelfer
             WriteJson(res, 200, outJson.ToString());
         }
 
-        static void HandleStreamFile(HttpListenerRequest req, HttpListenerResponse res)
+        static void HandleStreamFile(HttpListenerRequest req, HttpListenerResponse res, string displayFileName)
         {
             string rawPath = GetQueryParam(req.Url.Query, "path") ?? "";
             string target = ResolveWindowsPath(rawPath);
@@ -772,6 +780,13 @@ namespace DokumentenSucheHelfer
             string mime = GetMimeType(Path.GetExtension(target));
             res.ContentType = mime;
             res.Headers["Accept-Ranges"] = "bytes";
+
+            string fname = !string.IsNullOrEmpty(displayFileName) ? displayFileName : Path.GetFileName(target);
+            if (!string.IsNullOrEmpty(fname))
+            {
+                string asciiSafe = RegexSafeAsciiFilename(fname);
+                res.Headers["Content-Disposition"] = "inline; filename=\"" + asciiSafe + "\"; filename*=UTF-8''" + Uri.EscapeDataString(fname);
+            }
 
             using (FileStream fs = new FileStream(target, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
             {
@@ -1070,6 +1085,17 @@ namespace DokumentenSucheHelfer
             }
             sb.Append('"');
             return sb.ToString();
+        }
+
+        static string RegexSafeAsciiFilename(string name)
+        {
+            StringBuilder sb = new StringBuilder(name.Length);
+            foreach (char c in name)
+            {
+                if (c >= 32 && c < 127 && c != '"' && c != '\\' && c != ';') sb.Append(c);
+                else sb.Append('_');
+            }
+            return sb.Length > 0 ? sb.ToString() : "datei";
         }
 
         static string GetMimeType(string ext)

@@ -931,7 +931,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.51 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.52 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen</p>
       </div>
     </div>
@@ -5433,31 +5433,84 @@
 
     const tabOpenCounters = {};
 
+    function getMimeForExt(ext) {
+      switch ((ext || '').toLowerCase()) {
+        case 'pdf': return 'application/pdf';
+        case 'jpg': case 'jpeg': return 'image/jpeg';
+        case 'png': return 'image/png';
+        case 'gif': return 'image/gif';
+        case 'webp': return 'image/webp';
+        case 'bmp': return 'image/bmp';
+        case 'svg': return 'image/svg+xml';
+        case 'mp4': case 'm4v': return 'video/mp4';
+        case 'webm': return 'video/webm';
+        case 'mkv': return 'video/x-matroska';
+        case 'mov': return 'video/quicktime';
+        case 'avi': return 'video/x-msvideo';
+        case 'mp3': return 'audio/mpeg';
+        case 'wav': return 'audio/wav';
+        case 'ogg': return 'audio/ogg';
+        case 'm4a': return 'audio/mp4';
+        case 'flac': return 'audio/flac';
+        case 'txt': case 'log': case 'md': case 'csv': case 'ini': return 'text/plain; charset=utf-8';
+        case 'json': return 'application/json; charset=utf-8';
+        case 'xml': return 'application/xml; charset=utf-8';
+        case 'html': case 'htm': return 'text/html; charset=utf-8';
+        default: return '';
+      }
+    }
+
     async function openFileInNewTab(item) {
+      const ext = getExt(item.name).toLowerCase();
+      const base = getStem(item.name);
+      const cntKey = (item.name || '').toLowerCase();
+      tabOpenCounters[cntKey] = (tabOpenCounters[cntKey] || 0) + 1;
+      const seq = String(tabOpenCounters[cntKey]).padStart(2, '0');
+      const displayTitle = ext ? `${base}_${seq}.${ext}` : `${base}_${seq}`;
+      const isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
+      const isVideo = ['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v'].includes(ext);
+      const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext);
+      const isDocx = ext === 'docx';
+      const isSheet = ['xlsx', 'xls', 'csv', 'ods'].includes(ext);
+      const isText = EXT_TEXT.has(ext) && !isSheet;
+
+      // WICHTIG: Tab SYNCHRON beim Klick öffnen (vor jedem await!), damit Chrome ihn NIE blockiert!
+      const newWin = window.open('', '_blank');
+      if (!newWin) {
+        toast('Neuer Tab wurde vom Browser blockiert – bitte Popups für diese Seite erlauben.', 'err');
+        return;
+      }
+
       try {
-        const file = await getFileObject(item);
-        const ext = getExt(item.name).toLowerCase();
-        const base = getStem(item.name);
-        tabOpenCounters[item.name] = (tabOpenCounters[item.name] || 0) + 1;
-        const seq = String(tabOpenCounters[item.name]).padStart(2, '0');
-        const displayTitle = ext ? `${base}_${seq}.${ext}` : `${base}_${seq}`;
+        newWin.document.open();
+        newWin.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>${escapeHtml(displayTitle)}</title><style>body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:"Segoe UI",system-ui,sans-serif;background:#f8fafc;color:#334155;font-size:14px;font-weight:600;}</style></head><body>Lade ${escapeHtml(displayTitle)}…</body></html>`);
+        newWin.document.close();
+        try { newWin.document.title = displayTitle; } catch (_) {}
+      } catch (_) {}
 
-        const namedFile = new File([file], displayTitle, { type: file.type || 'application/octet-stream' });
-        const url = URL.createObjectURL(namedFile);
-        const suffix = ext === 'pdf' ? '#navpanes=0&view=Fit' : '';
-
-        const newWin = window.open('', '_blank');
-        if (!newWin) {
-          window.open(`${url}${suffix}`, '_blank');
+      try {
+        // Über Windows-Helfer: PDF/Video/Audio direkt per /api/view/<Dateiname_01.ext> öffnen
+        // (keine Mixed-Content-Blockade von https://, echter Tab-Titel & Speichername _01/_02, sofortiges Streaming!)
+        if (item.nativePath && helperState.available && (ext === 'pdf' || isVideo || isAudio)) {
+          const directUrl = `${HELPER_BASE}/api/view/${encodeURIComponent(displayTitle)}?path=${encodeURIComponent(item.nativePath)}${ext === 'pdf' ? '#navpanes=0&view=Fit' : ''}`;
+          newWin.location.replace(directUrl);
           return;
         }
 
-        const isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
+        const file = await getFileObject(item);
+        const mime = getMimeForExt(ext) || file.type || 'application/octet-stream';
+        const namedFile = new File([file], displayTitle, { type: mime });
+        const url = URL.createObjectURL(namedFile);
+
         let innerContent = '';
+        let bg = '#f8fafc';
+        let overflow = 'hidden';
 
         if (ext === 'pdf') {
+          bg = '#525659';
           innerContent = `<iframe src="${url}#navpanes=0&view=Fit" style="width:100%; height:100%; border:none; display:block; margin:0; padding:0;"></iframe>`;
         } else if (isImg) {
+          bg = '#0e0e0e';
           const scriptClose = '<' + '/script>';
           innerContent = `
             <div id="vp" style="width:100%; height:100%; position:relative; overflow:hidden; cursor:zoom-in; background:#0e0e0e; user-select:none;">
@@ -5723,24 +5776,64 @@
                 });
               })();
             ` + scriptClose;
-        } else if (['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(ext)) {
+        } else if (isDocx && window.mammoth && file) {
+          bg = '#e2e8f0';
+          overflow = 'auto';
+          const ab = await file.arrayBuffer();
+          const res = await mammoth.convertToHtml({ arrayBuffer: ab });
+          innerContent = `<div style="max-width:860px; margin:24px auto; background:#ffffff; color:#0f172a; padding:34px 42px; border-radius:8px; box-shadow:0 4px 20px rgba(15,23,42,0.14); font-family:'Segoe UI',system-ui,sans-serif; line-height:1.6; font-size:14px;">${res.value || '<p>(Leeres Dokument)</p>'}</div>`;
+        } else if (isSheet && window.XLSX && file) {
+          bg = '#f8fafc';
+          overflow = 'auto';
+          const ab = await file.arrayBuffer();
+          const wb = XLSX.read(ab, { type: 'array' });
+          const firstSheet = wb.SheetNames[0];
+          const rows = firstSheet ? XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { header: 1, defval: '' }) : [];
+          const maxRows = 1000;
+          const limited = rows.slice(0, maxRows);
+          const maxCols = Math.min(50, Math.max(1, ...limited.map(r => r.length)));
+          let tbl = '<div style="padding:16px;"><table style="border-collapse:collapse; background:#fff; font-family:\'Segoe UI\',system-ui,sans-serif; font-size:12.5px; box-shadow:0 2px 10px rgba(15,23,42,0.08);"><tbody>';
+          limited.forEach((r, ri) => {
+            tbl += '<tr>';
+            for (let c = 0; c < maxCols; c++) {
+              const val = r[c] !== undefined && r[c] !== null ? String(r[c]) : '';
+              const st = ri === 0 ? 'background:#f1f5f9; font-weight:700;' : (ri % 2 === 0 ? 'background:#f8fafc;' : '');
+              tbl += `<td style="border:1px solid #cbd5e1; padding:5px 9px; white-space:nowrap; ${st}">${escapeHtml(val)}</td>`;
+            }
+            tbl += '</tr>';
+          });
+          tbl += '</tbody></table></div>';
+          innerContent = tbl;
+        } else if (isText && file) {
+          bg = '#f8fafc';
+          overflow = 'auto';
+          const slice = file.size > 1024 * 1024 ? file.slice(0, 1024 * 1024) : file;
+          const txt = await slice.text();
+          innerContent = `<pre style="max-width:1040px; margin:20px auto; background:#ffffff; color:#0f172a; padding:22px 26px; border-radius:8px; border:1px solid #cbd5e1; font-family:Consolas,'Cascadia Code',monospace; font-size:13px; line-height:1.55; white-space:pre-wrap; word-break:break-word;">${escapeHtml(txt)}</pre>`;
+        } else if (isVideo) {
+          bg = '#000000';
           innerContent = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"><video src="${url}" controls autoplay style="max-width:100%; max-height:100%;"></video></div>`;
-        } else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+        } else if (isAudio) {
+          bg = '#0f172a';
           innerContent = `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;"><audio src="${url}" controls autoplay></audio></div>`;
         } else {
-          innerContent = `<iframe src="${url}" style="width:100%; height:100%; border:none; display:block; margin:0; padding:0; background:#fff;"></iframe>`;
+          bg = '#f8fafc';
+          overflow = 'auto';
+          innerContent = `<div style="max-width:520px; margin:80px auto; background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:28px; text-align:center; font-family:'Segoe UI',system-ui,sans-serif; color:#0f172a;">
+            <h2 style="margin:0 0 10px; font-size:17px;">${escapeHtml(displayTitle)}</h2>
+            <p style="margin:0 0 18px; color:#475569; font-size:13px;">Dieser Dateityp (.${escapeHtml(ext || '?')}) kann vom Browser nicht direkt gerendert werden.</p>
+            <a href="${url}" download="${escapeHtml(displayTitle)}" style="display:inline-block; padding:9px 16px; border-radius:8px; background:#2563eb; color:#ffffff; text-decoration:none; font-weight:600; font-size:13px;">⬇ Als „${escapeHtml(displayTitle)}“ speichern</a>
+          </div>`;
         }
 
-        const bg = isImg ? '#0e0e0e' : (ext === 'pdf' ? '#525659' : '#000000');
-        const overflow = 'hidden';
-
+        const iconEmoji = ext === 'pdf' ? '📄' : (isImg ? '🖼️' : (isDocx ? '📝' : (isSheet ? '📊' : (isVideo ? '🎬' : '📁'))));
         newWin.document.open();
         newWin.document.write(`<!DOCTYPE html>
 <html lang="de" style="width:100%; height:100%; margin:0; padding:0; overflow:${overflow};">
 <head>
   <meta charset="utf-8">
   <title>${escapeHtml(displayTitle)}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>${ext === 'pdf' ? '📄' : (isImg ? '🖼️' : '🎬')}</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>${iconEmoji}</text></svg>">
   <style>
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: ${bg}; overflow: ${overflow}; }
@@ -5751,7 +5844,9 @@
 </body>
 </html>`);
         newWin.document.close();
+        try { newWin.document.title = displayTitle; } catch (_) {}
       } catch (err) {
+        try { newWin.close(); } catch (_) {}
         toast(`Datei konnte nicht geöffnet werden: ${err.message}`, 'err');
       }
     }
