@@ -221,12 +221,13 @@
 
     .filter-grid {
       display: grid;
-      grid-template-columns: auto auto;
+      grid-template-columns: 1fr;
       grid-template-areas:
-        "type type"
-        "time size"
-        "date date";
-      column-gap: 16px;
+        "type"
+        "time"
+        "size"
+        "date";
+      column-gap: 20px;
       row-gap: 8px;
       align-items: center;
     }
@@ -240,9 +241,9 @@
     }
 
     .filter-label {
-      width: 86px;
-      min-width: 86px;
-      max-width: 86px;
+      width: 112px;
+      min-width: 112px;
+      max-width: 112px;
       flex-shrink: 0;
       height: 30px;
       display: inline-flex;
@@ -250,6 +251,7 @@
       font-weight: 700;
       color: var(--text-sec);
       font-size: 12px;
+      white-space: nowrap;
       cursor: default;
     }
 
@@ -295,24 +297,20 @@
     .inline-prefix { font-size: 11px; font-weight: 700; color: var(--text-muted); user-select: none; flex-shrink: 0; }
     .date-box input { border: none; outline: none; background: transparent; width: 100%; font-family: inherit; font-size: 12px; color: var(--text); }
 
-    @container workspace (min-width: 1240px) {
+    @container workspace (min-width: 1020px) {
       .filter-grid {
-        grid-template-columns: max-content auto;
+        grid-template-columns: max-content minmax(0, 1fr);
         grid-template-areas:
-          "type size"
-          "time date";
-        column-gap: 24px;
+          "type type"
+          "time size"
+          "date date";
+        column-gap: 22px;
       }
-    }
-
-    @container workspace (max-width: 720px) {
-      .filter-grid {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-          "type"
-          "size"
-          "time"
-          "date";
+      .filter-row-size .filter-label {
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        margin-right: 2px;
       }
     }
 
@@ -933,16 +931,22 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.48 · Aktualisieren</button></h1>
-        <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen – ganz ohne .exe</p>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.49 · Aktualisieren</button></h1>
+        <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen</p>
       </div>
     </div>
-    <div class="privacy-pill" title="Alle Dateien bleiben auf deinem PC und werden niemals hochgeladen">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        <polyline points="9 12 11 14 15 10"/>
-      </svg>
-      <span>100 % lokal im Browser – kein Upload</span>
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <button id="helper-status-pill" type="button" onclick="checkWindowsHelper(false)" class="privacy-pill" style="cursor:pointer; background:#f8fafc; border-color:#cbd5e1; color:#475569;" title="Klicken zum Prüfen, ob Suchmaschine-Helfer.exe (ohne Python) läuft">
+        <span id="helper-status-dot" style="width:8px; height:8px; border-radius:999px; background:#94a3b8; display:inline-block;"></span>
+        <span id="helper-status-text">Windows-Helfer: Browser-Modus</span>
+      </button>
+      <div class="privacy-pill" title="Alle Dateien bleiben auf deinem PC und werden niemals hochgeladen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <polyline points="9 12 11 14 15 10"/>
+        </svg>
+        <span>100 % lokal – kein Upload</span>
+      </div>
     </div>
   </header>
 
@@ -1266,6 +1270,24 @@
     </div>
   </div>
 
+  <!-- Modal: Systemordner schnell öffnen (Windows-Helfer ohne Chrome-Hochladen-Meldung) -->
+  <div id="modal-system-folders" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-system-folders')">
+    <div class="modal-card" style="max-width:460px;">
+      <div class="modal-head">
+        <h2>🛡️ Systemordner öffnen</h2>
+        <button type="button" class="btn" onclick="closeModal('modal-system-folders')">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px; display:flex; flex-direction:column; gap:8px;">
+        <div style="font-size:12.5px; color:#475569; margin-bottom:2px;">Direktzugriff über den Windows-Helfer – ohne Chrome-Meldung, mit Vorschau, Umbenennen &amp; Papierkorb:</div>
+        <div id="sys-folder-list" style="display:flex; flex-direction:column; gap:7px;"></div>
+      </div>
+      <div class="modal-foot" style="padding:12px 18px; background:#f8fafc;">
+        <button type="button" class="btn" onclick="closeModal('modal-system-folders')">Schließen</button>
+        <button type="button" class="btn btn-primary" onclick="closeModal('modal-system-folders'); pickDirectory();">📂 Anderen Ordner wählen…</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Gemerkten Ordner aus Liste löschen -->
   <div id="modal-remove-saved-folder" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-remove-saved-folder')">
     <div class="modal-card" style="max-width:420px;">
@@ -1355,6 +1377,7 @@
   <script>
     const state = {
       rootHandle: null,
+      rootNativePath: '',
       rootName: '',
       activeDrive: '',
       multiRootMode: false,
@@ -1906,7 +1929,263 @@
       });
     }
 
+    const HELPER_BASE = 'http://127.0.0.1:17654';
+    const NATIVE_SAVED_KEY = 'pdf_suche_native_folders_v1';
+    const helperState = {
+      available: false,
+      version: '',
+      drives: [],
+      specialFolders: {},
+      checkedOnce: false
+    };
+
+    function _updateHelperStatusBadge() {
+      const pill = document.getElementById('helper-status-pill');
+      const dot = document.getElementById('helper-status-dot');
+      const txt = document.getElementById('helper-status-text');
+      if (!pill || !dot || !txt) return;
+      if (helperState.available) {
+        pill.style.background = '#ecfdf5';
+        pill.style.borderColor = '#a7f3d0';
+        pill.style.color = '#047857';
+        dot.style.background = '#10b981';
+        txt.textContent = '⚡ Windows-Helfer aktiv';
+        pill.title = `Lokaler Windows-Helfer v${helperState.version || '1.0'} verbunden (ohne Python) – alle Ordner & Systemordner ohne Browser-Sperren, Papierkorb & Explorer aktiv.`;
+      } else {
+        pill.style.background = '#f8fafc';
+        pill.style.borderColor = '#cbd5e1';
+        pill.style.color = '#475569';
+        dot.style.background = '#94a3b8';
+        txt.textContent = 'Windows-Helfer: aus';
+        pill.title = 'Browser-Modus aktiv. Starte Suchmaschine-Helfer.exe und klicke hier zum Verbinden (für Systemordner ohne Chrome-Meldung).';
+      }
+    }
+
+    async function checkWindowsHelper(silent = true) {
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 950) : null;
+      try {
+        const resp = await fetch(`${HELPER_BASE}/api/ping`, ctrl ? { signal: ctrl.signal } : undefined);
+        if (timer) clearTimeout(timer);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (data && data.ok) {
+          const wasAvail = helperState.available;
+          helperState.available = true;
+          helperState.version = data.version || '1.0.0';
+          helperState.drives = Array.isArray(data.drives) ? data.drives : [];
+          helperState.specialFolders = data.specialFolders || {};
+          helperState.checkedOnce = true;
+          _updateHelperStatusBadge();
+          _highlightDriveButtons();
+          if (!silent) {
+            toast(`⚡ Windows-Helfer verbunden (${helperState.drives.join(', ')}) – alle Ordner & Systemordner direkt verfügbar!`, 'ok');
+          } else if (!wasAvail) {
+            renderSavedFoldersRow();
+          }
+          return true;
+        }
+      } catch (_) {
+        if (timer) clearTimeout(timer);
+      }
+      helperState.available = false;
+      helperState.checkedOnce = true;
+      _updateHelperStatusBadge();
+      if (!silent) {
+        toast('Windows-Helfer (Suchmaschine-Helfer.exe) läuft gerade nicht – Browser-Modus bleibt aktiv.', 'info');
+      }
+      return false;
+    }
+
+    function _loadNativeSavedEntries() {
+      try {
+        const raw = localStorage.getItem(NATIVE_SAVED_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr.filter(x => x && x.nativePath) : [];
+      } catch (_) { return []; }
+    }
+
+    function _saveNativeSavedEntries() {
+      try {
+        const nativeOnly = (savedFoldersList || [])
+          .filter(x => x && x.nativePath)
+          .map(x => ({ id: x.id, name: x.name, drive: x.drive || '', nativePath: x.nativePath }));
+        localStorage.setItem(NATIVE_SAVED_KEY, JSON.stringify(nativeOnly));
+      } catch (_) {}
+    }
+
+    function _getEntryNativePath(entry) {
+      if (!entry) return '';
+      if (entry.nativePath && hasFullWindowsPath(entry.nativePath)) return entry.nativePath;
+      let savedPref = '';
+      try { savedPref = (localStorage.getItem(getBasePathStorageKey(entry.name)) || '').trim(); } catch (_) {}
+      if (hasFullWindowsPath(savedPref)) return savedPref;
+      if (/^[a-zA-Z]:\\?$/.test((entry.name || '').trim())) {
+        return entry.name.trim().toUpperCase().replace(/:?\\?$/, ':\\');
+      }
+      return '';
+    }
+
+    function _upsertNativeSavedFolder(winPath, dispName, driveLetter) {
+      const cleanPath = (winPath || '').trim().replace(/\//g, '\\');
+      const cleanDrv = (driveLetter || (cleanPath.match(/^([a-zA-Z]):/) ? cleanPath[0] : '')).toUpperCase();
+      try { localStorage.setItem(getBasePathStorageKey(dispName), cleanPath); } catch (_) {}
+      const existing = (savedFoldersList || []).find(x =>
+        (x.nativePath && x.nativePath.toLowerCase() === cleanPath.toLowerCase()) ||
+        (x.name || '').toLowerCase() === (dispName || '').toLowerCase()
+      );
+      if (existing) {
+        existing.nativePath = cleanPath;
+        if (cleanDrv) existing.drive = cleanDrv;
+      } else {
+        savedFoldersList.push({
+          id: `nat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          name: dispName,
+          drive: cleanDrv,
+          nativePath: cleanPath,
+          handle: null
+        });
+      }
+      _saveNativeSavedEntries();
+      saveSavedFoldersList();
+      renderSavedFoldersRow();
+    }
+
+    async function scanNativeFolderPath(winPath, forcedDrive = '', saveToList = true, preserveAwaitingSearch = false) {
+      if (!helperState.available) {
+        const ok = await checkWindowsHelper(true);
+        if (!ok) {
+          toast('Windows-Helfer nicht erreichbar. Bitte Suchmaschine-Helfer.exe starten.', 'err');
+          return false;
+        }
+      }
+      if (!preserveAwaitingSearch) state.awaitingSearch = false;
+      state.multiRootMode = false;
+      state.multiRootPrefixes = new Map();
+      state.activeMultiEntries = [];
+      state.rootHandle = null;
+      state.scanning = true;
+      state.cancelRequested = false;
+
+      const bpWrap = document.querySelector('.basepath-wrap');
+      if (bpWrap) bpWrap.classList.remove('hidden');
+      const hint = document.getElementById('folder-hint');
+      hint.classList.remove('loaded');
+      hint.textContent = `⚡ Lese ${toGermanDisplayPath(winPath)} über Windows-Helfer ein…`;
+
+      try {
+        const resp = await fetch(`${HELPER_BASE}/api/scan?path=${encodeURIComponent(winPath)}`);
+        const data = await resp.json();
+        if (!resp.ok || !data || !data.ok) {
+          throw new Error((data && data.error) || `HTTP ${resp.status}`);
+        }
+
+        const rootPath = data.rootPath || winPath;
+        const isDrive = /^[a-zA-Z]:\\?$/.test(rootPath);
+        const rootName = isDrive ? rootPath.slice(0, 2).toUpperCase() : toGermanFolderLabel(data.rootName || rootPath.split('\\').pop() || 'Ordner');
+        const drv = (forcedDrive || (rootPath.match(/^([a-zA-Z]):/) ? rootPath[0] : '')).toUpperCase();
+
+        state.rootNativePath = rootPath;
+        state.rootName = rootName;
+        state.activeDrive = drv;
+        state.canWrite = true;
+        state.basePathPrefix = rootPath;
+        try { localStorage.setItem(getBasePathStorageKey(rootName), rootPath); } catch (_) {}
+        const bp = document.getElementById('base-path-prefix');
+        if (bp) {
+          bp.value = rootPath;
+          bp.title = `Echter Windows-Pfad: ${rootPath}`;
+        }
+
+        state.allFiles = [];
+        state.allDirs = new Set();
+        state.selectedIds.clear();
+        state.lastSelectedId = null;
+        clearActivePreview();
+
+        (data.dirs || []).forEach(d => { if (d) state.allDirs.add(d); });
+
+        let counter = 0;
+        (data.files || []).forEach(f => {
+          counter += 1;
+          const ext = getExt(f.name);
+          const dirStr = f.dir ? f.dir : '(Hauptordner)';
+          state.allFiles.push({
+            id: `f_${counter}`,
+            name: f.name,
+            ext: ext ? ext.toUpperCase() : '—',
+            cat: getCategoryForExt(ext),
+            dir: dirStr,
+            relPath: f.dir ? `${f.dir}\\${f.name}` : f.name,
+            size: f.size || 0,
+            mtime: f.mtime || 0,
+            fileHandle: null,
+            parentHandle: null,
+            fileObj: null,
+            nativePath: f.fullPath
+          });
+        });
+
+        document.getElementById('btn-reopen-last').classList.add('hidden');
+        document.getElementById('btn-rescan').classList.remove('hidden');
+        showModeNotice('');
+
+        if (saveToList) {
+          _upsertNativeSavedFolder(rootPath, rootName, drv);
+        } else {
+          renderSavedFoldersRow();
+        }
+        try { localStorage.setItem('pdf_suche_last_native_path', rootPath); } catch (_) {}
+
+        hint.classList.add('loaded');
+        hint.textContent = `✓ Geladen: ${toGermanDisplayPath(rootName)} · ${state.allFiles.length} Dateien`;
+
+        resetFolderNavigation();
+        updateCategoryCounts();
+        rebuildSubfolderDropdown();
+        updatePathBar();
+        updateModeBadge();
+        computeDuplicates();
+        applyFilters();
+        return true;
+      } catch (err) {
+        hint.textContent = 'Fehler beim Einlesen über Windows-Helfer';
+        toast(`Einlesen fehlgeschlagen: ${err.message}`, 'err');
+        return false;
+      } finally {
+        state.scanning = false;
+      }
+    }
+
+    function openSystemFoldersModal() {
+      const list = document.getElementById('sys-folder-list');
+      if (!list) return;
+      const sf = helperState.specialFolders || {};
+      const items = [
+        { icon: '📄', label: 'Dokumente', path: sf.documents },
+        { icon: '🖥️', label: 'Desktop', path: sf.desktop },
+        { icon: '⬇️', label: 'Downloads', path: sf.downloads },
+        { icon: '🖼️', label: 'Bilder', path: sf.pictures }
+      ].filter(x => x.path);
+
+      list.innerHTML = '';
+      items.forEach(it => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn';
+        btn.style.cssText = 'justify-content:space-between; width:100%; height:40px; padding:0 12px; text-align:left;';
+        btn.innerHTML = `<span style="display:inline-flex; align-items:center; gap:8px; font-weight:700;"><span>${it.icon}</span><span>${escapeHtml(it.label)}</span></span><span style="font-size:11.5px; color:#64748b; overflow:hidden; text-overflow:ellipsis; max-width:240px;">${escapeHtml(it.path)}</span>`;
+        btn.onclick = () => {
+          closeModal('modal-system-folders');
+          scanNativeFolderPath(it.path, it.path[0].toUpperCase(), true);
+        };
+        list.appendChild(btn);
+      });
+      document.getElementById('modal-system-folders').classList.remove('hidden');
+    }
+
     async function saveSavedFoldersList() {
+      _saveNativeSavedEntries();
       try {
         const db = await openHandleDb();
         if (!db) return;
@@ -1920,39 +2199,52 @@
     }
 
     async function loadSavedFoldersList() {
+      const nativeLocal = _loadNativeSavedEntries();
+      let idbList = [];
       try {
         const db = await openHandleDb();
-        if (!db) return [];
-        return await new Promise((resolve) => {
-          const tx = db.transaction(IDB_STORE, 'readonly');
-          const req = tx.objectStore(IDB_STORE).get('saved_dirs');
-          req.onsuccess = () => {
-            let list = Array.isArray(req.result) ? req.result : [];
-            let changed = false;
-            list.forEach(item => {
-              if (item.name === 'Gewähltes Laufwerk') {
-                item.name = detectDriveLetter();
-                changed = true;
-              }
-            });
-            // Alte fehlerhafte C:\-Hauptlaufwerk-Einträge (aus v3.18–v3.28, wo D:\ fälschlich als C:\ gespeichert wurde)
-            // automatisch bereinigen, da Chrome/Edge keinen Direktzugriff auf C:\-Root erlaubt.
-            const beforeLen = list.length;
-            list = list.filter(item => {
-              const n = (item && item.name || '').trim().toUpperCase();
-              if (n === 'C:' || n === 'C:\\') {
-                try { localStorage.removeItem(getBasePathStorageKey(item.name)); } catch (_) {}
-                return false;
-              }
-              return true;
-            });
-            if (list.length !== beforeLen) changed = true;
-            if (changed) setTimeout(() => saveSavedFoldersList(), 200);
-            resolve(list);
-          };
-          req.onerror = () => resolve([]);
-        });
-      } catch (_) { return []; }
+        if (db) {
+          idbList = await new Promise((resolve) => {
+            const tx = db.transaction(IDB_STORE, 'readonly');
+            const req = tx.objectStore(IDB_STORE).get('saved_dirs');
+            req.onsuccess = () => {
+              let list = Array.isArray(req.result) ? req.result : [];
+              let changed = false;
+              list.forEach(item => {
+                if (item.name === 'Gewähltes Laufwerk') {
+                  item.name = detectDriveLetter();
+                  changed = true;
+                }
+              });
+              // Alte fehlerhafte C:\-Handle-Einträge (ohne nativePath) bereinigen
+              const beforeLen = list.length;
+              list = list.filter(item => {
+                const n = (item && item.name || '').trim().toUpperCase();
+                if ((n === 'C:' || n === 'C:\\') && !item.nativePath) {
+                  try { localStorage.removeItem(getBasePathStorageKey(item.name)); } catch (_) {}
+                  return false;
+                }
+                return true;
+              });
+              if (list.length !== beforeLen) changed = true;
+              if (changed) setTimeout(() => saveSavedFoldersList(), 200);
+              resolve(list);
+            };
+            req.onerror = () => resolve([]);
+          });
+        }
+      } catch (_) {}
+
+      // Merge nativeLocal entries (so native saved folders persist even on file:// or without IDB)
+      const merged = [...idbList];
+      nativeLocal.forEach(nat => {
+        const exists = merged.some(x =>
+          (x.nativePath && x.nativePath.toLowerCase() === nat.nativePath.toLowerCase()) ||
+          (x.name || '').toLowerCase() === (nat.name || '').toLowerCase()
+        );
+        if (!exists) merged.push({ ...nat, handle: null });
+      });
+      return merged;
     }
 
     function renderSavedFoldersRow() {
@@ -2001,7 +2293,18 @@
 
     async function openSavedFolderById(id) {
       const entry = savedFoldersList.find(x => x.id === id);
-      if (!entry || !entry.handle) return;
+      if (!entry) return;
+      const natPath = _getEntryNativePath(entry);
+      if (helperState.available && natPath) {
+        await scanNativeFolderPath(natPath, getEntryDrive(entry), true);
+        return;
+      }
+      if (!entry.handle) {
+        if (natPath) {
+          toast(`Für „${natPath}“ bitte zuerst Suchmaschine-Helfer.exe starten.`, 'err');
+        }
+        return;
+      }
       try {
         const ok = await activateDirectoryHandle(entry.handle, true, getEntryDrive(entry));
         if (!ok) toast('Ordner-Freigabe wurde abgebrochen.', 'err');
@@ -2044,6 +2347,7 @@
 
     async function resetLoadedWorkspace(clearLastDir = false) {
       state.rootHandle = null;
+      state.rootNativePath = '';
       state.rootName = '';
       state.activeDrive = '';
       state.basePathPrefix = '';
@@ -2252,10 +2556,21 @@
     }
 
     async function initLastDirectoryOnStartup() {
-      if (!window.showDirectoryPicker || !window.isSecureContext) return;
+      const hasHelper = await checkWindowsHelper(true);
       savedFoldersList = await loadSavedFoldersList();
       renderSavedFoldersRow();
       _highlightDriveButtons();
+
+      if (hasHelper) {
+        let lastNat = '';
+        try { lastNat = (localStorage.getItem('pdf_suche_last_native_path') || '').trim(); } catch (_) {}
+        if (lastNat && savedFoldersList.some(x => _getEntryNativePath(x).toLowerCase() === lastNat.toLowerCase())) {
+          await scanNativeFolderPath(lastNat, '', false);
+          return;
+        }
+      }
+
+      if (!window.showDirectoryPicker || !window.isSecureContext) return;
       if (!savedFoldersList.length) {
         await clearLastDirectoryHandle();
         return;
@@ -2287,6 +2602,19 @@
     }
 
     async function pickDirectory() {
+      if (helperState.available) {
+        try {
+          const initDir = state.rootNativePath || '';
+          const resp = await fetch(`${HELPER_BASE}/api/pick-folder?initial=${encodeURIComponent(initDir)}`);
+          const data = await resp.json();
+          if (data && data.ok && data.path) {
+            await scanNativeFolderPath(data.path, '', true);
+          }
+          return;
+        } catch (err) {
+          toast(`Ordner-Dialog: ${err.message}`, 'err');
+        }
+      }
       if (window.showDirectoryPicker && window.isSecureContext) {
         try {
           const baseOpts = state.rootHandle ? { startIn: state.rootHandle } : {};
@@ -2331,11 +2659,24 @@
 
       const matches = (savedFoldersList || []).filter(entry => getEntryDrive(entry) === cleanL);
       if (!matches.length) {
+        if (helperState.available) {
+          if (cleanL === 'C') {
+            await addFolderForDrive('C');
+          } else {
+            await scanNativeFolderPath(`${cleanL}:\\`, cleanL, true);
+          }
+          return;
+        }
         await addFolderForDrive(cleanL);
         return;
       }
 
       if (matches.length === 1) {
+        const natPath = _getEntryNativePath(matches[0]);
+        if (helperState.available && natPath) {
+          await scanNativeFolderPath(natPath, cleanL, true);
+          return;
+        }
         try {
           const ok = await activateDirectoryHandle(matches[0].handle, true, cleanL);
           if (!ok) toast(`Freigabe für Laufwerk ${cleanL}: wurde abgebrochen.`, 'err');
@@ -2351,6 +2692,25 @@
     async function addFolderForDrive(letter) {
       const cleanL = (letter || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1);
       if (!cleanL) return;
+
+      if (helperState.available) {
+        try {
+          const initDir = `${cleanL}:\\`;
+          const title = cleanL === 'C'
+            ? 'Ordner auf C: auswählen (auch Dokumente, Desktop, Downloads)'
+            : `Laufwerk ${cleanL}:\\ oder Ordner auswählen`;
+          const resp = await fetch(`${HELPER_BASE}/api/pick-folder?initial=${encodeURIComponent(initDir)}&title=${encodeURIComponent(title)}`);
+          const data = await resp.json();
+          if (data && data.ok && data.path) {
+            const drv = (data.path.match(/^([a-zA-Z]):/) ? data.path[0] : cleanL).toUpperCase();
+            await scanNativeFolderPath(data.path, drv, true);
+          }
+          return;
+        } catch (err) {
+          toast(`Ordner-Dialog auf ${cleanL}:: ${err.message}`, 'err');
+          return;
+        }
+      }
 
       if (!window.showDirectoryPicker || !window.isSecureContext) {
         toast('Direkte Ordner-Auswahl wird in diesem Browser-Modus nicht unterstützt.', 'err');
@@ -2415,6 +2775,8 @@
       if (state.multiRootMode) {
         const list = (state.activeMultiEntries && state.activeMultiEntries.length) ? state.activeMultiEntries : savedFoldersList;
         await scanMultipleEntries(list, state.rootName || `Alle Ordner (${list.length})`, state.activeDrive || 'ALL', emptyQuery);
+      } else if (state.rootNativePath && helperState.available) {
+        await scanNativeFolderPath(state.rootNativePath, state.activeDrive || '', false, emptyQuery);
       } else if (state.rootHandle) {
         await scanDirectoryHandle(state.rootHandle);
       }
@@ -2441,7 +2803,14 @@
       let skippedCount = 0;
 
       for (const entry of entriesList) {
-        if (!entry || !entry.handle) { skippedCount += 1; continue; }
+        if (!entry) { skippedCount += 1; continue; }
+        const natPath = _getEntryNativePath(entry);
+        if (helperState.available && natPath) {
+          anyWrite = true;
+          granted.push({ entry, canWrite: true, nativePath: natPath });
+          continue;
+        }
+        if (!entry.handle) { skippedCount += 1; continue; }
         let entryWrite = true;
         try {
           if (entry.handle.queryPermission) {
@@ -2464,7 +2833,7 @@
             }
           }
           if (entryWrite) anyWrite = true;
-          granted.push({ entry, canWrite: entryWrite });
+          granted.push({ entry, canWrite: entryWrite, nativePath: '' });
         } catch (_) {
           skippedCount += 1;
         }
@@ -2539,8 +2908,40 @@
 
           let savedPref = '';
           try { savedPref = (localStorage.getItem(getBasePathStorageKey(entry.name)) || '').trim().replace(/[\\/]+$/, ''); } catch (_) {}
-          state.multiRootPrefixes.set(rootSeg, savedPref || rootSeg);
+          const resolvedPref = itemRoot.nativePath ? itemRoot.nativePath.replace(/[\\/]+$/, '') : savedPref;
+          state.multiRootPrefixes.set(rootSeg, resolvedPref || rootSeg);
           state.allDirs.add(rootSeg);
+
+          if (itemRoot.nativePath && helperState.available) {
+            hint.textContent = `⚡ Lese „${rootSeg}“ über Windows-Helfer ein…`;
+            try {
+              const resp = await fetch(`${HELPER_BASE}/api/scan?path=${encodeURIComponent(itemRoot.nativePath)}`);
+              const data = await resp.json();
+              if (resp.ok && data && data.ok) {
+                (data.dirs || []).forEach(d => { if (d) state.allDirs.add(`${rootSeg}\\${d}`); });
+                (data.files || []).forEach(f => {
+                  counter += 1;
+                  const ext = getExt(f.name);
+                  const dirStr = f.dir ? `${rootSeg}\\${f.dir}` : rootSeg;
+                  state.allFiles.push({
+                    id: `f_${counter}`,
+                    name: f.name,
+                    ext: ext ? ext.toUpperCase() : '—',
+                    cat: getCategoryForExt(ext),
+                    dir: dirStr,
+                    relPath: `${dirStr}\\${f.name}`,
+                    size: f.size || 0,
+                    mtime: f.mtime || 0,
+                    fileHandle: null,
+                    parentHandle: null,
+                    fileObj: null,
+                    nativePath: f.fullPath
+                  });
+                });
+              }
+            } catch (_) {}
+            continue;
+          }
 
           const cloudSafe = !!(manualCloud || isCloudFolderName(entry.name, savedPref));
           const queue = [{ handle: entry.handle, relDir: rootSeg }];
@@ -2707,7 +3108,11 @@
       }
     }
 
-    function pickDirectoryReadOnly() {
+    async function pickDirectoryReadOnly() {
+      if (helperState.available || await checkWindowsHelper(true)) {
+        openSystemFoldersModal();
+        return;
+      }
       const inp = document.getElementById('fallback-folder-input');
       if (!inp) return;
       inp.value = '';
@@ -3054,6 +3459,10 @@
 
       const counts = {};
       const driveSet = new Set(['C', 'D', 'E']);
+      (helperState.drives || []).forEach(d => {
+        const l = (d || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 1);
+        if (l) driveSet.add(l);
+      });
       (savedFoldersList || []).forEach(entry => {
         const d = getEntryDrive(entry);
         if (d) {
@@ -4376,6 +4785,13 @@
     }
 
     async function getFileObject(item) {
+      if (item && item.nativePath && helperState.available) {
+        const url = `${HELPER_BASE}/api/file?path=${encodeURIComponent(item.nativePath)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`Datei konnte nicht geladen werden (HTTP ${resp.status})`);
+        const blob = await resp.blob();
+        return new File([blob], item.name, { type: blob.type || '', lastModified: item.mtime || Date.now() });
+      }
       if (item.fileHandle) return await item.fileHandle.getFile();
       return item.fileObj;
     }
@@ -4625,6 +5041,17 @@
       const btnPrevDel = document.getElementById('btn-preview-delete'); if (btnPrevDel) btnPrevDel.disabled = !state.canWrite;
 
       try {
+        // Direktes Video-Streaming über Windows-Helfer (ohne große Videodatei komplett in den RAM zu laden)
+        if (EXT_VIDEO.has(ext) && item.nativePath && helperState.available) {
+          const streamUrl = `${HELPER_BASE}/api/file?path=${encodeURIComponent(item.nativePath)}`;
+          body.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:14px; background:#0f172a; border-radius:8px;">
+              <video controls autoplay="false" style="max-width:100%; max-height:calc(100vh - 220px); border-radius:6px; outline:none; box-shadow:0 4px 14px rgba(0,0,0,0.4);" src="${streamUrl}"></video>
+              <div style="margin-top:10px; color:#cbd5e1; font-size:12px; font-weight:600;">${escapeHtml(item.name)} (${formatBytes(item.size)})</div>
+            </div>`;
+          return;
+        }
+
         const file = await getFileObject(item);
         if (mySeq !== state.pdfLoadSeq) return;
         if (file && (item.size === null || item.mtime === null)) {
@@ -4788,7 +5215,21 @@
       }
     }
 
-    function _triggerExplorerProtocol(targetWinPath) {
+    async function _triggerExplorerProtocol(targetWinPath) {
+      if (helperState.available) {
+        try {
+          const resp = await fetch(`${HELPER_BASE}/api/explorer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: targetWinPath })
+          });
+          const data = await resp.json();
+          if (resp.ok && data && data.ok) {
+            toast(`📂 Im Windows Explorer geöffnet:\n${data.opened || targetWinPath}`, 'ok');
+            return;
+          }
+        } catch (_) {}
+      }
       const url = `suchmaschine-explorer://open?path=${encodeURIComponent(targetWinPath)}`;
       const a = document.createElement('a');
       a.href = url;
@@ -5421,10 +5862,19 @@
       if (!modal || !list) return;
 
       const count = items.length;
+      const useRecycle = helperState.available && items.every(it => !!it.nativePath);
       title.textContent = count === 1 ? 'Datei löschen' : `${count} Dateien löschen`;
-      msg.textContent = count === 1
-        ? 'Möchtest du diese Datei wirklich von der Festplatte löschen?'
-        : `Möchtest du die folgenden ${count} Dateien wirklich von der Festplatte löschen?`;
+      msg.textContent = useRecycle
+        ? (count === 1
+          ? 'Möchtest du diese Datei in den Windows-Papierkorb verschieben?'
+          : `Möchtest du die folgenden ${count} Dateien in den Windows-Papierkorb verschieben?`)
+        : (count === 1
+          ? 'Möchtest du diese Datei wirklich von der Festplatte löschen?'
+          : `Möchtest du die folgenden ${count} Dateien wirklich von der Festplatte löschen?`);
+      const btnConfirm = document.getElementById('btn-confirm-delete');
+      if (btnConfirm) {
+        btnConfirm.textContent = useRecycle ? '♻️ In Papierkorb verschieben' : '🗑️ Unwiderruflich löschen';
+      }
 
       list.innerHTML = '';
       const maxDisplay = 8;
@@ -5460,7 +5910,23 @@
 
       for (const it of toDelete) {
         try {
-          if (it.parentHandle && typeof it.parentHandle.removeEntry === 'function') {
+          if (it.nativePath && helperState.available) {
+            const resp = await fetch(`${HELPER_BASE}/api/delete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ path: it.nativePath })
+            });
+            const data = await resp.json();
+            if (resp.ok && data && data.ok) {
+              successCount++;
+              const idx = state.allFiles.findIndex(f => f.id === it.id);
+              if (idx !== -1) state.allFiles.splice(idx, 1);
+              state.selectedIds.delete(it.id);
+              if (state.activeId === it.id) clearActivePreview();
+            } else {
+              failCount++;
+            }
+          } else if (it.parentHandle && typeof it.parentHandle.removeEntry === 'function') {
             await it.parentHandle.removeEntry(it.name, it.isFolder ? { recursive: true } : undefined);
             successCount++;
             const idx = state.allFiles.findIndex(f => f.id === it.id);
@@ -5500,11 +5966,28 @@
     }
 
     async function renameFileItem(item, newNameRaw) {
-      if (!state.canWrite || !item.fileHandle || !item.parentHandle) throw new Error('Keine Schreibfreigabe für diesen Ordner.');
       const origExt = getExt(item.name);
       const newName = sanitizeFileNameWithExt(newNameRaw, origExt);
       if (!newName) throw new Error('Ungültiger Dateiname.');
       if (newName === item.name) return false;
+
+      if (item.nativePath && helperState.available) {
+        const resp = await fetch(`${HELPER_BASE}/api/rename`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: item.nativePath, newName })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data || !data.ok) {
+          throw new Error((data && data.error) || `HTTP ${resp.status}`);
+        }
+        item.name = newName;
+        item.nativePath = data.newPath || item.nativePath;
+        item.relPath = item.dir === '(Hauptordner)' ? newName : `${item.dir}\\${newName}`;
+        return true;
+      }
+
+      if (!state.canWrite || !item.fileHandle || !item.parentHandle) throw new Error('Keine Schreibfreigabe für diesen Ordner.');
 
       if (typeof item.fileHandle.move === 'function') {
         await item.fileHandle.move(newName);
@@ -5683,6 +6166,7 @@
         if (e.key === 'Escape') {
           closeExplorerFolderPopup();
           closeModal('modal-remove-saved-folder');
+          closeModal('modal-system-folders');
           const card = document.getElementById('preview-card');
           if (card && card.classList.contains('maximized')) togglePreviewMaximize(true);
         } else if (state.pdfDoc && document.activeElement?.tagName !== 'INPUT') {
