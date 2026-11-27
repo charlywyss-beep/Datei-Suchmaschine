@@ -931,7 +931,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.50 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.51 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen</p>
       </div>
     </div>
@@ -1266,6 +1266,31 @@
       <div class="modal-foot">
         <button type="button" class="btn" onclick="closeModal('modal-delete-confirm')">Abbrechen</button>
         <button id="btn-confirm-delete" type="button" class="btn btn-danger" onclick="executePendingDelete()">🗑️ Unwiderruflich löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Windows-Ordnerauswahl direkt in der App (über Windows-Helfer, ohne versteckte OS-Fenster) -->
+  <div id="modal-native-folder-picker" class="modal-backdrop hidden" onclick="if(event.target===this) closeModal('modal-native-folder-picker')">
+    <div class="modal-card" style="max-width:580px;">
+      <div class="modal-head">
+        <h2>📂 Ordner auswählen</h2>
+        <button type="button" class="btn" onclick="closeModal('modal-native-folder-picker')">✕</button>
+      </div>
+      <div class="modal-body" style="padding:14px 18px; display:flex; flex-direction:column; gap:10px;">
+        <div id="nfp-quick-bar" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button id="nfp-btn-up" type="button" class="btn" style="height:34px; padding:0 10px;" onclick="nfpGoUp()" title="Eine Ebene nach oben">↑ Hoch</button>
+          <input id="nfp-path-input" type="text" placeholder="Pfad eingeben (z. B. C:\Users\01\Documents)…"
+                 style="flex:1; height:34px; padding:0 10px; border-radius:8px; border:1.5px solid #cbd5e1; font-family:inherit; font-size:12.5px; font-weight:600; color:#0f172a; background:#ffffff;"
+                 onkeydown="if(event.key==='Enter') nfpLoadDir(this.value.trim())">
+          <button type="button" class="btn" style="height:34px; padding:0 10px;" onclick="nfpLoadDir(document.getElementById('nfp-path-input').value.trim())" title="Pfad öffnen">↵</button>
+        </div>
+        <div id="nfp-list" style="height:310px; overflow-y:auto; border:1px solid #cbd5e1; border-radius:8px; background:#ffffff; padding:5px; display:flex; flex-direction:column; gap:2px;"></div>
+      </div>
+      <div class="modal-foot" style="padding:12px 18px; background:#f8fafc;">
+        <button type="button" class="btn" onclick="closeModal('modal-native-folder-picker')">Abbrechen</button>
+        <button id="nfp-btn-select" type="button" class="btn btn-primary" onclick="nfpConfirmCurrent()">✓ Diesen Ordner einlesen</button>
       </div>
     </div>
   </div>
@@ -2157,6 +2182,114 @@
       }
     }
 
+    const nfpState = { currentPath: '', parentPath: '', isRoot: true };
+
+    function openNativeFolderPicker(initialPath = '') {
+      const quickBar = document.getElementById('nfp-quick-bar');
+      if (quickBar) {
+        const sf = helperState.specialFolders || {};
+        const quickItems = [
+          { icon: '💻', label: 'Dieser PC', path: '' },
+          { icon: '📄', label: 'Dokumente', path: sf.documents },
+          { icon: '🖥️', label: 'Desktop', path: sf.desktop },
+          { icon: '⬇️', label: 'Downloads', path: sf.downloads },
+          { icon: '🖼️', label: 'Bilder', path: sf.pictures }
+        ].filter(x => x.label === 'Dieser PC' || x.path);
+        quickBar.innerHTML = '';
+        quickItems.forEach(q => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'btn';
+          b.style.cssText = 'height:29px; padding:0 9px; font-size:12px;';
+          b.textContent = `${q.icon} ${q.label}`;
+          b.onclick = () => nfpLoadDir(q.path);
+          quickBar.appendChild(b);
+        });
+      }
+      document.getElementById('modal-native-folder-picker').classList.remove('hidden');
+      nfpLoadDir(initialPath || '');
+    }
+
+    async function nfpLoadDir(targetPath) {
+      const listEl = document.getElementById('nfp-list');
+      const pathInp = document.getElementById('nfp-path-input');
+      const btnUp = document.getElementById('nfp-btn-up');
+      const btnSel = document.getElementById('nfp-btn-select');
+      if (!listEl) return;
+      listEl.innerHTML = '<div style="padding:18px; text-align:center; color:#64748b; font-size:12.5px;">Lade Ordner…</div>';
+      try {
+        const resp = await fetch(`${HELPER_BASE}/api/list-dirs?path=${encodeURIComponent(targetPath || '')}`);
+        const data = await resp.json();
+        if (!resp.ok || !data || !data.ok) {
+          throw new Error((data && data.error) || `HTTP ${resp.status}`);
+        }
+        nfpState.currentPath = data.path || '';
+        nfpState.parentPath = data.parent || '';
+        nfpState.isRoot = !!data.isRoot;
+
+        if (pathInp) pathInp.value = nfpState.isRoot ? '' : nfpState.currentPath;
+        if (btnUp) btnUp.disabled = nfpState.isRoot;
+        if (btnSel) {
+          btnSel.disabled = nfpState.isRoot || !nfpState.currentPath;
+          const shortLbl = nfpState.currentPath
+            ? toGermanDisplayPath(nfpState.currentPath.length > 34 ? '…' + nfpState.currentPath.slice(-32) : nfpState.currentPath)
+            : '';
+          btnSel.textContent = shortLbl ? `✓ „${shortLbl}“ einlesen` : '✓ Diesen Ordner einlesen';
+        }
+
+        const items = Array.isArray(data.items) ? data.items : [];
+        listEl.innerHTML = '';
+        if (!items.length) {
+          listEl.innerHTML = '<div style="padding:22px; text-align:center; color:#64748b; font-size:12.5px;">Keine Unterordner vorhanden – klicke unten auf <strong>„Diesen Ordner einlesen“</strong>.</div>';
+          return;
+        }
+        items.forEach(it => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:6px; border-radius:7px; padding:3px 4px; flex-shrink:0;';
+          row.onmouseenter = () => { row.style.background = '#eff6ff'; };
+          row.onmouseleave = () => { row.style.background = 'transparent'; };
+
+          const openBtn = document.createElement('button');
+          openBtn.type = 'button';
+          openBtn.style.cssText = 'flex:1; min-width:0; border:none; background:transparent; text-align:left; font-family:inherit; font-size:13px; font-weight:600; color:#0f172a; padding:5px 7px; cursor:pointer; display:flex; align-items:center; gap:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+          openBtn.innerHTML = `<span>${it.isDrive ? '💿' : '📁'}</span><span style="overflow:hidden; text-overflow:ellipsis;">${escapeHtml(toGermanFolderLabel(it.name))}</span>`;
+          openBtn.title = `Ordner öffnen: ${it.path}`;
+          openBtn.onclick = () => nfpLoadDir(it.path);
+
+          const pickBtn = document.createElement('button');
+          pickBtn.type = 'button';
+          pickBtn.className = 'btn';
+          pickBtn.style.cssText = 'height:27px; padding:0 9px; font-size:11.5px; flex-shrink:0;';
+          pickBtn.textContent = '✓ Einlesen';
+          pickBtn.title = `Direkt einlesen: ${it.path}`;
+          pickBtn.onclick = e => {
+            e.stopPropagation();
+            closeModal('modal-native-folder-picker');
+            const drv = (it.path.match(/^([a-zA-Z]):/) ? it.path[0] : '').toUpperCase();
+            scanNativeFolderPath(it.path, drv, true);
+          };
+
+          row.append(openBtn, pickBtn);
+          listEl.appendChild(row);
+        });
+      } catch (err) {
+        listEl.innerHTML = `<div style="padding:18px; text-align:center; color:#b91c1c; font-size:12.5px;">Fehler: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function nfpGoUp() {
+      if (nfpState.isRoot) return;
+      nfpLoadDir(nfpState.parentPath || '');
+    }
+
+    function nfpConfirmCurrent() {
+      if (!nfpState.currentPath) return;
+      const p = nfpState.currentPath;
+      closeModal('modal-native-folder-picker');
+      const drv = (p.match(/^([a-zA-Z]):/) ? p[0] : '').toUpperCase();
+      scanNativeFolderPath(p, drv, true);
+    }
+
     function openSystemFoldersModal() {
       const list = document.getElementById('sys-folder-list');
       if (!list) return;
@@ -2603,25 +2736,8 @@
 
     async function pickDirectory() {
       if (helperState.available) {
-        toast('📂 Öffne Windows-Ordnerauswahl…', 'info');
-        try {
-          const initDir = state.rootNativePath || '';
-          const resp = await fetch(`${HELPER_BASE}/api/pick-folder?initial=${encodeURIComponent(initDir)}`);
-          const data = await resp.json();
-          if (data && data.ok && data.path) {
-            await scanNativeFolderPath(data.path, '', true);
-          } else if (data && data.busy) {
-            toast('Ordnerauswahl ist bereits offen (ggf. unten in der Taskleiste anklicken).', 'info');
-          } else if (data && data.error) {
-            toast(`Ordner-Dialog: ${data.error}`, 'err');
-          }
-          return;
-        } catch (err) {
-          helperState.available = false;
-          _updateHelperStatusBadge();
-          toast('Windows-Helfer nicht erreichbar – Browser-Modus aktiviert. Bitte „Ordner wählen…“ erneut klicken.', 'err');
-          return;
-        }
+        openNativeFolderPicker(state.rootNativePath || '');
+        return;
       }
       if (window.showDirectoryPicker && window.isSecureContext) {
         try {
@@ -2702,22 +2818,8 @@
       if (!cleanL) return;
 
       if (helperState.available) {
-        try {
-          const initDir = `${cleanL}:\\`;
-          const title = cleanL === 'C'
-            ? 'Ordner auf C: auswählen (auch Dokumente, Desktop, Downloads)'
-            : `Laufwerk ${cleanL}:\\ oder Ordner auswählen`;
-          const resp = await fetch(`${HELPER_BASE}/api/pick-folder?initial=${encodeURIComponent(initDir)}&title=${encodeURIComponent(title)}`);
-          const data = await resp.json();
-          if (data && data.ok && data.path) {
-            const drv = (data.path.match(/^([a-zA-Z]):/) ? data.path[0] : cleanL).toUpperCase();
-            await scanNativeFolderPath(data.path, drv, true);
-          }
-          return;
-        } catch (err) {
-          toast(`Ordner-Dialog auf ${cleanL}:: ${err.message}`, 'err');
-          return;
-        }
+        openNativeFolderPicker(`${cleanL}:\\`);
+        return;
       }
 
       if (!window.showDirectoryPicker || !window.isSecureContext) {
@@ -6175,6 +6277,7 @@
           closeExplorerFolderPopup();
           closeModal('modal-remove-saved-folder');
           closeModal('modal-system-folders');
+          closeModal('modal-native-folder-picker');
           const card = document.getElementById('preview-card');
           if (card && card.classList.contains('maximized')) togglePreviewMaximize(true);
         } else if (state.pdfDoc && document.activeElement?.tagName !== 'INPUT') {

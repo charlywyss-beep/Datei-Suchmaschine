@@ -366,6 +366,9 @@ namespace DokumentenSucheHelfer
                 case "/api/ping":
                     HandlePing(res);
                     break;
+                case "/api/list-dirs":
+                    HandleListDirs(req, res);
+                    break;
                 case "/api/pick-folder":
                     HandlePickFolder(req, res);
                     break;
@@ -427,6 +430,93 @@ namespace DokumentenSucheHelfer
             sb.Append(",\"pictures\":").Append(JsonEscape(pictures));
             sb.Append("}}");
 
+            WriteJson(res, 200, sb.ToString());
+        }
+
+        static void HandleListDirs(HttpListenerRequest req, HttpListenerResponse res)
+        {
+            string rawPath = (GetQueryParam(req.Url.Query, "path") ?? "").Trim();
+            StringBuilder sb = new StringBuilder(4096);
+
+            if (string.IsNullOrEmpty(rawPath))
+            {
+                // Root view: list all ready drives
+                sb.Append("{\"ok\":true,\"path\":\"\",\"parent\":\"\",\"isRoot\":true,\"items\":[");
+                bool first = true;
+                try
+                {
+                    foreach (DriveInfo d in DriveInfo.GetDrives())
+                    {
+                        if (!d.IsReady) continue;
+                        if (!first) sb.Append(',');
+                        first = false;
+                        string label = "";
+                        try { label = d.VolumeLabel ?? ""; } catch { }
+                        string disp = string.IsNullOrEmpty(label)
+                            ? d.Name.TrimEnd('\\')
+                            : (d.Name.TrimEnd('\\') + " (" + label + ")");
+                        sb.Append("{\"name\":").Append(JsonEscape(disp))
+                          .Append(",\"path\":").Append(JsonEscape(d.Name))
+                          .Append(",\"isDrive\":true}");
+                    }
+                }
+                catch { }
+                sb.Append("]}");
+                WriteJson(res, 200, sb.ToString());
+                return;
+            }
+
+            string target = ResolveWindowsPath(rawPath);
+            if (target.Length == 2 && target[1] == ':') target += "\\";
+            if (!Directory.Exists(target))
+            {
+                WriteJson(res, 404, "{\"ok\":false,\"error\":\"Ordner nicht gefunden\"}");
+                return;
+            }
+
+            bool isDrive = (target.Length == 3 && target[1] == ':' && target[2] == '\\');
+            string parent = "";
+            if (!isDrive)
+            {
+                try
+                {
+                    DirectoryInfo pdi = Directory.GetParent(target.TrimEnd('\\'));
+                    if (pdi != null) parent = pdi.FullName;
+                }
+                catch { }
+            }
+
+            List<DirectoryInfo> subdirs = new List<DirectoryInfo>();
+            try
+            {
+                DirectoryInfo di = new DirectoryInfo(target);
+                foreach (DirectoryInfo sub in di.EnumerateDirectories())
+                {
+                    try
+                    {
+                        if ((sub.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                        if (sub.Name.StartsWith("$")) continue;
+                        if (SKIP_ALWAYS.Contains(sub.Name)) continue;
+                        subdirs.Add(sub);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            subdirs.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.Name, b.Name));
+
+            sb.Append("{\"ok\":true,\"path\":").Append(JsonEscape(target))
+              .Append(",\"parent\":").Append(JsonEscape(parent))
+              .Append(",\"isRoot\":false,\"items\":[");
+            for (int i = 0; i < subdirs.Count; i++)
+            {
+                if (i > 0) sb.Append(',');
+                sb.Append("{\"name\":").Append(JsonEscape(subdirs[i].Name))
+                  .Append(",\"path\":").Append(JsonEscape(subdirs[i].FullName))
+                  .Append(",\"isDrive\":false}");
+            }
+            sb.Append("]}");
             WriteJson(res, 200, sb.ToString());
         }
 
