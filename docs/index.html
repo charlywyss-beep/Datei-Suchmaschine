@@ -931,7 +931,7 @@
         </svg>
       </div>
       <div>
-        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.49 · Aktualisieren</button></h1>
+        <h1>Dokumenten-Suche Pro <button type="button" class="brand-badge" onclick="forceAppUpdate()" title="Neueste Version von GitHub laden (Browser-Cache umgehen)">🔄 Web v3.50 · Aktualisieren</button></h1>
         <p class="brand-sub">PDF, Word, Excel, PowerPoint, Bilder &amp; Text lokal im Browser suchen, ansehen &amp; umbenennen</p>
       </div>
     </div>
@@ -2603,16 +2603,24 @@
 
     async function pickDirectory() {
       if (helperState.available) {
+        toast('📂 Öffne Windows-Ordnerauswahl…', 'info');
         try {
           const initDir = state.rootNativePath || '';
           const resp = await fetch(`${HELPER_BASE}/api/pick-folder?initial=${encodeURIComponent(initDir)}`);
           const data = await resp.json();
           if (data && data.ok && data.path) {
             await scanNativeFolderPath(data.path, '', true);
+          } else if (data && data.busy) {
+            toast('Ordnerauswahl ist bereits offen (ggf. unten in der Taskleiste anklicken).', 'info');
+          } else if (data && data.error) {
+            toast(`Ordner-Dialog: ${data.error}`, 'err');
           }
           return;
         } catch (err) {
-          toast(`Ordner-Dialog: ${err.message}`, 'err');
+          helperState.available = false;
+          _updateHelperStatusBadge();
+          toast('Windows-Helfer nicht erreichbar – Browser-Modus aktiviert. Bitte „Ordner wählen…“ erneut klicken.', 'err');
+          return;
         }
       }
       if (window.showDirectoryPicker && window.isSecureContext) {
@@ -3108,8 +3116,8 @@
       }
     }
 
-    async function pickDirectoryReadOnly() {
-      if (helperState.available || await checkWindowsHelper(true)) {
+    function pickDirectoryReadOnly() {
+      if (helperState.available) {
         openSystemFoldersModal();
         return;
       }

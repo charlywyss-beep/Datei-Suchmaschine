@@ -430,27 +430,81 @@ namespace DokumentenSucheHelfer
             WriteJson(res, 200, sb.ToString());
         }
 
+        static readonly object _pickerLock = new object();
+        static volatile IntPtr _activePickerOwner = IntPtr.Zero;
+
+        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+        [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+        [DllImport("user32.dll")] static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+        [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        static void ForceForeground(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero) return;
+            try
+            {
+                IntPtr fg = GetForegroundWindow();
+                uint fgPid;
+                uint fgTid = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, out fgPid) : 0;
+                uint curTid = GetCurrentThreadId();
+                bool attached = false;
+                if (fgTid != 0 && fgTid != curTid)
+                {
+                    attached = AttachThreadInput(curTid, fgTid, true);
+                }
+                ShowWindow(hWnd, 9); // SW_RESTORE
+                BringWindowToTop(hWnd);
+                SetForegroundWindow(hWnd);
+                if (attached) AttachThreadInput(curTid, fgTid, false);
+            }
+            catch { }
+        }
+
+        static void LogDiag(string msg)
+        {
+            try
+            {
+                string logPath = Path.Combine(Path.GetTempPath(), "suchmaschine_helfer.log");
+                File.AppendAllText(logPath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + msg + Environment.NewLine, Encoding.UTF8);
+            }
+            catch { }
+        }
+
         static void HandlePickFolder(HttpListenerRequest req, HttpListenerResponse res)
         {
+            if (_activePickerOwner != IntPtr.Zero)
+            {
+                ForceForeground(_activePickerOwner);
+                WriteJson(res, 200, "{\"ok\":false,\"busy\":true}");
+                return;
+            }
+
             string initial = GetQueryParam(req.Url.Query, "initial") ?? "";
             string title = GetQueryParam(req.Url.Query, "title") ?? "Ordner für Dokumenten-Suche Pro auswählen";
             string selected = null;
             Exception err = null;
 
-            Thread sta = new Thread(() =>
+            lock (_pickerLock)
             {
-                try
+                Thread sta = new Thread(() =>
                 {
-                    selected = ShowModernFolderDialog(title, initial);
-                }
-                catch (Exception ex)
-                {
-                    err = ex;
-                }
-            });
-            sta.SetApartmentState(ApartmentState.STA);
-            sta.Start();
-            sta.Join();
+                    try
+                    {
+                        selected = ShowModernFolderDialog(title, initial);
+                    }
+                    catch (Exception ex)
+                    {
+                        err = ex;
+                        LogDiag("PickFolder error: " + ex);
+                    }
+                });
+                sta.SetApartmentState(ApartmentState.STA);
+                sta.Start();
+                sta.Join();
+            }
 
             if (err != null)
             {
@@ -469,21 +523,25 @@ namespace DokumentenSucheHelfer
         {
             using (Form owner = new Form())
             {
+                owner.Text = title;
                 owner.TopMost = true;
-                owner.ShowInTaskbar = false;
-                owner.FormBorderStyle = FormBorderStyle.None;
-                owner.StartPosition = FormStartPosition.Manual;
-                owner.Location = new Point(-32000, -32000);
+                owner.ShowInTaskbar = true;
+                owner.FormBorderStyle = FormBorderStyle.FixedToolWindow;
+                owner.StartPosition = FormStartPosition.CenterScreen;
                 owner.Size = new Size(1, 1);
+                owner.Opacity = 0.0;
                 owner.Show();
+                _activePickerOwner = owner.Handle;
+                ForceForeground(owner.Handle);
                 owner.Activate();
 
                 try
                 {
                     return VistaFolderPicker.ShowDialog(owner.Handle, title, initialDir);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    LogDiag("VistaFolderPicker fallback: " + ex.Message);
                     using (FolderBrowserDialog fbd = new FolderBrowserDialog())
                     {
                         fbd.Description = title;
@@ -494,6 +552,10 @@ namespace DokumentenSucheHelfer
                             return fbd.SelectedPath;
                         return null;
                     }
+                }
+                finally
+                {
+                    _activePickerOwner = IntPtr.Zero;
                 }
             }
         }
